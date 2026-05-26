@@ -16,6 +16,7 @@ from apps.api.deps import get_container
 from packages.core.errors import LibraryNotFoundError
 from packages.ingestion.state import IngestRecord, IngestStateStore
 from packages.orchestration._internal.ulid import new_ulid
+from packages.orchestration.errors import QueueFullError
 from packages.orchestration.queue import TaskSpec
 
 router = APIRouter(prefix="/api/libraries/{library_id}/documents", tags=["documents"])
@@ -213,8 +214,16 @@ async def retry_frontend_document_ingestion(
         },
         dedup_key=f"frontend-retry:{document_id}:{new_ulid()}",
     )
-    task_bundle = await get_task_bundle(container)
-    await task_bundle.queue.enqueue(library_id, spec)
+    try:
+        task_bundle = await get_task_bundle(container)
+        await task_bundle.queue.enqueue(library_id, spec)
+    except QueueFullError:
+        raise
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Document retry queue unavailable",
+        ) from exc
     return FrontendDocumentMutationFeedback(
         tone="warning",
         title="Retry queued",

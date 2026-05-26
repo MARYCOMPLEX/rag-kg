@@ -33,6 +33,7 @@ _HTTP_TO_CODE: dict[int, ErrorCode] = {
     409: ErrorCode.CONFLICT,
     422: ErrorCode.VALIDATION_ERROR,
     429: ErrorCode.RATE_LIMITED,
+    503: ErrorCode.UPSTREAM_ERROR,
 }
 
 

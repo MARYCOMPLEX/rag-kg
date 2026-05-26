@@ -77,6 +77,11 @@ OpenAPI remains the single source of truth. Entries here are requests only; once
   - Frontend can remove mock-backed document reads when API mode is enabled.
   - Document list and drawer retain loading, empty, error, and retry behavior against the real API.
 - Status: implemented
+- Backend seed note:
+  - Time: 2026-05-27 05:41 +08:00
+  - Added `serve/scripts/seed_frontend_documents.py` and ran it for `rag-agent`.
+  - The local backend ingest state now has one ready document (`2210.03629`) for successful drawer verification and one failed document (`frontend-retry-failed`) for retry-state UI verification.
+  - OpenAPI was unchanged because the existing document list/detail response contract did not change.
 
 ## API Request: Document ingestion retry mutation
 
@@ -100,6 +105,10 @@ OpenAPI remains the single source of truth. Entries here are requests only; once
   - Time: 2026-05-27 05:18 +08:00
   - `POST /api/libraries/{libraryId}/documents/{documentId}:retry` now validates missing library and missing document before initializing the task queue, so Redis/Arq availability cannot mask contracted `404 LIBRARY_NOT_FOUND` or `404 NOT_FOUND` error envelopes.
   - OpenAPI was already correct for these responses; no contract shape change was needed.
+- Backend fix note:
+  - Time: 2026-05-27 05:41 +08:00
+  - If Redis/Arq is unavailable while retrying a real failed document, `/api/libraries/{libraryId}/documents/{documentId}:retry` now returns the contracted `503 UPSTREAM_ERROR` envelope instead of `500 INTERNAL_ERROR`.
+  - Successful `202 { tone, title, detail, action }` retry still requires the task queue dependencies to be running.
 
 ## API Request: Document upload transport
 

@@ -28,6 +28,28 @@ Use this log during local integration, E2E testing, and contract verification. E
 
 ## Logs
 
+## 2026-05-27 05:41 - Backend document smoke seed and retry upstream envelope
+
+- Time: 2026-05-27 05:41 +08:00
+- Agent: Backend Agent
+- Issue: #3
+- Cause: Frontend needed backend-backed document rows to verify successful document drawer rendering and failed-document retry UI. Live retry of a failed document also exposed that Redis/Arq unavailability returned `500 INTERNAL_ERROR` instead of the contracted upstream error envelope.
+- Fix status: fixed
+- Fix:
+  - Added `serve/scripts/seed_frontend_documents.py`, an idempotent local seed utility that writes normal ingest-state rows for `rag-agent`.
+  - Seeded `2210.03629` as a ready document and `frontend-retry-failed` as a failed document in `data/state/ingest.sqlite`.
+  - Updated `/api/libraries/{libraryId}/documents/{documentId}:retry` so queue initialization/enqueue failures return `503 UPSTREAM_ERROR` with message `Document retry queue unavailable`.
+  - Added `503` to the HTTP exception error-code map so HTTP boundary code can use the existing upstream error envelope.
+  - Kept OpenAPI unchanged because document read, retry success, and retry upstream-error responses were already contracted.
+- Verification:
+  - `uv run python scripts\seed_frontend_documents.py --library rag-agent`: passed; seeded 2 records.
+  - `uv run --group test pytest tests\integration\api\test_frontend_documents_routes.py -q`: passed, 12 tests.
+  - `uv run --group test pytest tests\integration\api\test_frontend_libraries_routes.py tests\integration\api\test_frontend_documents_routes.py -q`: passed, 21 tests, 1 existing Starlette deprecation warning.
+  - `uv run --group dev ruff check apps\api\middleware\error_handler.py apps\api\routes\frontend_documents.py tests\integration\api\test_frontend_documents_routes.py scripts\seed_frontend_documents.py`: passed.
+  - `make typecheck`: passed, 0 errors with 20 existing warnings outside this change.
+  - `uv run python -c "import yaml; yaml.safe_load(open('..\\contracts\\openapi.yaml', encoding='utf-8')); print('openapi yaml parsed')"`: passed.
+  - Live Uvicorn smoke: `GET /healthz` returned 200; `GET /api/libraries/rag-agent/documents` returned 2 seeded rows; `GET /api/libraries/rag-agent/documents/2210.03629` returned document detail; `POST /api/libraries/rag-agent/documents/frontend-retry-failed:retry` returned `503 UPSTREAM_ERROR` while Redis was unavailable.
+
 ## 2026-05-27 05:18 - Document retry missing-resource envelope fix
 
 - Time: 2026-05-27 05:18 +08:00

@@ -459,6 +459,40 @@ async def test_retry_missing_document_does_not_initialize_queue(
     assert body["message"] == "Document not found: missing-doc"
 
 
+async def test_retry_queue_unavailable_uses_upstream_error(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def fail_build_bundle(container: AppContainer) -> NoReturn:
+        _ = container
+        raise TimeoutError("redis unavailable")
+
+    await reset_task_bundle()
+    monkeypatch.setattr(_task_deps, "_build_bundle", fail_build_bundle)
+    container = _build_container(tmp_path)
+    await container.library_repo.create(make_library(library_id="lib-docs", name="Docs Lib"))
+    _seed_record(
+        container,
+        doc_id="doc-failed",
+        file_name="failed.pdf",
+        title=None,
+        status="failed",
+        chunks=0,
+        last_error="parse failed",
+    )
+    app.dependency_overrides[get_container] = lambda: container
+    transport = ASGITransport(app=app, raise_app_exceptions=False)
+    async with AsyncClient(transport=transport, base_url="http://test") as instance:
+        res = await instance.post("/api/libraries/lib-docs/documents/doc-failed:retry")
+    app.dependency_overrides.clear()
+    await reset_task_bundle()
+
+    assert res.status_code == 503
+    body = res.json()
+    assert body["code"] == "UPSTREAM_ERROR"
+    assert body["message"] == "Document retry queue unavailable"
+
+
 async def test_documents_server_failure_uses_error_envelope(tmp_path: Path) -> None:
     container = _build_container(tmp_path, library_repo=_BrokenLibraryRepository())
     app.dependency_overrides[get_container] = lambda: container
