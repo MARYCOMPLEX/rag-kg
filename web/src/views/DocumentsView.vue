@@ -36,6 +36,10 @@ watch(libraryId, (nextLibraryId) => {
   void docs.loadDocuments(nextLibraryId)
 }, { immediate: true })
 
+function reloadDocuments() {
+  void docs.loadDocuments(libraryId.value, true)
+}
+
 function toggleStatusPopover(documentId: string) {
   openStatusId.value = openStatusId.value === documentId ? null : documentId
 }
@@ -45,9 +49,10 @@ function closeStatusPopover() {
 }
 
 async function openDocument(document: LibraryDocument) {
+  ui.documentDrawerOpen = true
+
   try {
     await docs.openDocument(libraryId.value, document.id)
-    ui.documentDrawerOpen = true
   }
   catch {
     ui.pushToast('danger', 'Document unavailable', 'Unable to load this document detail.', 'Retry')
@@ -126,7 +131,22 @@ function renderCount(value: number | null) {
             <td colspan="6">Loading documents...</td>
           </tr>
           <tr v-else-if="listState === 'error'" class="document-state-row is-error">
-            <td colspan="6">{{ listError }}</td>
+            <td colspan="6">
+              <strong>Unable to load documents.</strong>
+              <span>{{ listError }}</span>
+              <button type="button" @click="reloadDocuments">
+                Retry
+              </button>
+            </td>
+          </tr>
+          <tr v-else-if="documents.length === 0" class="document-state-row">
+            <td colspan="6">
+              <strong>No documents yet.</strong>
+              <span>Upload PDFs to start ingestion for this library.</span>
+              <button type="button" @click="queueUpload">
+                Upload PDFs
+              </button>
+            </td>
           </tr>
           <template v-else>
             <tr
@@ -168,12 +188,46 @@ function renderCount(value: number | null) {
 
 <style scoped>
 .document-state-row td {
+  vertical-align: middle;
   height: 112px;
   color: var(--color-on-surface-variant);
   text-align: center;
 }
 
+.document-state-row td > * {
+  display: block;
+  margin: 0 auto;
+}
+
+.document-state-row strong {
+  margin-bottom: 4px;
+  color: var(--color-on-surface);
+  font-size: 14px;
+}
+
+.document-state-row span {
+  max-width: 420px;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.document-state-row button {
+  height: 32px;
+  margin-top: 12px;
+  border: 1px solid var(--color-outline-variant);
+  border-radius: var(--radius-control);
+  background: var(--color-surface-container-lowest);
+  padding: 0 14px;
+  color: var(--color-primary);
+  font-size: 13px;
+  font-weight: 700;
+}
+
 .document-state-row.is-error td {
+  color: var(--color-error);
+}
+
+.document-state-row.is-error span {
   color: var(--color-error);
 }
 </style>

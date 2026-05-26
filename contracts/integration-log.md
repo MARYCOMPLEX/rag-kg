@@ -28,6 +28,46 @@ Use this log during local integration, E2E testing, and contract verification. E
 
 ## Logs
 
+## 2026-05-27 05:07 - Document read API-mode verification partially blocked
+
+- Time: 2026-05-27 05:07 +08:00
+- Agent: Frontend Agent
+- Issue: #2
+- Cause: Backend handed back document read endpoints for `GET /api/libraries/{libraryId}/documents` and `GET /api/libraries/{libraryId}/documents/{documentId}`. The live backend data currently has empty document lists for available libraries, so the frontend can verify list empty/error behavior but cannot exercise a successful drawer detail response without a real document row.
+- Fix status: blocked
+- Backend SHA: `835a21d9895634236b900c82b448b10377915864`
+- Frontend commit pushed after verification/log update: `a9f7250`
+- Frontend fix:
+  - Added document list empty, error, and retry states for API-backed document reads.
+  - Opened the document drawer during detail loading and added detail error/retry rendering for API-backed failures.
+- Verification:
+  - `GET http://localhost:8000/healthz`: passed with `{"status":"ok","version":"0.1.0"}`.
+  - `GET http://localhost:8000/api/libraries/rag-agent/documents`: passed with `200 { summary, documents: [] }`.
+  - `GET http://localhost:8000/api/libraries/frontend-smoke-040442/documents`: passed with `200 { summary, documents: [] }`.
+  - `GET http://localhost:8000/api/libraries/missing-library/documents`: passed with `404 LIBRARY_NOT_FOUND`.
+  - `GET http://localhost:8000/api/libraries/rag-agent/documents/not-a-doc`: passed with `404 NOT_FOUND`.
+  - Playwright via system Chrome against `http://127.0.0.1:5174/libraries/rag-agent/docs`: passed API-backed empty state, list error/retry state, and drawer detail error/retry state; observed API statuses `GET 200` and `GET 404`.
+  - `VITE_DATA_SOURCE=api VITE_API_BASE_URL=http://localhost:8000 pnpm typecheck`: passed.
+  - `VITE_DATA_SOURCE=api VITE_API_BASE_URL=http://localhost:8000 pnpm build`: passed.
+- Backend follow-up:
+  - Provide a backend-backed library with at least one document row, or complete the upload transport contract, so frontend can verify the successful document drawer detail path without test-only data.
+
+## 2026-05-27 05:08 - Document retry missing-resource responses return 500
+
+- Time: 2026-05-27 05:08 +08:00
+- Agent: Frontend Agent
+- Issue: #2
+- Cause: Backend handed back `POST /api/libraries/{libraryId}/documents/{documentId}:retry`, but live API requests for missing library/document resolve the task queue dependency before returning the expected resource validation error.
+- Fix status: open
+- Backend SHA: `835a21d9895634236b900c82b448b10377915864`
+- Frontend commit pushed after verification/log update: `a9f7250`
+- Verification:
+  - `POST http://localhost:8000/api/libraries/rag-agent/documents/not-a-doc:retry`: expected `404 NOT_FOUND`; actual delayed `500 INTERNAL_ERROR` with `details.type: TimeoutError`, request id `4e6db67589ec46b3bd8e3a5322925f63`.
+  - `POST http://localhost:8000/api/libraries/missing-library/documents/not-a-doc:retry`: expected `404 LIBRARY_NOT_FOUND`; actual delayed `500 INTERNAL_ERROR` with `details.type: TimeoutError`, request id `8209b2c0bf36476a84557de198ab7a9f`.
+- Backend follow-up:
+  - Return resource validation errors before requiring the task queue, or make the task queue dependency available for local frontend verification.
+  - Provide a failed document row so frontend can verify the successful `202 { tone, title, detail, action }` retry feedback path.
+
 ## 2026-05-27 04:38 - Library API-mode list/create verified
 
 - Time: 2026-05-27 04:38 +08:00

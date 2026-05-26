@@ -91,7 +91,17 @@ OpenAPI remains the single source of truth. Entries here are requests only; once
   - Backend response supports empty document lists without treating them as errors.
   - Frontend can remove mock-backed document reads when API mode is enabled.
   - Document list and drawer retain loading, empty, error, and retry behavior against the real API.
-- Status: requested
+- Status: implemented
+- Frontend verification note:
+  - Time: 2026-05-27 05:07 +08:00
+  - Backend SHA tested: `835a21d9895634236b900c82b448b10377915864`.
+  - Frontend commit pushed after verification/log update: `a9f7250`.
+  - `GET /api/libraries/rag-agent/documents`: verified `200` with the contracted `{ summary, documents }` shape and an empty `documents` array.
+  - `GET /api/libraries/frontend-smoke-040442/documents`: verified `200` with the contracted empty workspace shape.
+  - `GET /api/libraries/missing-library/documents`: verified `404 LIBRARY_NOT_FOUND` error envelope.
+  - `GET /api/libraries/rag-agent/documents/not-a-doc`: verified `404 NOT_FOUND` error envelope and frontend drawer error/retry rendering.
+  - Playwright browser smoke at `http://127.0.0.1:5174/libraries/rag-agent/docs`: verified API-backed empty state, list error/retry state, and drawer detail error/retry state.
+  - Full `verified` status is pending a backend-backed library with at least one document row, or completed upload transport, so the frontend can exercise a successful `GET /api/libraries/{libraryId}/documents/{documentId}` drawer response without test-only data.
 
 ## API Request: Document ingestion mutations and upload transport
 
@@ -114,6 +124,14 @@ OpenAPI remains the single source of truth. Entries here are requests only; once
   - Backend clarifies upload request content type and file field names before frontend removes upload mock behavior.
   - Frontend can show real mutation feedback and preserve traceable error toasts.
 - Status: requested
+- Frontend verification note:
+  - Time: 2026-05-27 05:08 +08:00
+  - Backend SHA tested: `835a21d9895634236b900c82b448b10377915864`.
+  - `POST /api/libraries/rag-agent/documents/not-a-doc:retry`: expected `404 NOT_FOUND` error envelope for a missing document; actual response was delayed and returned `500 INTERNAL_ERROR` with `details.type: TimeoutError`, request id `4e6db67589ec46b3bd8e3a5322925f63`.
+  - `POST /api/libraries/missing-library/documents/not-a-doc:retry`: expected `404 LIBRARY_NOT_FOUND`; actual response was delayed and returned `500 INTERNAL_ERROR` with `details.type: TimeoutError`, request id `8209b2c0bf36476a84557de198ab7a9f`.
+  - Impacted frontend surfaces: `web/src/services/documents/documentRepository.ts`, `web/src/views/DocumentsView.vue`, and `web/src/components/overlays/DocumentDrawer.vue`.
+  - A successful retry feedback path still needs a backend-backed failed document row; current live libraries returned empty document lists.
+  - Upload remains blocked because `/api/libraries/{libraryId}/documents:upload` request content type and file field names are still undefined.
 
 ## API Request: Chat question lifecycle and grounded answer stream
 
