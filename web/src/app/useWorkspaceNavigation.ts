@@ -38,6 +38,14 @@ export function useWorkspaceNavigation() {
       return
     }
 
+    if (!activeLibrary.value)
+      await library.loadLibraries()
+
+    if (!activeLibrary.value) {
+      await router.push({ name: screenRouteNames.dashboard })
+      return
+    }
+
     await router.push({
       name: screenRouteNames[screen],
       params: { libraryId: activeLibrary.value },

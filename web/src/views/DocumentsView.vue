@@ -20,7 +20,7 @@ const {
   selectedDocsLabel,
 } = storeToRefs(docs)
 const openStatusId = ref<string | null>(null)
-const libraryId = computed(() => String(route.params.libraryId ?? 'graphrag-survey'))
+const libraryId = computed(() => String(route.params.libraryId ?? ''))
 const summaryLine = computed(() => {
   const current = summary.value
   if (!current)

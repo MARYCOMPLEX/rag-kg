@@ -17,7 +17,7 @@ interface LibraryDropdownOption {
 const ui = useUiStore()
 const library = useLibraryStore()
 const { routeScreen, goToScreen } = useWorkspaceNavigation()
-const { activeLibrary, libraries } = storeToRefs(library)
+const { activeLibrary, error, libraries, loading } = storeToRefs(library)
 
 const sectionLabels: Record<ScreenId, string> = {
   dashboard: 'Libraries',
@@ -30,6 +30,13 @@ const sectionLabels: Record<ScreenId, string> = {
 
 const currentSection = computed(() => sectionLabels[routeScreen.value])
 const isOverview = computed(() => routeScreen.value === 'dashboard')
+const libraryPlaceholder = computed(() => {
+  if (loading.value && !libraries.value.length)
+    return 'Loading libraries...'
+  if (error.value && !libraries.value.length)
+    return 'Libraries unavailable'
+  return 'Select library'
+})
 
 const libraryOptions = computed(() => {
   return libraries.value.map(item => ({
@@ -69,6 +76,7 @@ onMounted(() => {
         class="top-library-dropdown"
         :model-value="activeLibrary"
         :options="libraryOptions"
+        :placeholder="libraryPlaceholder"
         aria-label="Select research library"
         @select="selectLibrary"
       >

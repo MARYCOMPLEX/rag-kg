@@ -12,9 +12,9 @@ const library = useLibraryStore()
 const { libraryModalOpen } = storeToRefs(ui)
 const { goToScreen } = useWorkspaceNavigation()
 
-const name = ref('GraphRAG Survey')
-const slug = ref('graphrag-survey')
-const description = ref('Private augmented research workspace for retrieval, review generation, and graph exploration.')
+const name = ref('')
+const slug = ref('')
+const description = ref('')
 const language = ref<'en' | 'zh' | 'multi'>('en')
 const template = ref('survey')
 const slugEdited = ref(false)
@@ -29,14 +29,18 @@ const templates = [
 ]
 
 const slugStatus = computed(() => {
-  if (slug.value === 'graphrag-survey')
-    return 'Available'
+  if (!slug.value)
+    return 'Required'
   if (slug.value.length < 3)
     return 'Too short'
-  return 'Will be checked on create'
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug.value))
+    return 'Use lowercase, digits, hyphens'
+  return 'Checked on create'
 })
 
-const slugStatusTone = computed(() => slug.value.length < 3 ? 'danger' : 'success')
+const isSlugValid = computed(() => /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug.value) && slug.value.length >= 3)
+const slugStatusTone = computed(() => isSlugValid.value ? 'success' : 'danger')
+const isCreateValid = computed(() => name.value.trim().length > 0 && isSlugValid.value)
 
 watch(name, (next) => {
   if (slugEdited.value)
@@ -60,15 +64,15 @@ function setLanguage(option: typeof languageOptions[number]) {
 }
 
 async function createLibrary() {
-  if (slug.value.length < 3)
+  if (!isCreateValid.value)
     return
 
   creating.value = true
   try {
     const result = await library.createLibrary({
-      name: name.value,
-      slug: slug.value,
-      description: description.value,
+      name: name.value.trim(),
+      slug: slug.value.trim(),
+      description: description.value.trim(),
       language: language.value,
       template: template.value,
     })
@@ -76,8 +80,9 @@ async function createLibrary() {
     ui.pushToast('success', 'Library created', `Route ready at ${result.redirectTo}`, 'Open')
     await goToScreen('docs')
   }
-  catch {
-    ui.pushToast('danger', 'Create failed', 'Unable to create this library.', 'Try again')
+  catch (error) {
+    const detail = error instanceof Error ? error.message : 'Unable to create this library.'
+    ui.pushToast('danger', 'Create failed', detail, 'Try again')
   }
   finally {
     creating.value = false
@@ -97,7 +102,7 @@ async function createLibrary() {
     <form id="create-library-form" class="create-library-form" @submit.prevent="createLibrary">
       <label class="form-field">
         <span>Display name</span>
-        <input v-model="name" data-autofocus autocomplete="off">
+        <input v-model="name" data-autofocus autocomplete="off" placeholder="Research library name">
       </label>
 
       <label class="form-field">
@@ -106,6 +111,7 @@ async function createLibrary() {
           <input
             v-model="slug"
             autocomplete="off"
+            placeholder="research-library"
             aria-describedby="library-slug-help"
             @input="slugEdited = true"
           >
@@ -119,7 +125,7 @@ async function createLibrary() {
 
       <label class="form-field">
         <span>Description</span>
-        <textarea v-model="description" maxlength="240" />
+        <textarea v-model="description" maxlength="240" placeholder="Optional purpose or scope for this library." />
       </label>
 
       <fieldset class="language-control">
@@ -146,7 +152,7 @@ async function createLibrary() {
 
       <div class="init-note">
         <AppIcon name="info" :size="16" />
-        <span>Initializes vector storage, graph extraction defaults, and sample prompts for this Library.</span>
+        <span>Initializes vector storage and graph extraction defaults for this Library.</span>
       </div>
     </form>
 
@@ -155,7 +161,7 @@ async function createLibrary() {
       <button class="modal-secondary-action" type="button" @click="closeModal">
         Cancel
       </button>
-      <button class="modal-primary-action" type="submit" form="create-library-form" :disabled="creating || slug.length < 3">
+      <button class="modal-primary-action" type="submit" form="create-library-form" :disabled="creating || !isCreateValid">
         <AppIcon name="plus" :size="16" />
         {{ creating ? 'Creating...' : 'Create Library' }}
       </button>

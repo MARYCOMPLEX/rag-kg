@@ -28,4 +28,13 @@ Use this log during local integration, E2E testing, and contract verification. E
 
 ## Logs
 
-No integration logs yet.
+## 2026-05-27 03:30 - Frontend mock default library removed
+
+- Time: 2026-05-27 03:30 +08:00
+- Agent: Frontend Agent
+- Issue: #2
+- Cause: Frontend routing, library state, document route fallback, and create-library modal still assumed the mock `graphrag-survey` library exists. OpenAPI still has `paths: {}`, so full real API integration is blocked pending backend contracts.
+- Fix status: fixed
+- Verification:
+  - `pnpm typecheck`: passed.
+  - `pnpm build`: passed.

@@ -6,7 +6,7 @@ import { createLibraryRepository } from '../services/libraries/libraryRepository
 const libraryRepository = createLibraryRepository()
 
 export const useLibraryStore = defineStore('libraries', () => {
-  const activeLibrary = ref('graphrag-survey')
+  const activeLibrary = ref('')
   const libraries = ref<LibrarySummary[]>([])
   const loading = ref(false)
   const error = ref<string | null>(null)
@@ -22,6 +22,8 @@ export const useLibraryStore = defineStore('libraries', () => {
 
     try {
       libraries.value = await libraryRepository.list()
+      if (!libraries.value.some(item => item.id === activeLibrary.value))
+        activeLibrary.value = libraries.value[0]?.id ?? ''
     }
     catch (reason) {
       error.value = reason instanceof Error ? reason.message : 'Unable to load libraries.'
