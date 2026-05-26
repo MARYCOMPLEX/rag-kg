@@ -28,6 +28,27 @@ Use this log during local integration, E2E testing, and contract verification. E
 
 ## Logs
 
+## 2026-05-27 04:38 - Library API-mode list/create verified
+
+- Time: 2026-05-27 04:38 +08:00
+- Agent: Frontend Agent
+- Issue: #2
+- Cause: Backend handed back `/api/libraries` after fixing valid create behavior to tolerate unavailable Qdrant for the frontend library dashboard/create slice.
+- Fix status: verified
+- Backend SHA: `7fa6a241965043415482fad09338ba13b18dc25f`
+- Frontend SHA tested before log update: `410c02a`
+- Verification:
+  - `GET http://localhost:8000/healthz`: passed with `{"status":"ok","version":"0.1.0"}`.
+  - `GET http://localhost:8000/api/libraries`: passed and returned library summaries.
+  - `POST http://localhost:8000/api/libraries` with slug `frontend-smoke-043320`: passed with `201 { library, redirectTo }`.
+  - Duplicate `POST http://localhost:8000/api/libraries` with slug `frontend-smoke-043320`: passed with `409 LIBRARY_ALREADY_EXISTS`.
+  - Invalid `POST http://localhost:8000/api/libraries` with slug `1bad`: passed with `400 VALIDATION_ERROR`.
+  - Playwright via system Chrome against `http://127.0.0.1:5174/libraries`: passed dashboard list load, top bar selector, create modal submit, duplicate error toast, and slug validation disabled submit for `1bad`; observed API statuses `GET 200`, `POST 201`, `POST 409`.
+  - `VITE_DATA_SOURCE=api VITE_API_BASE_URL=http://localhost:8000 pnpm typecheck`: passed.
+  - `VITE_DATA_SOURCE=api VITE_API_BASE_URL=http://localhost:8000 pnpm build`: passed.
+- Remaining backend follow-up:
+  - The next requested slices remain document workspace/detail, document ingestion mutations/upload, chat, review, graph, evaluation, command search, and shell metadata.
+
 ## 2026-05-27 04:18 - Library API-mode recheck blocked by unavailable backend
 
 - Time: 2026-05-27 04:18 +08:00

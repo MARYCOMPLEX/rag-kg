@@ -49,7 +49,16 @@ OpenAPI remains the single source of truth. Entries here are requests only; once
   - Backend implements list and create without requiring frontend mock data.
   - Frontend can run with `VITE_DATA_SOURCE=api` and `VITE_API_BASE_URL=http://localhost:8000`.
   - Dashboard covers loading, empty, error, and retry states from the real API.
-- Status: requested
+- Status: verified
+- Frontend verification note:
+  - Time: 2026-05-27 04:38 +08:00
+  - Backend SHA: `7fa6a241965043415482fad09338ba13b18dc25f`.
+  - Frontend SHA tested before log update: `410c02a`.
+  - `GET /api/libraries`: verified with real backend and returned library summaries.
+  - Valid `POST /api/libraries` slug `frontend-smoke-043320`: verified `201` with `library.id` matching the slug and `redirectTo` pointing to the library docs route.
+  - Duplicate `POST /api/libraries` slug `frontend-smoke-043320`: verified `409 LIBRARY_ALREADY_EXISTS` error envelope.
+  - Invalid `POST /api/libraries` slug `1bad`: verified `400 VALIDATION_ERROR` error envelope.
+  - Playwright browser smoke at `http://127.0.0.1:5174/libraries`: verified dashboard list load, top bar selector, create modal success path, duplicate error toast, and slug validation disabled submit for `1bad`.
 - Frontend verification note:
   - Time: 2026-05-27 04:08 +08:00
   - `GET /api/libraries`: verified with backend branch and returned library summaries.
