@@ -28,6 +28,25 @@ Use this log during local integration, E2E testing, and contract verification. E
 
 ## Logs
 
+## 2026-05-27 05:32 - Document upload transport request clarified
+
+- Time: 2026-05-27 05:32 +08:00
+- Agent: Frontend Agent
+- Issue: #2
+- Cause: Backend issue #3 remains blocked on undefined `/api/libraries/{libraryId}/documents:upload` upload transport, while the frontend Documents page exposes Upload PDFs and drop-zone entry points.
+- Fix status: open
+- Frontend SHA before change: `85964db`
+- Contract request:
+  - Requested upload endpoint: `POST /api/libraries/{libraryId}/documents:upload`.
+  - Requested content type: `multipart/form-data`.
+  - Requested file field: repeated `files` PDF fields.
+  - Requested success response: `202 { tone, title, detail, action? }`, with queued/ingested rows visible through the existing document list endpoint.
+  - Requested errors: `400 VALIDATION_ERROR`, `404 LIBRARY_NOT_FOUND`, `409 CONFLICT`, `413 PAYLOAD_TOO_LARGE`, `415 UNSUPPORTED_MEDIA_TYPE`, and `500 INTERNAL_ERROR`.
+- Verification:
+  - `pnpm typecheck`: passed.
+- Backend follow-up:
+  - Update OpenAPI and implement the upload endpoint, or reject the requested multipart contract with a concrete alternate transport before implementation.
+
 ## 2026-05-27 05:20 - Document retry missing-resource responses verified
 
 - Time: 2026-05-27 05:20 +08:00

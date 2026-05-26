@@ -114,16 +114,29 @@ OpenAPI remains the single source of truth. Entries here are requests only; once
 - Params:
   - Retry path params: `libraryId`, `documentId`.
   - Upload path param: `libraryId`.
-  - Upload body is unclear: frontend needs the contract to specify whether this is multipart file upload, queued picker initialization, or another transport.
+  - Upload request body requested by frontend: `multipart/form-data`.
+  - Upload file field requested by frontend: one or more PDF files under repeated field name `files`.
+  - Upload request does not require a JSON body in the first slice; `libraryId` path param supplies the library context.
+  - Frontend will update `documentRepository.queueUpload()` to send `FormData` after OpenAPI defines this transport and will refresh the document list after successful feedback.
 - Required fields:
   - Mutation feedback response: `tone`, `title`, `detail`, optional `action`.
   - `tone` values required by UI: `success`, `info`, `warning`, `danger`.
-  - Error contract for invalid file, unsupported file type, duplicate upload, ingestion already running, missing document, missing library, and server failure.
+  - Upload success response requested by frontend: `202` mutation feedback with `tone`, `title`, `detail`, optional `action`.
+  - Retry success response expected from the existing backend handoff: `202` mutation feedback with `tone`, `title`, `detail`, optional `action`.
+  - Error contract for missing files, invalid multipart body, invalid file, unsupported file type, payload too large, duplicate upload, ingestion already running, missing document, missing library, and server failure.
+  - Error status expectations: `400 VALIDATION_ERROR` for missing files or invalid multipart body, `404 LIBRARY_NOT_FOUND` for unknown library, `404 NOT_FOUND` for unknown retry document, `409 CONFLICT` for duplicate upload or ingestion already running, `413 PAYLOAD_TOO_LARGE` for oversized uploads, `415 UNSUPPORTED_MEDIA_TYPE` for non-PDF files, and `500 INTERNAL_ERROR` for server failure.
 - Acceptance criteria:
   - OpenAPI defines retry and upload request/response schemas.
-  - Backend clarifies upload request content type and file field names before frontend removes upload mock behavior.
+  - OpenAPI defines `/api/libraries/{libraryId}/documents:upload` as `multipart/form-data` with repeated `files` PDF upload fields, or explicitly rejects this frontend request with an alternate contract before implementation.
   - Frontend can show real mutation feedback and preserve traceable error toasts.
 - Status: requested
+- Frontend clarification note:
+  - Time: 2026-05-27 05:32 +08:00
+  - Issue: #2
+  - Frontend route and components: `/libraries/:libraryId/docs`, `web/src/views/DocumentsView.vue`, `web/src/stores/documents.ts`, `web/src/services/documents/documentRepository.ts`.
+  - Current frontend behavior: Upload buttons and the drop zone call `queueUpload()`; API mode currently sends `POST /api/libraries/{libraryId}/documents:upload` with no body because the upload transport is not yet in OpenAPI.
+  - Requested backend contract: accept `multipart/form-data` with one or more PDF files in repeated field `files`, return `202 { tone, title, detail, action? }`, and expose the queued/ingested document rows through the existing document list endpoint.
+  - Frontend follow-up after OpenAPI update: add the file input/drop handling, send `FormData` without JSON `Content-Type`, refresh the document list after success, and verify browser upload feedback in API mode.
 - Frontend verification note:
   - Time: 2026-05-27 05:20 +08:00
   - Backend SHA tested: `835a21d9895634236b900c82b448b10377915864`.
