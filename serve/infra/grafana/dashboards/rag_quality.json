@@ -1,0 +1,162 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {"type": "grafana", "uid": "-- Grafana --"},
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "Eval pass rate, citation quality, and composite scores per suite/library.",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Eval pass rate over time",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "gridPos": {"h": 9, "w": 12, "x": 0, "y": 0},
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "color": {"mode": "palette-classic"},
+          "custom": {"drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 15}
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {"displayMode": "table", "placement": "bottom", "calcs": ["mean", "lastNotNull"]},
+        "tooltip": {"mode": "multi", "sort": "desc"}
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "sum by (library_id, suite) (rate(rag_eval_passed_total{library_id=~\"$library_id\", suite=~\"$suite\"}[5m])) / clamp_min(sum by (library_id, suite) (rate(rag_eval_total_total{library_id=~\"$library_id\", suite=~\"$suite\"}[5m])), 1)",
+          "legendFormat": "{{library_id}} / {{suite}}"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Citation F1 (avg)",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "gridPos": {"h": 9, "w": 12, "x": 12, "y": 0},
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "color": {"mode": "palette-classic"},
+          "custom": {"drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 10}
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {"displayMode": "table", "placement": "bottom", "calcs": ["mean", "lastNotNull"]},
+        "tooltip": {"mode": "multi", "sort": "desc"}
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "avg by (library_id) (rag_eval_citation_f1{library_id=~\"$library_id\", suite=~\"$suite\"})",
+          "legendFormat": "{{library_id}}"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "barchart",
+      "title": "Avg Composite by suite",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "gridPos": {"h": 9, "w": 24, "x": 0, "y": 9},
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "color": {"mode": "thresholds"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "red", "value": null},
+              {"color": "orange", "value": 0.5},
+              {"color": "green", "value": 0.75}
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "showValue": "auto",
+        "stacking": "none",
+        "legend": {"displayMode": "list", "placement": "bottom"},
+        "tooltip": {"mode": "single"}
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "avg by (suite) (rag_eval_composite_score{library_id=~\"$library_id\", suite=~\"$suite\"})",
+          "legendFormat": "{{suite}}",
+          "instant": true
+        }
+      ]
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": ["rag", "quality", "eval"],
+  "templating": {
+    "list": [
+      {
+        "name": "library_id",
+        "label": "Library",
+        "type": "query",
+        "datasource": {"type": "prometheus", "uid": "prometheus"},
+        "definition": "label_values(rag_eval_total_total, library_id)",
+        "query": {"query": "label_values(rag_eval_total_total, library_id)", "refId": "library_id"},
+        "includeAll": true,
+        "multi": true,
+        "current": {"selected": false, "text": "All", "value": "$__all"},
+        "refresh": 2,
+        "sort": 1
+      },
+      {
+        "name": "suite",
+        "label": "Suite",
+        "type": "query",
+        "datasource": {"type": "prometheus", "uid": "prometheus"},
+        "definition": "label_values(rag_eval_total_total{library_id=~\"$library_id\"}, suite)",
+        "query": {"query": "label_values(rag_eval_total_total{library_id=~\"$library_id\"}, suite)", "refId": "suite"},
+        "includeAll": true,
+        "multi": true,
+        "current": {"selected": false, "text": "All", "value": "$__all"},
+        "refresh": 2,
+        "sort": 1
+      }
+    ]
+  },
+  "time": {"from": "now-7d", "to": "now"},
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "RAG Quality",
+  "uid": "rag-quality",
+  "version": 1,
+  "weekStart": ""
+}

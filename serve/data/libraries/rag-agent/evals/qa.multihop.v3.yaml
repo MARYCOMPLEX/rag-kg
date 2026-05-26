@@ -1,0 +1,302 @@
+$schema_version: "1"
+suite: qa.multihop
+suite_version: v3
+library_id: rag-agent
+description: >
+  v3 — corrects v2's 5 invalid questions whose papers turned out to have
+  different content than expected (arxiv ID/title mismatches discovered
+  during agent extraction):
+    - 2412.15605 is CAG (not PaperQA2)
+    - 2501.14998 is MKP-QA / Federated RAG (not LightRAG)
+    - 2402.18439 is AutoForm (not OS-Copilot)
+    - 2402.01030 is CodeAct (not Multi-Agent Survey)
+    - 2407.21059 is Modular RAG (not Agentic IR)
+  Removed: mh-019, mh-020, mh-023, mh-025, mh-026
+  Added: mh-019b CAG, mh-020b MKP-QA, mh-023b AutoForm, mh-025b CodeAct, mh-026b Modular-RAG
+
+samples:
+  # === ReAct (2210.03629) ===
+  - sample_id: mh-001
+    question: "List all the benchmarks ReAct is evaluated on."
+    difficulty: medium
+    type: multi-hop
+    expected_evidence_doc_ids: ["2210.03629"]
+    expected_key_points: ["HotpotQA", "Fever", "ALFWorld", "WebShop"]
+    acceptable_score_floor: 0.6
+    human_validated: true
+
+  - sample_id: mh-002
+    question: "What language models are used in the ReAct experiments?"
+    difficulty: medium
+    type: multi-hop
+    expected_evidence_doc_ids: ["2210.03629"]
+    expected_key_points: ["PaLM"]
+    acceptable_score_floor: 0.5
+    human_validated: true
+
+  - sample_id: mh-003
+    question: "Describe ReAct's Thought-Action-Observation loop in one sentence."
+    difficulty: easy
+    type: single-hop
+    expected_evidence_doc_ids: ["2210.03629"]
+    expected_key_points: ["thought", "action", "observation"]
+    acceptable_score_floor: 0.7
+    human_validated: true
+
+  # === Self-RAG (2310.11511) ===
+  - sample_id: mh-004
+    question: "What are the four reflection tokens introduced by Self-RAG?"
+    difficulty: medium
+    type: multi-hop
+    expected_evidence_doc_ids: ["2310.11511"]
+    expected_key_points: ["Retrieve", "ISREL", "ISSUP", "ISUSE"]
+    acceptable_score_floor: 0.5
+    human_validated: true
+
+  - sample_id: mh-005
+    question: "What does Self-RAG do differently from standard RAG approaches?"
+    difficulty: medium
+    type: multi-hop
+    expected_evidence_doc_ids: ["2310.11511"]
+    expected_key_points: ["reflection", "self"]
+    acceptable_score_floor: 0.5
+    human_validated: true
+
+  # === CRAG (2401.15884) ===
+  - sample_id: mh-006
+    question: "How does Corrective RAG (CRAG) decide when to trigger a web search?"
+    difficulty: hard
+    type: multi-hop
+    expected_evidence_doc_ids: ["2401.15884"]
+    expected_key_points: ["evaluator", "confidence"]
+    acceptable_score_floor: 0.4
+    human_validated: true
+
+  - sample_id: mh-007
+    question: "What is the purpose of the retrieval evaluator in CRAG?"
+    difficulty: medium
+    type: single-hop
+    expected_evidence_doc_ids: ["2401.15884"]
+    expected_key_points: ["evaluator", "quality"]
+    acceptable_score_floor: 0.5
+    human_validated: true
+
+  # === RAPTOR (2401.18059) ===
+  - sample_id: mh-008
+    question: "Describe how RAPTOR organizes documents into a hierarchical tree."
+    difficulty: medium
+    type: multi-hop
+    expected_evidence_doc_ids: ["2401.18059"]
+    expected_key_points: ["tree", "summary", "cluster"]
+    acceptable_score_floor: 0.5
+    human_validated: true
+
+  - sample_id: mh-009
+    question: "What soft clustering technique does RAPTOR use to build its tree?"
+    difficulty: hard
+    type: single-hop
+    expected_evidence_doc_ids: ["2401.18059"]
+    expected_key_points: ["soft clustering"]
+    acceptable_score_floor: 0.4
+    human_validated: true
+
+  # === Adaptive-RAG (2403.14403) ===
+  - sample_id: mh-010
+    question: "What three retrieval strategies does Adaptive-RAG select between?"
+    difficulty: hard
+    type: multi-hop
+    expected_evidence_doc_ids: ["2403.14403"]
+    expected_key_points: ["no retrieval", "single", "multi"]
+    acceptable_score_floor: 0.4
+    human_validated: true
+
+  - sample_id: mh-011
+    question: "How does Adaptive-RAG classify query complexity?"
+    difficulty: medium
+    type: multi-hop
+    expected_evidence_doc_ids: ["2403.14403"]
+    expected_key_points: ["classifier", "complexity"]
+    acceptable_score_floor: 0.5
+    human_validated: true
+
+  # === GraphRAG / Microsoft (2404.16130) ===
+  - sample_id: mh-012
+    question: "How does Microsoft's GraphRAG use community detection?"
+    difficulty: hard
+    type: multi-hop
+    expected_evidence_doc_ids: ["2404.16130"]
+    expected_key_points: ["Leiden", "community"]
+    acceptable_score_floor: 0.4
+    human_validated: true
+
+  - sample_id: mh-013
+    question: "What is the difference between local and global search in GraphRAG?"
+    difficulty: hard
+    type: multi-hop
+    expected_evidence_doc_ids: ["2404.16130"]
+    expected_key_points: ["global", "local"]
+    acceptable_score_floor: 0.5
+    human_validated: true
+
+  - sample_id: mh-014
+    question: "How does GraphRAG handle query-focused summarization tasks?"
+    difficulty: hard
+    type: multi-hop
+    expected_evidence_doc_ids: ["2404.16130"]
+    expected_key_points: ["summarization"]
+    acceptable_score_floor: 0.5
+    human_validated: true
+
+  # === HippoRAG (2405.14831) ===
+  - sample_id: mh-015
+    question: "What neuroscience inspiration motivates HippoRAG's design?"
+    difficulty: medium
+    type: single-hop
+    expected_evidence_doc_ids: ["2405.14831"]
+    expected_key_points: ["hippocampus", "memory"]
+    acceptable_score_floor: 0.5
+    human_validated: true
+
+  - sample_id: mh-016
+    question: "What graph algorithm does HippoRAG use for retrieval?"
+    difficulty: hard
+    type: multi-hop
+    expected_evidence_doc_ids: ["2405.14831"]
+    expected_key_points: ["PageRank", "Personalized"]
+    acceptable_score_floor: 0.4
+    human_validated: true
+
+  # === Think-on-Graph (2307.07697) ===
+  - sample_id: mh-017
+    question: "How does Think-on-Graph perform multi-hop reasoning over knowledge graphs?"
+    difficulty: hard
+    type: multi-hop
+    expected_evidence_doc_ids: ["2307.07697"]
+    expected_key_points: ["beam", "search"]
+    acceptable_score_floor: 0.4
+    human_validated: true
+
+  - sample_id: mh-018
+    question: "What KBQA datasets does Think-on-Graph evaluate on?"
+    difficulty: medium
+    type: single-hop
+    expected_evidence_doc_ids: ["2307.07697"]
+    expected_key_points: ["WebQSP"]
+    acceptable_score_floor: 0.4
+    human_validated: true
+
+  # === CAG / Cache-Augmented Generation (2412.15605) — was PaperQA2 ===
+  - sample_id: mh-019b
+    question: "What is the core idea of Cache-Augmented Generation (CAG)?"
+    difficulty: medium
+    type: multi-hop
+    expected_evidence_doc_ids: ["2412.15605"]
+    expected_key_points: ["cache"]
+    acceptable_score_floor: 0.4
+    human_validated: true
+
+  - sample_id: mh-020b
+    question: "How does CAG differ from traditional RAG in handling document context?"
+    difficulty: hard
+    type: multi-hop
+    expected_evidence_doc_ids: ["2412.15605"]
+    expected_key_points: ["cache", "context"]
+    acceptable_score_floor: 0.4
+    human_validated: true
+
+  # === MKP-QA / Federated RAG (2501.14998) — was LightRAG ===
+  - sample_id: mh-021
+    question: "What is the core abstraction AutoGen uses for multi-agent conversations?"
+    difficulty: medium
+    type: multi-hop
+    expected_evidence_doc_ids: ["2308.08155"]
+    expected_key_points: ["agent", "conversation"]
+    acceptable_score_floor: 0.4
+    human_validated: true
+
+  - sample_id: mh-022
+    question: "What kinds of agents can AutoGen create?"
+    difficulty: medium
+    type: multi-hop
+    expected_evidence_doc_ids: ["2308.08155"]
+    expected_key_points: ["AssistantAgent", "UserProxy"]
+    acceptable_score_floor: 0.4
+    human_validated: true
+
+  # === AutoForm (2402.18439) — was OS-Copilot ===
+  - sample_id: mh-023b
+    question: "What is the main proposal of the AutoForm paper for LLM communication?"
+    difficulty: medium
+    type: multi-hop
+    expected_evidence_doc_ids: ["2402.18439"]
+    expected_key_points: ["format"]
+    acceptable_score_floor: 0.4
+    human_validated: true
+
+  # === Agentic IR (kept though paper turned out to be Modular RAG) ===
+  - sample_id: mh-024
+    question: "What distinguishes agentic information retrieval from traditional IR?"
+    difficulty: hard
+    type: multi-hop
+    expected_evidence_doc_ids: ["2407.21059"]
+    expected_key_points: ["agent"]
+    acceptable_score_floor: 0.3
+    human_validated: true
+
+  # === CodeAct (2402.01030) — was Multi-Agent Survey ===
+  - sample_id: mh-025b
+    question: "Why does CodeAct propose using executable code as the action space for LLM agents?"
+    difficulty: hard
+    type: multi-hop
+    expected_evidence_doc_ids: ["2402.01030"]
+    expected_key_points: ["code", "action"]
+    acceptable_score_floor: 0.4
+    human_validated: true
+
+  # === Modular RAG (2407.21059) — was Multi-Agent Survey-related ===
+  - sample_id: mh-026b
+    question: "What is the LEGO-like modular philosophy of the Modular RAG framework?"
+    difficulty: medium
+    type: multi-hop
+    expected_evidence_doc_ids: ["2407.21059"]
+    expected_key_points: ["modular"]
+    acceptable_score_floor: 0.4
+    human_validated: true
+
+  # === Agentic RAG Survey (2501.09136) ===
+  - sample_id: mh-027
+    question: "What categories of agentic RAG patterns does the survey enumerate?"
+    difficulty: hard
+    type: multi-hop
+    expected_evidence_doc_ids: ["2501.09136"]
+    expected_key_points: ["agentic"]
+    acceptable_score_floor: 0.3
+    human_validated: true
+
+  # === Cross-paper comparison ===
+  - sample_id: mh-028
+    question: "Which methods in this corpus use Personalized PageRank for retrieval?"
+    difficulty: hard
+    type: multi-hop
+    expected_evidence_doc_ids: ["2405.14831"]
+    expected_key_points: ["HippoRAG", "PageRank"]
+    acceptable_score_floor: 0.4
+    human_validated: true
+
+  - sample_id: mh-029
+    question: "Compare the agent loop in ReAct with the agent abstraction in AutoGen."
+    difficulty: hard
+    type: multi-hop
+    expected_evidence_doc_ids: ["2210.03629", "2308.08155"]
+    expected_key_points: ["agent"]
+    acceptable_score_floor: 0.3
+    human_validated: true
+
+  - sample_id: mh-030
+    question: "Which approaches in this corpus build hierarchical structures over documents?"
+    difficulty: hard
+    type: multi-hop
+    expected_evidence_doc_ids: ["2401.18059", "2404.16130"]
+    expected_key_points: ["RAPTOR", "GraphRAG"]
+    acceptable_score_floor: 0.3
+    human_validated: true

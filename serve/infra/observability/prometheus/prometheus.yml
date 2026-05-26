@@ -1,0 +1,51 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: rag-kg-copilot
+    env: local
+
+rule_files:
+  - /etc/prometheus/alerting/*.yml
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []   # alertmanager not deployed locally; wire later
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  - job_name: rag-api
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["host.docker.internal:8000"]
+        labels:
+          service: rag-api
+          component: app
+
+  - job_name: qdrant
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["qdrant:6333"]
+        labels:
+          service: qdrant
+          component: vector-store
+
+  - job_name: neo4j
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["neo4j:2004"]
+        labels:
+          service: neo4j
+          component: graph-store
+
+  - job_name: tempo
+    static_configs:
+      - targets: ["tempo:3200"]
+
+  - job_name: loki
+    static_configs:
+      - targets: ["loki:3100"]

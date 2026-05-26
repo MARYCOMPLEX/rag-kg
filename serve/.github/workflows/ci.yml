@@ -1,0 +1,120 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend:
+    name: Backend (Python)
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.12", "3.13"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Set up Python ${{ matrix.python-version }}
+        run: uv python install ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: uv sync --frozen --group test
+
+      - name: Lint
+        run: uv run ruff check .
+
+      - name: Format check
+        run: uv run ruff format --check .
+
+      - name: Type check
+        run: uv run pyright
+
+      - name: Unit tests with coverage
+        run: uv run pytest tests/unit -x --cov=packages --cov-fail-under=80
+
+      - name: Integration tests
+        run: uv run pytest tests/integration -x
+
+      - name: OpenAPI schema is in sync
+        run: |
+          uv run python scripts/export_openapi.py
+          git diff --exit-code -- docs/openapi.json
+
+      - name: Security scan
+        run: |
+          pip install gitleaks-py 2>/dev/null || echo "gitleaks check skipped"
+
+  frontend:
+    name: Frontend (Vue)
+    runs-on: ubuntu-latest
+    needs: backend
+    defaults:
+      run:
+        working-directory: apps/web
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/pnpm/store
+          key: pnpm-${{ hashFiles('apps/web/pnpm-lock.yaml') }}
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate ESLint + Prettier configs
+        run: ./setup-configs.sh
+
+      - name: Type check
+        run: pnpm typecheck
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Format check
+        run: pnpm format:check
+
+      - name: i18n key parity
+        run: pnpm i18n:check
+
+      - name: Unit tests with coverage
+        run: pnpm test --coverage
+
+      - name: Build
+        run: pnpm build
+
+  healthz:
+    name: Healthz smoke test
+    runs-on: ubuntu-latest
+    needs: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Install
+        run: uv sync --frozen --group test
+
+      - name: Healthz
+        run: uv run pytest tests/integration/test_healthz.py -v

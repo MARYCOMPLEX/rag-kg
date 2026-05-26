@@ -1,0 +1,884 @@
+{
+  "doc_id": "2501.14998",
+  "title": "Federated Retrieval Augmented Generation for Multi-Product Question Answering",
+  "entities": [
+    {
+      "name": "MKP-QA",
+      "type": "Method",
+      "aliases": [
+        "Multi-domain Knowledge-augmented Product RAG-QA"
+      ]
+    },
+    {
+      "name": "Retrieval-Augmented Generation",
+      "type": "Method",
+      "aliases": [
+        "RAG"
+      ]
+    },
+    {
+      "name": "Federated Search",
+      "type": "Method",
+      "aliases": []
+    },
+    {
+      "name": "Stochastic Gating",
+      "type": "Method",
+      "aliases": []
+    },
+    {
+      "name": "Query-Domain Router",
+      "type": "Method",
+      "aliases": []
+    },
+    {
+      "name": "Query-Document Retriever",
+      "type": "Method",
+      "aliases": []
+    },
+    {
+      "name": "Unified Index and Search",
+      "type": "Method",
+      "aliases": [
+        "UIS"
+      ]
+    },
+    {
+      "name": "Router Filter and Search",
+      "type": "Method",
+      "aliases": [
+        "RFS"
+      ]
+    },
+    {
+      "name": "LLM Filter and Search",
+      "type": "Method",
+      "aliases": [
+        "LFS"
+      ]
+    },
+    {
+      "name": "ReSLLM",
+      "type": "Method",
+      "aliases": []
+    },
+    {
+      "name": "REALM",
+      "type": "Method",
+      "aliases": []
+    },
+    {
+      "name": "Dense Passage Retrieval",
+      "type": "Method",
+      "aliases": [
+        "DPR"
+      ]
+    },
+    {
+      "name": "Sentence-BERT",
+      "type": "Method",
+      "aliases": [
+        "SBERT"
+      ]
+    },
+    {
+      "name": "BERT",
+      "type": "Model",
+      "aliases": []
+    },
+    {
+      "name": "Transformer",
+      "type": "Method",
+      "aliases": []
+    },
+    {
+      "name": "InfoNCE",
+      "type": "Method",
+      "aliases": []
+    },
+    {
+      "name": "Bi-encoder",
+      "type": "Method",
+      "aliases": []
+    },
+    {
+      "name": "RAGAS",
+      "type": "Method",
+      "aliases": []
+    },
+    {
+      "name": "GPT-4",
+      "type": "Model",
+      "aliases": [
+        "GPT-4-0314"
+      ]
+    },
+    {
+      "name": "GPT-3.5-turbo",
+      "type": "Model",
+      "aliases": [
+        "GPT-3.5-turbo-1106"
+      ]
+    },
+    {
+      "name": "BloombergGPT",
+      "type": "Model",
+      "aliases": []
+    },
+    {
+      "name": "ChatLaw",
+      "type": "Method",
+      "aliases": []
+    },
+    {
+      "name": "Adobe Experience Platform Dataset",
+      "type": "Dataset",
+      "aliases": [
+        "AEP Dataset"
+      ]
+    },
+    {
+      "name": "Adobe Target Dataset",
+      "type": "Dataset",
+      "aliases": [
+        "Target Dataset"
+      ]
+    },
+    {
+      "name": "Adobe Customer Journey Analytics Dataset",
+      "type": "Dataset",
+      "aliases": [
+        "CJA Dataset"
+      ]
+    },
+    {
+      "name": "TheoremQA",
+      "type": "Dataset",
+      "aliases": []
+    },
+    {
+      "name": "MT-Bench",
+      "type": "Dataset",
+      "aliases": []
+    },
+    {
+      "name": "Multi-Product Question Answering",
+      "type": "Task",
+      "aliases": [
+        "Multi-domain QA"
+      ]
+    },
+    {
+      "name": "Domain-specific Question Answering",
+      "type": "Task",
+      "aliases": []
+    },
+    {
+      "name": "Cross-Domain Retrieval",
+      "type": "Task",
+      "aliases": [
+        "Multi-domain Document Retrieval"
+      ]
+    },
+    {
+      "name": "Acc@Top1",
+      "type": "Metric",
+      "aliases": [
+        "Retrieval Accuracy Top-1"
+      ]
+    },
+    {
+      "name": "Relevancy",
+      "type": "Metric",
+      "aliases": []
+    },
+    {
+      "name": "Faithfulness",
+      "type": "Metric",
+      "aliases": []
+    },
+    {
+      "name": "Contrastive Learning",
+      "type": "Concept",
+      "aliases": []
+    },
+    {
+      "name": "Federated Learning",
+      "type": "Concept",
+      "aliases": []
+    },
+    {
+      "name": "Parshin Shojaee",
+      "type": "Author",
+      "aliases": []
+    },
+    {
+      "name": "Sai Sree Harsha",
+      "type": "Author",
+      "aliases": []
+    },
+    {
+      "name": "Dan Luo",
+      "type": "Author",
+      "aliases": []
+    },
+    {
+      "name": "Akash Maharaj",
+      "type": "Author",
+      "aliases": []
+    },
+    {
+      "name": "Tong Yu",
+      "type": "Author",
+      "aliases": []
+    },
+    {
+      "name": "Yunyao Li",
+      "type": "Author",
+      "aliases": []
+    },
+    {
+      "name": "Adobe",
+      "type": "Institution",
+      "aliases": []
+    },
+    {
+      "name": "Virginia Tech",
+      "type": "Institution",
+      "aliases": []
+    }
+  ],
+  "triples": [
+    {
+      "head": "MKP-QA",
+      "head_type": "Method",
+      "relation": "proposed_by",
+      "tail": "Parshin Shojaee",
+      "tail_type": "Author",
+      "evidence_pages": [
+        1
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "MKP-QA",
+      "head_type": "Method",
+      "relation": "proposed_by",
+      "tail": "Sai Sree Harsha",
+      "tail_type": "Author",
+      "evidence_pages": [
+        1
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "MKP-QA",
+      "head_type": "Method",
+      "relation": "proposed_by",
+      "tail": "Dan Luo",
+      "tail_type": "Author",
+      "evidence_pages": [
+        1
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "MKP-QA",
+      "head_type": "Method",
+      "relation": "proposed_by",
+      "tail": "Akash Maharaj",
+      "tail_type": "Author",
+      "evidence_pages": [
+        1
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "MKP-QA",
+      "head_type": "Method",
+      "relation": "proposed_by",
+      "tail": "Tong Yu",
+      "tail_type": "Author",
+      "evidence_pages": [
+        1
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "MKP-QA",
+      "head_type": "Method",
+      "relation": "proposed_by",
+      "tail": "Yunyao Li",
+      "tail_type": "Author",
+      "evidence_pages": [
+        1
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "MKP-QA",
+      "head_type": "Method",
+      "relation": "proposed_by",
+      "tail": "Adobe",
+      "tail_type": "Institution",
+      "evidence_pages": [
+        1
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "MKP-QA",
+      "head_type": "Method",
+      "relation": "proposed_by",
+      "tail": "Virginia Tech",
+      "tail_type": "Institution",
+      "evidence_pages": [
+        1
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "MKP-QA",
+      "head_type": "Method",
+      "relation": "extends",
+      "tail": "Retrieval-Augmented Generation",
+      "tail_type": "Method",
+      "evidence_pages": [
+        1,
+        2
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "MKP-QA",
+      "head_type": "Method",
+      "relation": "uses",
+      "tail": "Federated Search",
+      "tail_type": "Method",
+      "evidence_pages": [
+        1,
+        4
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "MKP-QA",
+      "head_type": "Method",
+      "relation": "uses",
+      "tail": "Stochastic Gating",
+      "tail_type": "Method",
+      "evidence_pages": [
+        3,
+        4
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "MKP-QA",
+      "head_type": "Method",
+      "relation": "uses",
+      "tail": "Query-Domain Router",
+      "tail_type": "Method",
+      "evidence_pages": [
+        3
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "MKP-QA",
+      "head_type": "Method",
+      "relation": "uses",
+      "tail": "Query-Document Retriever",
+      "tail_type": "Method",
+      "evidence_pages": [
+        3
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "MKP-QA",
+      "head_type": "Method",
+      "relation": "uses",
+      "tail": "BERT",
+      "tail_type": "Model",
+      "evidence_pages": [
+        3
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "MKP-QA",
+      "head_type": "Method",
+      "relation": "uses",
+      "tail": "Sentence-BERT",
+      "tail_type": "Method",
+      "evidence_pages": [
+        3
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "MKP-QA",
+      "head_type": "Method",
+      "relation": "uses",
+      "tail": "Bi-encoder",
+      "tail_type": "Method",
+      "evidence_pages": [
+        3
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "MKP-QA",
+      "head_type": "Method",
+      "relation": "uses",
+      "tail": "GPT-4",
+      "tail_type": "Model",
+      "evidence_pages": [
+        5,
+        6
+      ],
+      "confidence": 0.9
+    },
+    {
+      "head": "MKP-QA",
+      "head_type": "Method",
+      "relation": "uses",
+      "tail": "GPT-3.5-turbo",
+      "tail_type": "Model",
+      "evidence_pages": [
+        5
+      ],
+      "confidence": 0.9
+    },
+    {
+      "head": "MKP-QA",
+      "head_type": "Method",
+      "relation": "uses",
+      "tail": "Contrastive Learning",
+      "tail_type": "Concept",
+      "evidence_pages": [
+        3
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "MKP-QA",
+      "head_type": "Method",
+      "relation": "extends",
+      "tail": "Federated Learning",
+      "tail_type": "Concept",
+      "evidence_pages": [
+        2
+      ],
+      "confidence": 0.85
+    },
+    {
+      "head": "MKP-QA",
+      "head_type": "Method",
+      "relation": "applies_to",
+      "tail": "Multi-Product Question Answering",
+      "tail_type": "Task",
+      "evidence_pages": [
+        1,
+        5
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "MKP-QA",
+      "head_type": "Method",
+      "relation": "applies_to",
+      "tail": "Cross-Domain Retrieval",
+      "tail_type": "Task",
+      "evidence_pages": [
+        3,
+        5
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "MKP-QA",
+      "head_type": "Method",
+      "relation": "evaluated_on",
+      "tail": "Adobe Experience Platform Dataset",
+      "tail_type": "Dataset",
+      "evidence_pages": [
+        5,
+        6
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "MKP-QA",
+      "head_type": "Method",
+      "relation": "evaluated_on",
+      "tail": "Adobe Target Dataset",
+      "tail_type": "Dataset",
+      "evidence_pages": [
+        5,
+        6
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "MKP-QA",
+      "head_type": "Method",
+      "relation": "evaluated_on",
+      "tail": "Adobe Customer Journey Analytics Dataset",
+      "tail_type": "Dataset",
+      "evidence_pages": [
+        5,
+        6
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "MKP-QA",
+      "head_type": "Method",
+      "relation": "compared_to",
+      "tail": "Unified Index and Search",
+      "tail_type": "Method",
+      "evidence_pages": [
+        5,
+        6
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "MKP-QA",
+      "head_type": "Method",
+      "relation": "compared_to",
+      "tail": "Router Filter and Search",
+      "tail_type": "Method",
+      "evidence_pages": [
+        5,
+        6
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "MKP-QA",
+      "head_type": "Method",
+      "relation": "compared_to",
+      "tail": "LLM Filter and Search",
+      "tail_type": "Method",
+      "evidence_pages": [
+        5,
+        6
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "MKP-QA",
+      "head_type": "Method",
+      "relation": "improves_upon",
+      "tail": "Unified Index and Search",
+      "tail_type": "Method",
+      "evidence_pages": [
+        6
+      ],
+      "confidence": 0.85
+    },
+    {
+      "head": "MKP-QA",
+      "head_type": "Method",
+      "relation": "improves_upon",
+      "tail": "Router Filter and Search",
+      "tail_type": "Method",
+      "evidence_pages": [
+        6
+      ],
+      "confidence": 0.85
+    },
+    {
+      "head": "MKP-QA",
+      "head_type": "Method",
+      "relation": "measured_by",
+      "tail": "Acc@Top1",
+      "tail_type": "Metric",
+      "evidence_pages": [
+        6
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "MKP-QA",
+      "head_type": "Method",
+      "relation": "measured_by",
+      "tail": "Relevancy",
+      "tail_type": "Metric",
+      "evidence_pages": [
+        6
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "MKP-QA",
+      "head_type": "Method",
+      "relation": "measured_by",
+      "tail": "Faithfulness",
+      "tail_type": "Metric",
+      "evidence_pages": [
+        6
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "LLM Filter and Search",
+      "head_type": "Method",
+      "relation": "uses",
+      "tail": "ReSLLM",
+      "tail_type": "Method",
+      "evidence_pages": [
+        6
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "LLM Filter and Search",
+      "head_type": "Method",
+      "relation": "uses",
+      "tail": "GPT-4",
+      "tail_type": "Model",
+      "evidence_pages": [
+        6
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "Query-Domain Router",
+      "head_type": "Method",
+      "relation": "uses",
+      "tail": "BERT",
+      "tail_type": "Model",
+      "evidence_pages": [
+        3
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "Query-Domain Router",
+      "head_type": "Method",
+      "relation": "extends",
+      "tail": "Transformer",
+      "tail_type": "Method",
+      "evidence_pages": [
+        3
+      ],
+      "confidence": 0.85
+    },
+    {
+      "head": "Query-Document Retriever",
+      "head_type": "Method",
+      "relation": "uses",
+      "tail": "Sentence-BERT",
+      "tail_type": "Method",
+      "evidence_pages": [
+        3
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "Query-Document Retriever",
+      "head_type": "Method",
+      "relation": "uses",
+      "tail": "Bi-encoder",
+      "tail_type": "Method",
+      "evidence_pages": [
+        3
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "Query-Document Retriever",
+      "head_type": "Method",
+      "relation": "uses",
+      "tail": "InfoNCE",
+      "tail_type": "Method",
+      "evidence_pages": [
+        3
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "Query-Document Retriever",
+      "head_type": "Method",
+      "relation": "uses",
+      "tail": "Contrastive Learning",
+      "tail_type": "Concept",
+      "evidence_pages": [
+        3
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "Federated Search",
+      "head_type": "Method",
+      "relation": "applies_to",
+      "tail": "Cross-Domain Retrieval",
+      "tail_type": "Task",
+      "evidence_pages": [
+        3,
+        4
+      ],
+      "confidence": 0.9
+    },
+    {
+      "head": "Retrieval-Augmented Generation",
+      "head_type": "Method",
+      "relation": "applies_to",
+      "tail": "Domain-specific Question Answering",
+      "tail_type": "Task",
+      "evidence_pages": [
+        1,
+        2
+      ],
+      "confidence": 0.9
+    },
+    {
+      "head": "REALM",
+      "head_type": "Method",
+      "relation": "extends",
+      "tail": "Retrieval-Augmented Generation",
+      "tail_type": "Method",
+      "evidence_pages": [
+        2
+      ],
+      "confidence": 0.8
+    },
+    {
+      "head": "Dense Passage Retrieval",
+      "head_type": "Method",
+      "relation": "extends",
+      "tail": "Retrieval-Augmented Generation",
+      "tail_type": "Method",
+      "evidence_pages": [
+        2
+      ],
+      "confidence": 0.8
+    },
+    {
+      "head": "Sentence-BERT",
+      "head_type": "Method",
+      "relation": "uses",
+      "tail": "BERT",
+      "tail_type": "Model",
+      "evidence_pages": [
+        3
+      ],
+      "confidence": 0.9
+    },
+    {
+      "head": "Unified Index and Search",
+      "head_type": "Method",
+      "relation": "extends",
+      "tail": "Retrieval-Augmented Generation",
+      "tail_type": "Method",
+      "evidence_pages": [
+        5
+      ],
+      "confidence": 0.9
+    },
+    {
+      "head": "Router Filter and Search",
+      "head_type": "Method",
+      "relation": "extends",
+      "tail": "Retrieval-Augmented Generation",
+      "tail_type": "Method",
+      "evidence_pages": [
+        5
+      ],
+      "confidence": 0.9
+    },
+    {
+      "head": "LLM Filter and Search",
+      "head_type": "Method",
+      "relation": "extends",
+      "tail": "Retrieval-Augmented Generation",
+      "tail_type": "Method",
+      "evidence_pages": [
+        6
+      ],
+      "confidence": 0.9
+    },
+    {
+      "head": "RAGAS",
+      "head_type": "Method",
+      "relation": "measured_by",
+      "tail": "Faithfulness",
+      "tail_type": "Metric",
+      "evidence_pages": [
+        6
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "Multi-Product Question Answering",
+      "head_type": "Task",
+      "relation": "measured_by",
+      "tail": "Acc@Top1",
+      "tail_type": "Metric",
+      "evidence_pages": [
+        6
+      ],
+      "confidence": 0.9
+    },
+    {
+      "head": "Multi-Product Question Answering",
+      "head_type": "Task",
+      "relation": "measured_by",
+      "tail": "Relevancy",
+      "tail_type": "Metric",
+      "evidence_pages": [
+        6
+      ],
+      "confidence": 0.9
+    },
+    {
+      "head": "Multi-Product Question Answering",
+      "head_type": "Task",
+      "relation": "measured_by",
+      "tail": "Faithfulness",
+      "tail_type": "Metric",
+      "evidence_pages": [
+        6
+      ],
+      "confidence": 0.9
+    },
+    {
+      "head": "MKP-QA",
+      "head_type": "Method",
+      "relation": "evaluated_on",
+      "tail": "Multi-Product Question Answering",
+      "tail_type": "Task",
+      "evidence_pages": [
+        5,
+        6
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "BloombergGPT",
+      "head_type": "Model",
+      "relation": "applies_to",
+      "tail": "Domain-specific Question Answering",
+      "tail_type": "Task",
+      "evidence_pages": [
+        2
+      ],
+      "confidence": 0.7
+    },
+    {
+      "head": "ChatLaw",
+      "head_type": "Method",
+      "relation": "applies_to",
+      "tail": "Domain-specific Question Answering",
+      "tail_type": "Task",
+      "evidence_pages": [
+        2
+      ],
+      "confidence": 0.7
+    }
+  ]
+}

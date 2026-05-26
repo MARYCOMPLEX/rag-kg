@@ -1,0 +1,99 @@
+$schema_version: "1"
+suite: qa.multihop
+suite_version: v1
+library_id: rag-agent
+description: >
+  M2 multi-hop evaluation — questions that require connecting facts
+  across multiple chunks/papers. Used to measure hybrid retrieval
+  improvement over M1 baseline.
+
+samples:
+  - sample_id: mh-001
+    question: "List all the benchmarks ReAct is evaluated on."
+    difficulty: medium
+    type: multi-hop
+    expected_evidence_doc_ids: ["2210.03629"]
+    expected_key_points: ["HotpotQA", "Fever", "ALFWorld", "WebShop"]
+    acceptable_score_floor: 0.6
+    human_validated: true
+
+  - sample_id: mh-002
+    question: "What language models does ReAct use in its experiments?"
+    difficulty: medium
+    type: multi-hop
+    expected_evidence_doc_ids: ["2210.03629"]
+    expected_key_points: ["PaLM"]
+    acceptable_score_floor: 0.5
+    human_validated: true
+
+  - sample_id: mh-003
+    question: "What baseline methods is ReAct compared against?"
+    difficulty: medium
+    type: multi-hop
+    expected_evidence_doc_ids: ["2210.03629"]
+    expected_key_points: ["chain-of-thought", "Act"]
+    acceptable_score_floor: 0.5
+    human_validated: true
+
+  - sample_id: mh-004
+    question: "How does Adaptive-RAG choose between different retrieval strategies for a query?"
+    difficulty: medium
+    type: multi-hop
+    expected_evidence_doc_ids: ["2403.14403"]
+    expected_key_points: ["classifier", "complexity"]
+    acceptable_score_floor: 0.6
+    human_validated: true
+
+  - sample_id: mh-005
+    question: "What three retrieval strategies does Adaptive-RAG select between?"
+    difficulty: hard
+    type: multi-hop
+    expected_evidence_doc_ids: ["2403.14403"]
+    expected_key_points: ["no retrieval", "single", "multi"]
+    acceptable_score_floor: 0.5
+    human_validated: true
+
+  - sample_id: mh-006
+    question: "What datasets does Adaptive-RAG evaluate on?"
+    difficulty: medium
+    type: multi-hop
+    expected_evidence_doc_ids: ["2403.14403"]
+    expected_key_points: ["HotpotQA"]
+    acceptable_score_floor: 0.5
+    human_validated: true
+
+  - sample_id: mh-007
+    question: "What does PaperQA2 use as its evidence source for scientific questions?"
+    difficulty: easy
+    type: single-hop
+    expected_evidence_doc_ids: ["2412.15605"]
+    expected_key_points: ["paper", "literature"]
+    acceptable_score_floor: 0.5
+    human_validated: true
+
+  - sample_id: mh-008
+    question: "Compare the retrieval strategies of ReAct and Adaptive-RAG."
+    difficulty: hard
+    type: multi-hop
+    expected_evidence_doc_ids: ["2210.03629", "2403.14403"]
+    expected_key_points: ["retrieval"]
+    acceptable_score_floor: 0.4
+    human_validated: true
+
+  - sample_id: mh-009
+    question: "What categories of question complexity does Adaptive-RAG distinguish?"
+    difficulty: hard
+    type: multi-hop
+    expected_evidence_doc_ids: ["2403.14403"]
+    expected_key_points: ["simple", "complex"]
+    acceptable_score_floor: 0.4
+    human_validated: true
+
+  - sample_id: mh-010
+    question: "What is the role of the Wikipedia API in ReAct?"
+    difficulty: medium
+    type: multi-hop
+    expected_evidence_doc_ids: ["2210.03629"]
+    expected_key_points: ["Wikipedia"]
+    acceptable_score_floor: 0.5
+    human_validated: true

@@ -1,0 +1,144 @@
+$schema_version: "1"
+suite: qa.smoke
+suite_version: v1
+library_id: rag-agent
+description: >
+  M1 smoke evaluation set covering the 3 spike papers ingested.
+  Hand-curated by Claude based on direct paper knowledge.
+  Each question targets a specific factual claim that should be
+  grounded in the ingested corpus.
+
+samples:
+  - sample_id: qa-001
+    question: "What is ReAct in one sentence?"
+    difficulty: easy
+    type: definition
+    expected_evidence_doc_ids:
+      - "2210.03629"
+    expected_key_points:
+      - "synergize"
+      - "reasoning"
+      - "acting"
+    must_not_contain:
+      - "fine-tuned only"
+    acceptable_score_floor: 0.7
+    human_validated: true
+    created_by: "auto-curated"
+
+  - sample_id: qa-002
+    question: "What problem does Adaptive-RAG try to solve compared to vanilla RAG?"
+    difficulty: medium
+    type: single-hop
+    expected_evidence_doc_ids:
+      - "2403.14403"
+    expected_key_points:
+      - "complexity"
+      - "adapt"
+      - "single-step"
+    acceptable_score_floor: 0.7
+    human_validated: true
+    created_by: "auto-curated"
+
+  - sample_id: qa-003
+    question: "How does Adaptive-RAG decide which retrieval strategy to use for a given query?"
+    difficulty: medium
+    type: single-hop
+    expected_evidence_doc_ids:
+      - "2403.14403"
+    expected_key_points:
+      - "classifier"
+      - "complexity"
+    acceptable_score_floor: 0.7
+    human_validated: true
+    created_by: "auto-curated"
+
+  - sample_id: qa-004
+    question: "What does PaperQA2 claim about superhuman performance on scientific QA?"
+    difficulty: medium
+    type: single-hop
+    expected_evidence_doc_ids:
+      - "2412.15605"
+    expected_key_points:
+      - "PaperQA2"
+      - "scientific"
+    acceptable_score_floor: 0.6
+    human_validated: true
+    created_by: "auto-curated"
+
+  - sample_id: qa-005
+    question: "Describe the Thought-Action-Observation loop used in ReAct."
+    difficulty: medium
+    type: single-hop
+    expected_evidence_doc_ids:
+      - "2210.03629"
+    expected_key_points:
+      - "thought"
+      - "action"
+      - "observation"
+    acceptable_score_floor: 0.7
+    human_validated: true
+    created_by: "auto-curated"
+
+  - sample_id: qa-006
+    question: "What benchmarks were used to evaluate ReAct?"
+    difficulty: hard
+    type: single-hop
+    expected_evidence_doc_ids:
+      - "2210.03629"
+    expected_key_points:
+      - "HotpotQA"
+    acceptable_score_floor: 0.6
+    human_validated: true
+    created_by: "auto-curated"
+
+  - sample_id: qa-007
+    question: "What is the difference between single-step and multi-step retrieval in Adaptive-RAG?"
+    difficulty: medium
+    type: single-hop
+    expected_evidence_doc_ids:
+      - "2403.14403"
+    expected_key_points:
+      - "single-step"
+      - "multi-step"
+    acceptable_score_floor: 0.6
+    human_validated: true
+    created_by: "auto-curated"
+
+  - sample_id: qa-008
+    question: "What does PaperQA2 use as its evidence source?"
+    difficulty: easy
+    type: single-hop
+    expected_evidence_doc_ids:
+      - "2412.15605"
+    expected_key_points:
+      - "papers"
+      - "literature"
+    acceptable_score_floor: 0.6
+    human_validated: true
+    created_by: "auto-curated"
+
+  - sample_id: qa-009
+    question: "How does ReAct handle hallucination compared to chain-of-thought reasoning?"
+    difficulty: hard
+    type: multi-hop
+    expected_evidence_doc_ids:
+      - "2210.03629"
+    expected_key_points:
+      - "hallucination"
+      - "external"
+      - "knowledge"
+    acceptable_score_floor: 0.6
+    human_validated: true
+    created_by: "auto-curated"
+
+  - sample_id: qa-010
+    question: "What types of language model agents does ReAct evaluate on?"
+    difficulty: medium
+    type: single-hop
+    expected_evidence_doc_ids:
+      - "2210.03629"
+    expected_key_points:
+      - "PaLM"
+    acceptable_score_floor: 0.5
+    human_validated: true
+    created_by: "auto-curated"

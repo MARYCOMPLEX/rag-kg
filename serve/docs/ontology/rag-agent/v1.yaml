@@ -1,0 +1,59 @@
+$schema_version: "1"
+library_id: rag-agent
+schema_version: v1
+
+entity_types:
+  - id: Method
+    description: A specific algorithm, framework, or approach (e.g., GraphRAG, ReAct).
+  - id: Model
+    description: An AI model (e.g., GPT-4, PaLM, BGE-M3).
+  - id: Dataset
+    description: A benchmark or training dataset (e.g., HotpotQA, MMLU).
+  - id: Concept
+    description: An abstract idea or technique (e.g., RAG, prompt engineering).
+  - id: Task
+    description: A research task or problem (e.g., multi-hop QA, summarization).
+  - id: Author
+    description: A researcher or paper author.
+  - id: Institution
+    description: A university, lab, or company (e.g., DeepMind, Microsoft).
+  - id: Metric
+    description: An evaluation metric (e.g., F1, Recall@k).
+
+relation_types:
+  - id: improves_upon
+    description: Method A improves upon method B.
+    head_types: [Method]
+    tail_types: [Method]
+  - id: evaluated_on
+    description: Method/Model evaluated on Dataset/Task.
+    head_types: [Method, Model]
+    tail_types: [Dataset, Task]
+  - id: applies_to
+    description: Method/Model applies to Task.
+    head_types: [Method, Model]
+    tail_types: [Task]
+  - id: uses
+    description: Method/Model uses another Method/Model/Concept.
+    head_types: [Method, Model]
+    tail_types: [Method, Model, Concept]
+  - id: extends
+    description: Method/Concept extends another Method/Concept.
+    head_types: [Method, Concept]
+    tail_types: [Method, Concept]
+  - id: compared_to
+    description: Methods directly compared in evaluation.
+    head_types: [Method, Model]
+    tail_types: [Method, Model]
+  - id: proposed_by
+    description: Method proposed by Author/Institution.
+    head_types: [Method]
+    tail_types: [Author, Institution]
+  - id: instance_of
+    description: Method is an instance of a higher-level Concept.
+    head_types: [Method, Model]
+    tail_types: [Concept]
+  - id: measured_by
+    description: Method/Task measured by Metric.
+    head_types: [Method, Task]
+    tail_types: [Metric]

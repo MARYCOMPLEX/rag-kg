@@ -1,0 +1,644 @@
+{
+  "doc_id": "2412.15605",
+  "title": "Don't Do RAG: When Cache-Augmented Generation is All You Need for Knowledge Tasks",
+  "entities": [
+    {
+      "name": "Cache-Augmented Generation",
+      "type": "Method",
+      "aliases": [
+        "CAG"
+      ]
+    },
+    {
+      "name": "Retrieval-Augmented Generation",
+      "type": "Method",
+      "aliases": [
+        "RAG"
+      ]
+    },
+    {
+      "name": "Sparse RAG (BM25)",
+      "type": "Method",
+      "aliases": [
+        "Sparse Retrieval System",
+        "BM25 RAG"
+      ]
+    },
+    {
+      "name": "Dense RAG (OpenAI Indexes)",
+      "type": "Method",
+      "aliases": [
+        "Dense Retrieval System"
+      ]
+    },
+    {
+      "name": "BM25",
+      "type": "Method",
+      "aliases": []
+    },
+    {
+      "name": "TurboRAG",
+      "type": "Method",
+      "aliases": []
+    },
+    {
+      "name": "In-Context Learning",
+      "type": "Method",
+      "aliases": [
+        "ICL"
+      ]
+    },
+    {
+      "name": "KV Cache",
+      "type": "Concept",
+      "aliases": [
+        "Key-Value Cache",
+        "Precomputed KV Cache"
+      ]
+    },
+    {
+      "name": "Long-Context LLM",
+      "type": "Concept",
+      "aliases": []
+    },
+    {
+      "name": "Retrieval-Free Question Answering",
+      "type": "Concept",
+      "aliases": []
+    },
+    {
+      "name": "Llama 3.1 8B",
+      "type": "Model",
+      "aliases": [
+        "Llama 3.1"
+      ]
+    },
+    {
+      "name": "Llama 3.1 70B",
+      "type": "Model",
+      "aliases": []
+    },
+    {
+      "name": "GPT-4",
+      "type": "Model",
+      "aliases": []
+    },
+    {
+      "name": "GPT-o1",
+      "type": "Model",
+      "aliases": []
+    },
+    {
+      "name": "Claude 3.5",
+      "type": "Model",
+      "aliases": []
+    },
+    {
+      "name": "SQuAD",
+      "type": "Dataset",
+      "aliases": [
+        "Stanford Question Answering Dataset",
+        "SQuAD 1.0"
+      ]
+    },
+    {
+      "name": "HotpotQA",
+      "type": "Dataset",
+      "aliases": [
+        "HotPotQA"
+      ]
+    },
+    {
+      "name": "BERTScore",
+      "type": "Metric",
+      "aliases": []
+    },
+    {
+      "name": "Question Answering",
+      "type": "Task",
+      "aliases": [
+        "QA"
+      ]
+    },
+    {
+      "name": "Multi-hop Question Answering",
+      "type": "Task",
+      "aliases": []
+    },
+    {
+      "name": "Open-domain Question Answering",
+      "type": "Task",
+      "aliases": []
+    },
+    {
+      "name": "Brian J Chan",
+      "type": "Author",
+      "aliases": []
+    },
+    {
+      "name": "Chao-Ting Chen",
+      "type": "Author",
+      "aliases": []
+    },
+    {
+      "name": "Jui-Hung Cheng",
+      "type": "Author",
+      "aliases": []
+    },
+    {
+      "name": "Hen-Hsen Huang",
+      "type": "Author",
+      "aliases": []
+    },
+    {
+      "name": "National Chengchi University",
+      "type": "Institution",
+      "aliases": [
+        "NCCU"
+      ]
+    },
+    {
+      "name": "Academia Sinica",
+      "type": "Institution",
+      "aliases": []
+    },
+    {
+      "name": "LlamaIndex",
+      "type": "Method",
+      "aliases": []
+    },
+    {
+      "name": "RULER",
+      "type": "Method",
+      "aliases": []
+    }
+  ],
+  "triples": [
+    {
+      "head": "Cache-Augmented Generation",
+      "head_type": "Method",
+      "relation": "proposed_by",
+      "tail": "Brian J Chan",
+      "tail_type": "Author",
+      "evidence_pages": [
+        1
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "Cache-Augmented Generation",
+      "head_type": "Method",
+      "relation": "proposed_by",
+      "tail": "Chao-Ting Chen",
+      "tail_type": "Author",
+      "evidence_pages": [
+        1
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "Cache-Augmented Generation",
+      "head_type": "Method",
+      "relation": "proposed_by",
+      "tail": "Jui-Hung Cheng",
+      "tail_type": "Author",
+      "evidence_pages": [
+        1
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "Cache-Augmented Generation",
+      "head_type": "Method",
+      "relation": "proposed_by",
+      "tail": "Hen-Hsen Huang",
+      "tail_type": "Author",
+      "evidence_pages": [
+        1
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "Cache-Augmented Generation",
+      "head_type": "Method",
+      "relation": "proposed_by",
+      "tail": "National Chengchi University",
+      "tail_type": "Institution",
+      "evidence_pages": [
+        1
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "Cache-Augmented Generation",
+      "head_type": "Method",
+      "relation": "proposed_by",
+      "tail": "Academia Sinica",
+      "tail_type": "Institution",
+      "evidence_pages": [
+        1
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "Cache-Augmented Generation",
+      "head_type": "Method",
+      "relation": "improves_upon",
+      "tail": "Retrieval-Augmented Generation",
+      "tail_type": "Method",
+      "evidence_pages": [
+        1,
+        2
+      ],
+      "confidence": 0.9
+    },
+    {
+      "head": "Cache-Augmented Generation",
+      "head_type": "Method",
+      "relation": "compared_to",
+      "tail": "Retrieval-Augmented Generation",
+      "tail_type": "Method",
+      "evidence_pages": [
+        1,
+        2,
+        4
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "Cache-Augmented Generation",
+      "head_type": "Method",
+      "relation": "compared_to",
+      "tail": "Sparse RAG (BM25)",
+      "tail_type": "Method",
+      "evidence_pages": [
+        3,
+        4
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "Cache-Augmented Generation",
+      "head_type": "Method",
+      "relation": "compared_to",
+      "tail": "Dense RAG (OpenAI Indexes)",
+      "tail_type": "Method",
+      "evidence_pages": [
+        3,
+        4
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "Cache-Augmented Generation",
+      "head_type": "Method",
+      "relation": "compared_to",
+      "tail": "In-Context Learning",
+      "tail_type": "Method",
+      "evidence_pages": [
+        4
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "Cache-Augmented Generation",
+      "head_type": "Method",
+      "relation": "uses",
+      "tail": "Llama 3.1 8B",
+      "tail_type": "Model",
+      "evidence_pages": [
+        3
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "Cache-Augmented Generation",
+      "head_type": "Method",
+      "relation": "uses",
+      "tail": "KV Cache",
+      "tail_type": "Concept",
+      "evidence_pages": [
+        1,
+        2
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "Cache-Augmented Generation",
+      "head_type": "Method",
+      "relation": "uses",
+      "tail": "Long-Context LLM",
+      "tail_type": "Concept",
+      "evidence_pages": [
+        1,
+        2
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "Cache-Augmented Generation",
+      "head_type": "Method",
+      "relation": "instance_of",
+      "tail": "Retrieval-Free Question Answering",
+      "tail_type": "Concept",
+      "evidence_pages": [
+        1,
+        2
+      ],
+      "confidence": 0.9
+    },
+    {
+      "head": "Cache-Augmented Generation",
+      "head_type": "Method",
+      "relation": "applies_to",
+      "tail": "Question Answering",
+      "tail_type": "Task",
+      "evidence_pages": [
+        3
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "Cache-Augmented Generation",
+      "head_type": "Method",
+      "relation": "evaluated_on",
+      "tail": "SQuAD",
+      "tail_type": "Dataset",
+      "evidence_pages": [
+        3,
+        4
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "Cache-Augmented Generation",
+      "head_type": "Method",
+      "relation": "evaluated_on",
+      "tail": "HotpotQA",
+      "tail_type": "Dataset",
+      "evidence_pages": [
+        3,
+        4
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "Cache-Augmented Generation",
+      "head_type": "Method",
+      "relation": "measured_by",
+      "tail": "BERTScore",
+      "tail_type": "Metric",
+      "evidence_pages": [
+        3,
+        4
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "Sparse RAG (BM25)",
+      "head_type": "Method",
+      "relation": "uses",
+      "tail": "BM25",
+      "tail_type": "Method",
+      "evidence_pages": [
+        3
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "Sparse RAG (BM25)",
+      "head_type": "Method",
+      "relation": "uses",
+      "tail": "LlamaIndex",
+      "tail_type": "Method",
+      "evidence_pages": [
+        3
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "Sparse RAG (BM25)",
+      "head_type": "Method",
+      "relation": "uses",
+      "tail": "Llama 3.1 8B",
+      "tail_type": "Model",
+      "evidence_pages": [
+        3
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "Sparse RAG (BM25)",
+      "head_type": "Method",
+      "relation": "evaluated_on",
+      "tail": "SQuAD",
+      "tail_type": "Dataset",
+      "evidence_pages": [
+        3,
+        4
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "Sparse RAG (BM25)",
+      "head_type": "Method",
+      "relation": "evaluated_on",
+      "tail": "HotpotQA",
+      "tail_type": "Dataset",
+      "evidence_pages": [
+        3,
+        4
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "Sparse RAG (BM25)",
+      "head_type": "Method",
+      "relation": "extends",
+      "tail": "Retrieval-Augmented Generation",
+      "tail_type": "Method",
+      "evidence_pages": [
+        3
+      ],
+      "confidence": 0.9
+    },
+    {
+      "head": "Dense RAG (OpenAI Indexes)",
+      "head_type": "Method",
+      "relation": "uses",
+      "tail": "LlamaIndex",
+      "tail_type": "Method",
+      "evidence_pages": [
+        3
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "Dense RAG (OpenAI Indexes)",
+      "head_type": "Method",
+      "relation": "uses",
+      "tail": "Llama 3.1 8B",
+      "tail_type": "Model",
+      "evidence_pages": [
+        3
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "Dense RAG (OpenAI Indexes)",
+      "head_type": "Method",
+      "relation": "evaluated_on",
+      "tail": "SQuAD",
+      "tail_type": "Dataset",
+      "evidence_pages": [
+        3,
+        4
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "Dense RAG (OpenAI Indexes)",
+      "head_type": "Method",
+      "relation": "evaluated_on",
+      "tail": "HotpotQA",
+      "tail_type": "Dataset",
+      "evidence_pages": [
+        3,
+        4
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "Dense RAG (OpenAI Indexes)",
+      "head_type": "Method",
+      "relation": "extends",
+      "tail": "Retrieval-Augmented Generation",
+      "tail_type": "Method",
+      "evidence_pages": [
+        3
+      ],
+      "confidence": 0.9
+    },
+    {
+      "head": "Dense RAG (OpenAI Indexes)",
+      "head_type": "Method",
+      "relation": "compared_to",
+      "tail": "Sparse RAG (BM25)",
+      "tail_type": "Method",
+      "evidence_pages": [
+        4
+      ],
+      "confidence": 0.9
+    },
+    {
+      "head": "TurboRAG",
+      "head_type": "Method",
+      "relation": "uses",
+      "tail": "KV Cache",
+      "tail_type": "Concept",
+      "evidence_pages": [
+        2
+      ],
+      "confidence": 0.9
+    },
+    {
+      "head": "TurboRAG",
+      "head_type": "Method",
+      "relation": "extends",
+      "tail": "Retrieval-Augmented Generation",
+      "tail_type": "Method",
+      "evidence_pages": [
+        2
+      ],
+      "confidence": 0.85
+    },
+    {
+      "head": "Retrieval-Augmented Generation",
+      "head_type": "Method",
+      "relation": "applies_to",
+      "tail": "Open-domain Question Answering",
+      "tail_type": "Task",
+      "evidence_pages": [
+        1
+      ],
+      "confidence": 0.9
+    },
+    {
+      "head": "Question Answering",
+      "head_type": "Task",
+      "relation": "measured_by",
+      "tail": "BERTScore",
+      "tail_type": "Metric",
+      "evidence_pages": [
+        3
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "Llama 3.1 8B",
+      "head_type": "Model",
+      "relation": "evaluated_on",
+      "tail": "SQuAD",
+      "tail_type": "Dataset",
+      "evidence_pages": [
+        3
+      ],
+      "confidence": 0.85
+    },
+    {
+      "head": "Llama 3.1 8B",
+      "head_type": "Model",
+      "relation": "evaluated_on",
+      "tail": "HotpotQA",
+      "tail_type": "Dataset",
+      "evidence_pages": [
+        3
+      ],
+      "confidence": 0.85
+    },
+    {
+      "head": "Llama 3.1 8B",
+      "head_type": "Model",
+      "relation": "instance_of",
+      "tail": "Long-Context LLM",
+      "tail_type": "Concept",
+      "evidence_pages": [
+        3
+      ],
+      "confidence": 0.85
+    },
+    {
+      "head": "Llama 3.1 70B",
+      "head_type": "Model",
+      "relation": "instance_of",
+      "tail": "Long-Context LLM",
+      "tail_type": "Concept",
+      "evidence_pages": [
+        1
+      ],
+      "confidence": 0.85
+    },
+    {
+      "head": "RULER",
+      "head_type": "Method",
+      "relation": "evaluated_on",
+      "tail": "Question Answering",
+      "tail_type": "Task",
+      "evidence_pages": [
+        1
+      ],
+      "confidence": 0.6
+    },
+    {
+      "head": "Multi-hop Question Answering",
+      "head_type": "Task",
+      "relation": "measured_by",
+      "tail": "BERTScore",
+      "tail_type": "Metric",
+      "evidence_pages": [
+        3
+      ],
+      "confidence": 0.85
+    }
+  ]
+}

@@ -1,0 +1,142 @@
+[project]
+name = "rag-kg-copilot"
+version = "0.1.0"
+description = "Research-oriented dense local knowledge base + Agent Copilot"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "pydantic>=2.9",
+    "pydantic-settings>=2.5",
+    "structlog>=24.4",
+    "httpx>=0.27",
+    "sqlalchemy[asyncio]>=2.0",
+    "alembic>=1.13",
+    "typer>=0.12",
+    "uvicorn>=0.32",
+    "arq>=0.26",
+    "opentelemetry-api>=1.27",
+    "opentelemetry-sdk>=1.27",
+    "rich>=13.9",
+    "pypdf>=5.1",
+    "qdrant-client>=1.12",
+    "pyyaml>=6.0",
+    "aiosqlite>=0.20",
+    "python-multipart>=0.0.20",
+    "tenacity>=9.0",
+    "neo4j>=5.25",
+    "opensearch-py>=2.7",
+    "aiohttp>=3.10",
+    "networkx>=3.4",
+    "python-louvain>=0.16",
+    "langfuse>=2.50",
+    "prometheus-client>=0.20",
+    "python-ulid>=3.0",
+    "redis>=5.0",
+    "asyncpg>=0.29",
+    "minio>=7.2",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.8",
+    "pyright>=1.1.385",
+    "pre-commit>=4.0",
+]
+test = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "pytest-cov>=5.0",
+    "hypothesis>=6.115",
+    "httpx>=0.27",
+    "fakeredis>=2.26",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["packages", "apps"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["docs/examples/*.ipynb"]
+
+[tool.ruff.lint]
+select = [
+    "E", "F", "I", "N", "UP", "B", "A", "C4", "PT",
+    "RET", "SIM", "PTH", "PL", "RUF",
+]
+ignore = [
+    "PLR0913",   # too many arguments — manual review
+    "A002",      # argument shadowing builtin — acceptable for `filter` in search APIs
+    "B008",      # FastAPI uses Depends() in defaults by design
+    "N812",      # `from datetime import date as Date` — project convention to avoid shadowing
+    "RUF002",    # Chinese punctuation in docstrings — bilingual project (CJK math/dash chars)
+    "RUF003",    # Same as RUF002 but for comments
+    "PLR2004",   # Magic values — context-specific named consts add little value
+    "PLR0911",   # Too many returns — saga / strategy code intentionally guards early
+    "PLR0912",   # Too many branches — same; complexity in protocol parsers
+    "PT018",     # Multi-part assert — readability subjective in tests
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["PLR2004", "S101"]
+# CJK sentence terminators are intentional for multilingual NLP
+"packages/ingestion/adapters/sentence_chunker.py" = ["RUF001", "RUF002", "RUF003"]
+# Scripts are operational tools — relaxed rules
+"scripts/**" = ["BLE001", "RUF034", "PLR0915", "PLR0912", "C901", "PLR2004"]
+# Lazy imports break the orchestration↔context package cycle (M8).
+"packages/orchestration/tasks/qa_task.py" = ["PLC0415"]
+# DI bundles use lazy SQLAlchemy imports to keep packages/core dep-free.
+"apps/api/_task_deps.py" = ["PLC0415"]
+"apps/api/_orchestration_deps.py" = ["PLC0415"]
+"apps/api/_eval_deps.py" = ["PLC0415"]
+"apps/api/main.py" = ["PLC0415"]
+# Worker jobs lazy-import packages.* helpers per the JobContext seam (ADR-0009).
+"apps/worker/main.py" = ["PLC0415"]
+"apps/worker/jobs/ingest_document.py" = ["PLC0415"]
+"apps/worker/jobs/ingest_batch.py" = ["PLC0415"]
+"apps/worker/jobs/extract_kg.py" = ["PLC0415"]
+"apps/worker/jobs/rebuild_community.py" = ["PLC0415"]
+"apps/worker/jobs/run_review.py" = ["PLC0415"]
+"apps/worker/jobs/run_reason.py" = ["PLC0415"]
+"apps/worker/jobs/run_hypothesize.py" = ["PLC0415"]
+"apps/worker/jobs/library_status_check.py" = ["PLC0415"]
+"apps/worker/jobs/library_purge.py" = ["PLC0415"]
+"apps/worker/jobs/eval_snapshot.py" = ["PLC0415"]
+# library_admin lazy-loads orchestration to keep core dep-free (CODING_STANDARDS §3.1).
+"packages/core/library_admin.py" = ["PLC0415"]
+# Reranker / sandbox lazy-load heavy deps that are only needed at runtime.
+"packages/indexing/adapters/bge_reranker.py" = ["PLC0415"]
+"packages/ingestion/_internal/sandbox.py" = ["PLC0415"]
+# Tests use lazy imports to control fixture timing.
+"tests/integration/worker/test_ingest_document_job.py" = ["PLC0415"]
+
+[tool.pyright]
+include = ["apps", "packages"]
+typeCheckingMode = "strict"
+reportMissingTypeStubs = "warning"
+reportUnknownMemberType = "none"
+# JSONB / RowMapping / SQLAlchemy result types are inherently dynamic — strict
+# narrowing produces noise without catching real bugs. Domain models stay strict.
+reportUnknownArgumentType = "warning"
+reportUnknownVariableType = "warning"
+reportPrivateUsage = "warning"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.coverage.run]
+source = ["packages"]
+branch = true
+
+[tool.coverage.report]
+# 75% gate: Neo4j and OpenSearch adapters can't be unit-tested cleanly
+# (need real services). They're covered by the M2 smoke run. Pure logic
+# in core/embedding/ingestion/structuring/llm/orchestration/retrieval
+# is at 90%+ individually.
+fail_under = 75
+show_missing = true

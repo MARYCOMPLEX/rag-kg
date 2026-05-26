@@ -1,0 +1,76 @@
+name: Eval PR
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  eval-smoke:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Set up Python 3.12
+        run: uv python install 3.12
+
+      - name: Install dependencies
+        run: uv sync --frozen --group test
+
+      - name: Start infra (Postgres + Qdrant + Redis + MinIO)
+        run: docker compose -f infra/docker-compose.yml up -d postgres qdrant redis minio
+
+      - name: Wait for services to be healthy
+        run: |
+          set -euo pipefail
+          services="postgres qdrant redis minio"
+          for service in $services; do
+            cid=$(docker compose -f infra/docker-compose.yml ps -q "$service")
+            if [ -z "$cid" ]; then
+              echo "Service $service not found"
+              exit 1
+            fi
+            for _ in $(seq 1 60); do
+              status=$(docker inspect -f '{{.State.Health.Status}}' "$cid" 2>/dev/null || echo "unknown")
+              if [ "$status" = "healthy" ]; then
+                echo "$service healthy"
+                break
+              fi
+              sleep 2
+            done
+            status=$(docker inspect -f '{{.State.Health.Status}}' "$cid")
+            if [ "$status" != "healthy" ]; then
+              echo "$service did not become healthy (last status: $status)"
+              docker compose -f infra/docker-compose.yml logs "$service"
+              exit 1
+            fi
+          done
+
+      - name: Run eval smoke suite
+        run: |
+          mkdir -p eval-artifacts
+          uv run python scripts/eval_run.py \
+            --library rag-agent \
+            --suite qa.smoke \
+            --no-judge \
+            --no-save \
+            | tee eval-artifacts/eval-summary.md
+
+      - name: Upload eval artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-pr-${{ github.event.pull_request.number }}
+          path: eval-artifacts/
+          if-no-files-found: warn
+
+      - name: Tear down infra
+        if: always()
+        run: docker compose -f infra/docker-compose.yml down -v

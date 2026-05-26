@@ -1,0 +1,24 @@
+openapi: 3.0.3
+info:
+  title: AnyFast API
+  version: 1.0.0
+  description: Shared API contract for the AnyFast full-stack application.
+servers:
+  - url: http://localhost:8000
+    description: Local backend development server
+tags:
+  - name: auth
+    description: Authentication and authorization APIs.
+  - name: research
+    description: Research workflow and agent APIs.
+  - name: projects
+    description: Project management APIs.
+  - name: tasks
+    description: Task planning and execution APIs.
+paths: {}
+components:
+  schemas: {}
+  parameters: {}
+  responses: {}
+  requestBodies: {}
+  securitySchemes: {}

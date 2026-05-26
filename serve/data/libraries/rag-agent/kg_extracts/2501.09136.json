@@ -1,0 +1,1375 @@
+{
+  "doc_id": "2501.09136",
+  "title": "Agentic Retrieval-Augmented Generation: A Survey on Agentic RAG",
+  "entities": [
+    {
+      "name": "Agentic RAG",
+      "type": "Method",
+      "aliases": [
+        "Agentic Retrieval-Augmented Generation"
+      ]
+    },
+    {
+      "name": "Naive RAG",
+      "type": "Method",
+      "aliases": [
+        "Na\u00efve RAG"
+      ]
+    },
+    {
+      "name": "Advanced RAG",
+      "type": "Method",
+      "aliases": []
+    },
+    {
+      "name": "Modular RAG",
+      "type": "Method",
+      "aliases": []
+    },
+    {
+      "name": "Graph RAG",
+      "type": "Method",
+      "aliases": [
+        "GraphRAG"
+      ]
+    },
+    {
+      "name": "Retrieval-Augmented Generation",
+      "type": "Method",
+      "aliases": [
+        "RAG"
+      ]
+    },
+    {
+      "name": "Single-Agent Agentic RAG",
+      "type": "Method",
+      "aliases": [
+        "Router Agentic RAG"
+      ]
+    },
+    {
+      "name": "Multi-Agent Agentic RAG",
+      "type": "Method",
+      "aliases": []
+    },
+    {
+      "name": "Hierarchical Agentic RAG",
+      "type": "Method",
+      "aliases": []
+    },
+    {
+      "name": "Corrective RAG",
+      "type": "Method",
+      "aliases": [
+        "Agentic Corrective RAG",
+        "CRAG"
+      ]
+    },
+    {
+      "name": "Adaptive RAG",
+      "type": "Method",
+      "aliases": [
+        "Adaptive Agentic RAG"
+      ]
+    },
+    {
+      "name": "Agent-G",
+      "type": "Method",
+      "aliases": []
+    },
+    {
+      "name": "GeAR",
+      "type": "Method",
+      "aliases": [
+        "Graph-Enhanced Agent for RAG",
+        "GEAR"
+      ]
+    },
+    {
+      "name": "Agentic Document Workflows",
+      "type": "Method",
+      "aliases": [
+        "ADW"
+      ]
+    },
+    {
+      "name": "Self-Refine",
+      "type": "Method",
+      "aliases": []
+    },
+    {
+      "name": "Reflexion",
+      "type": "Method",
+      "aliases": []
+    },
+    {
+      "name": "CRITIC",
+      "type": "Method",
+      "aliases": []
+    },
+    {
+      "name": "BM25",
+      "type": "Method",
+      "aliases": []
+    },
+    {
+      "name": "TF-IDF",
+      "type": "Method",
+      "aliases": []
+    },
+    {
+      "name": "Dense Passage Retrieval",
+      "type": "Method",
+      "aliases": [
+        "DPR"
+      ]
+    },
+    {
+      "name": "Reflection Pattern",
+      "type": "Concept",
+      "aliases": [
+        "Reflection"
+      ]
+    },
+    {
+      "name": "Planning Pattern",
+      "type": "Concept",
+      "aliases": [
+        "Planning"
+      ]
+    },
+    {
+      "name": "Tool Use Pattern",
+      "type": "Concept",
+      "aliases": [
+        "Tool Use"
+      ]
+    },
+    {
+      "name": "Multi-Agent Collaboration",
+      "type": "Concept",
+      "aliases": []
+    },
+    {
+      "name": "Prompt Chaining",
+      "type": "Concept",
+      "aliases": []
+    },
+    {
+      "name": "Routing",
+      "type": "Concept",
+      "aliases": []
+    },
+    {
+      "name": "Parallelization",
+      "type": "Concept",
+      "aliases": []
+    },
+    {
+      "name": "Orchestrator-Workers",
+      "type": "Concept",
+      "aliases": [
+        "Orchestrator-Worker"
+      ]
+    },
+    {
+      "name": "Evaluator-Optimizer",
+      "type": "Concept",
+      "aliases": []
+    },
+    {
+      "name": "Multi-hop Reasoning",
+      "type": "Concept",
+      "aliases": []
+    },
+    {
+      "name": "Vector Search",
+      "type": "Method",
+      "aliases": []
+    },
+    {
+      "name": "Text-to-SQL",
+      "type": "Method",
+      "aliases": []
+    },
+    {
+      "name": "Web Search",
+      "type": "Method",
+      "aliases": []
+    },
+    {
+      "name": "LangChain",
+      "type": "Method",
+      "aliases": []
+    },
+    {
+      "name": "LangGraph",
+      "type": "Method",
+      "aliases": []
+    },
+    {
+      "name": "LlamaIndex",
+      "type": "Method",
+      "aliases": []
+    },
+    {
+      "name": "LlamaParse",
+      "type": "Method",
+      "aliases": []
+    },
+    {
+      "name": "LlamaCloud",
+      "type": "Method",
+      "aliases": []
+    },
+    {
+      "name": "Hugging Face Transformers",
+      "type": "Method",
+      "aliases": [
+        "Hugging Face"
+      ]
+    },
+    {
+      "name": "Qdrant",
+      "type": "Method",
+      "aliases": []
+    },
+    {
+      "name": "CrewAI",
+      "type": "Method",
+      "aliases": []
+    },
+    {
+      "name": "AutoGen",
+      "type": "Method",
+      "aliases": [
+        "AG2"
+      ]
+    },
+    {
+      "name": "OpenAI Swarm",
+      "type": "Method",
+      "aliases": [
+        "OpenAI Swarm Framework"
+      ]
+    },
+    {
+      "name": "Vertex AI",
+      "type": "Method",
+      "aliases": [
+        "Agentic RAG with Vertex AI"
+      ]
+    },
+    {
+      "name": "Semantic Kernel",
+      "type": "Method",
+      "aliases": []
+    },
+    {
+      "name": "Amazon Bedrock",
+      "type": "Method",
+      "aliases": []
+    },
+    {
+      "name": "watsonx.ai",
+      "type": "Method",
+      "aliases": [
+        "IBM Watson"
+      ]
+    },
+    {
+      "name": "Neo4j",
+      "type": "Method",
+      "aliases": []
+    },
+    {
+      "name": "Weaviate",
+      "type": "Method",
+      "aliases": []
+    },
+    {
+      "name": "Pinecone",
+      "type": "Method",
+      "aliases": []
+    },
+    {
+      "name": "Milvus",
+      "type": "Method",
+      "aliases": []
+    },
+    {
+      "name": "GPT-5",
+      "type": "Model",
+      "aliases": []
+    },
+    {
+      "name": "GPT-4",
+      "type": "Model",
+      "aliases": []
+    },
+    {
+      "name": "PaLM",
+      "type": "Model",
+      "aliases": []
+    },
+    {
+      "name": "LLaMA",
+      "type": "Model",
+      "aliases": []
+    },
+    {
+      "name": "Granite-3-8B-Instruct",
+      "type": "Model",
+      "aliases": []
+    },
+    {
+      "name": "BEIR",
+      "type": "Dataset",
+      "aliases": [
+        "Benchmarking Information Retrieval"
+      ]
+    },
+    {
+      "name": "MS MARCO",
+      "type": "Dataset",
+      "aliases": [
+        "Microsoft Machine Reading Comprehension"
+      ]
+    },
+    {
+      "name": "HotpotQA",
+      "type": "Dataset",
+      "aliases": []
+    },
+    {
+      "name": "Natural Questions",
+      "type": "Dataset",
+      "aliases": [
+        "NQ"
+      ]
+    },
+    {
+      "name": "TriviaQA",
+      "type": "Dataset",
+      "aliases": []
+    },
+    {
+      "name": "SQuAD",
+      "type": "Dataset",
+      "aliases": []
+    },
+    {
+      "name": "WebQ",
+      "type": "Dataset",
+      "aliases": [
+        "Web Questions"
+      ]
+    },
+    {
+      "name": "PopQA",
+      "type": "Dataset",
+      "aliases": []
+    },
+    {
+      "name": "2WikiMultiHopQA",
+      "type": "Dataset",
+      "aliases": []
+    },
+    {
+      "name": "MuSiQue",
+      "type": "Dataset",
+      "aliases": []
+    },
+    {
+      "name": "MMLU",
+      "type": "Dataset",
+      "aliases": []
+    },
+    {
+      "name": "WikiText-103",
+      "type": "Dataset",
+      "aliases": []
+    },
+    {
+      "name": "FEVER",
+      "type": "Dataset",
+      "aliases": []
+    },
+    {
+      "name": "PubHealth",
+      "type": "Dataset",
+      "aliases": []
+    },
+    {
+      "name": "RAGBench",
+      "type": "Dataset",
+      "aliases": []
+    },
+    {
+      "name": "AgentG Benchmark",
+      "type": "Dataset",
+      "aliases": []
+    },
+    {
+      "name": "BERGEN",
+      "type": "Method",
+      "aliases": [
+        "Benchmarking Retrieval-Augmented Generation"
+      ]
+    },
+    {
+      "name": "FlashRAG",
+      "type": "Method",
+      "aliases": [
+        "FlashRAG Toolkit"
+      ]
+    },
+    {
+      "name": "GNN-RAG",
+      "type": "Method",
+      "aliases": []
+    },
+    {
+      "name": "TRACe",
+      "type": "Method",
+      "aliases": []
+    },
+    {
+      "name": "Question Answering",
+      "type": "Task",
+      "aliases": [
+        "QA"
+      ]
+    },
+    {
+      "name": "Multi-hop Question Answering",
+      "type": "Task",
+      "aliases": [
+        "Multi-hop QA"
+      ]
+    },
+    {
+      "name": "Single-hop Question Answering",
+      "type": "Task",
+      "aliases": [
+        "Single-hop QA"
+      ]
+    },
+    {
+      "name": "Fact Checking",
+      "type": "Task",
+      "aliases": [
+        "Fact Verification"
+      ]
+    },
+    {
+      "name": "Healthcare Diagnostics",
+      "type": "Task",
+      "aliases": []
+    },
+    {
+      "name": "Contract Review",
+      "type": "Task",
+      "aliases": []
+    },
+    {
+      "name": "Customer Support",
+      "type": "Task",
+      "aliases": []
+    },
+    {
+      "name": "Aditi Singh",
+      "type": "Author",
+      "aliases": []
+    },
+    {
+      "name": "Abul Ehtesham",
+      "type": "Author",
+      "aliases": []
+    },
+    {
+      "name": "Saket Kumar",
+      "type": "Author",
+      "aliases": []
+    },
+    {
+      "name": "Tala Talaei Khoei",
+      "type": "Author",
+      "aliases": []
+    },
+    {
+      "name": "Athanasios V. Vasilakos",
+      "type": "Author",
+      "aliases": []
+    },
+    {
+      "name": "Cleveland State University",
+      "type": "Institution",
+      "aliases": []
+    },
+    {
+      "name": "Kent State University",
+      "type": "Institution",
+      "aliases": []
+    },
+    {
+      "name": "Northeastern University",
+      "type": "Institution",
+      "aliases": []
+    },
+    {
+      "name": "University of Agder",
+      "type": "Institution",
+      "aliases": [
+        "UiA"
+      ]
+    }
+  ],
+  "triples": [
+    {
+      "head": "Naive RAG",
+      "head_type": "Method",
+      "relation": "extends",
+      "tail": "Retrieval-Augmented Generation",
+      "tail_type": "Method",
+      "evidence_pages": [
+        4
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "Advanced RAG",
+      "head_type": "Method",
+      "relation": "extends",
+      "tail": "Retrieval-Augmented Generation",
+      "tail_type": "Method",
+      "evidence_pages": [
+        4,
+        5
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "Modular RAG",
+      "head_type": "Method",
+      "relation": "extends",
+      "tail": "Retrieval-Augmented Generation",
+      "tail_type": "Method",
+      "evidence_pages": [
+        5,
+        6
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "Graph RAG",
+      "head_type": "Method",
+      "relation": "extends",
+      "tail": "Retrieval-Augmented Generation",
+      "tail_type": "Method",
+      "evidence_pages": [
+        6
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "Agentic RAG",
+      "head_type": "Method",
+      "relation": "extends",
+      "tail": "Retrieval-Augmented Generation",
+      "tail_type": "Method",
+      "evidence_pages": [
+        6,
+        7
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "Advanced RAG",
+      "head_type": "Method",
+      "relation": "improves_upon",
+      "tail": "Naive RAG",
+      "tail_type": "Method",
+      "evidence_pages": [
+        4,
+        5
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "Modular RAG",
+      "head_type": "Method",
+      "relation": "improves_upon",
+      "tail": "Advanced RAG",
+      "tail_type": "Method",
+      "evidence_pages": [
+        5
+      ],
+      "confidence": 0.9
+    },
+    {
+      "head": "Graph RAG",
+      "head_type": "Method",
+      "relation": "extends",
+      "tail": "Retrieval-Augmented Generation",
+      "tail_type": "Method",
+      "evidence_pages": [
+        6
+      ],
+      "confidence": 0.9
+    },
+    {
+      "head": "Agentic RAG",
+      "head_type": "Method",
+      "relation": "improves_upon",
+      "tail": "Modular RAG",
+      "tail_type": "Method",
+      "evidence_pages": [
+        6,
+        7,
+        8
+      ],
+      "confidence": 0.9
+    },
+    {
+      "head": "Agentic RAG",
+      "head_type": "Method",
+      "relation": "improves_upon",
+      "tail": "Naive RAG",
+      "tail_type": "Method",
+      "evidence_pages": [
+        8
+      ],
+      "confidence": 0.9
+    },
+    {
+      "head": "Naive RAG",
+      "head_type": "Method",
+      "relation": "uses",
+      "tail": "BM25",
+      "tail_type": "Method",
+      "evidence_pages": [
+        4
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "Naive RAG",
+      "head_type": "Method",
+      "relation": "uses",
+      "tail": "TF-IDF",
+      "tail_type": "Method",
+      "evidence_pages": [
+        4
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "Advanced RAG",
+      "head_type": "Method",
+      "relation": "uses",
+      "tail": "Dense Passage Retrieval",
+      "tail_type": "Method",
+      "evidence_pages": [
+        5
+      ],
+      "confidence": 0.9
+    },
+    {
+      "head": "Modular RAG",
+      "head_type": "Method",
+      "relation": "uses",
+      "tail": "BM25",
+      "tail_type": "Method",
+      "evidence_pages": [
+        5
+      ],
+      "confidence": 0.85
+    },
+    {
+      "head": "Modular RAG",
+      "head_type": "Method",
+      "relation": "uses",
+      "tail": "Dense Passage Retrieval",
+      "tail_type": "Method",
+      "evidence_pages": [
+        5
+      ],
+      "confidence": 0.85
+    },
+    {
+      "head": "Single-Agent Agentic RAG",
+      "head_type": "Method",
+      "relation": "extends",
+      "tail": "Agentic RAG",
+      "tail_type": "Method",
+      "evidence_pages": [
+        14,
+        15
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "Multi-Agent Agentic RAG",
+      "head_type": "Method",
+      "relation": "extends",
+      "tail": "Agentic RAG",
+      "tail_type": "Method",
+      "evidence_pages": [
+        16,
+        17
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "Hierarchical Agentic RAG",
+      "head_type": "Method",
+      "relation": "extends",
+      "tail": "Agentic RAG",
+      "tail_type": "Method",
+      "evidence_pages": [
+        18,
+        19
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "Corrective RAG",
+      "head_type": "Method",
+      "relation": "extends",
+      "tail": "Agentic RAG",
+      "tail_type": "Method",
+      "evidence_pages": [
+        19,
+        20
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "Adaptive RAG",
+      "head_type": "Method",
+      "relation": "extends",
+      "tail": "Agentic RAG",
+      "tail_type": "Method",
+      "evidence_pages": [
+        21,
+        22
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "Agent-G",
+      "head_type": "Method",
+      "relation": "extends",
+      "tail": "Agentic RAG",
+      "tail_type": "Method",
+      "evidence_pages": [
+        23,
+        24
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "GeAR",
+      "head_type": "Method",
+      "relation": "extends",
+      "tail": "Agentic RAG",
+      "tail_type": "Method",
+      "evidence_pages": [
+        25,
+        26
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "Agentic Document Workflows",
+      "head_type": "Method",
+      "relation": "extends",
+      "tail": "Agentic RAG",
+      "tail_type": "Method",
+      "evidence_pages": [
+        27,
+        28
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "Multi-Agent Agentic RAG",
+      "head_type": "Method",
+      "relation": "improves_upon",
+      "tail": "Single-Agent Agentic RAG",
+      "tail_type": "Method",
+      "evidence_pages": [
+        16
+      ],
+      "confidence": 0.85
+    },
+    {
+      "head": "Hierarchical Agentic RAG",
+      "head_type": "Method",
+      "relation": "improves_upon",
+      "tail": "Multi-Agent Agentic RAG",
+      "tail_type": "Method",
+      "evidence_pages": [
+        18
+      ],
+      "confidence": 0.8
+    },
+    {
+      "head": "Agent-G",
+      "head_type": "Method",
+      "relation": "extends",
+      "tail": "Graph RAG",
+      "tail_type": "Method",
+      "evidence_pages": [
+        23
+      ],
+      "confidence": 0.9
+    },
+    {
+      "head": "GeAR",
+      "head_type": "Method",
+      "relation": "extends",
+      "tail": "Graph RAG",
+      "tail_type": "Method",
+      "evidence_pages": [
+        25
+      ],
+      "confidence": 0.9
+    },
+    {
+      "head": "GeAR",
+      "head_type": "Method",
+      "relation": "uses",
+      "tail": "BM25",
+      "tail_type": "Method",
+      "evidence_pages": [
+        25
+      ],
+      "confidence": 0.85
+    },
+    {
+      "head": "Agentic Document Workflows",
+      "head_type": "Method",
+      "relation": "uses",
+      "tail": "LlamaParse",
+      "tail_type": "Method",
+      "evidence_pages": [
+        27
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "Agentic Document Workflows",
+      "head_type": "Method",
+      "relation": "uses",
+      "tail": "LlamaCloud",
+      "tail_type": "Method",
+      "evidence_pages": [
+        27
+      ],
+      "confidence": 0.9
+    },
+    {
+      "head": "Single-Agent Agentic RAG",
+      "head_type": "Method",
+      "relation": "uses",
+      "tail": "Vector Search",
+      "tail_type": "Method",
+      "evidence_pages": [
+        14,
+        15
+      ],
+      "confidence": 0.9
+    },
+    {
+      "head": "Single-Agent Agentic RAG",
+      "head_type": "Method",
+      "relation": "uses",
+      "tail": "Text-to-SQL",
+      "tail_type": "Method",
+      "evidence_pages": [
+        14
+      ],
+      "confidence": 0.9
+    },
+    {
+      "head": "Single-Agent Agentic RAG",
+      "head_type": "Method",
+      "relation": "uses",
+      "tail": "Web Search",
+      "tail_type": "Method",
+      "evidence_pages": [
+        15
+      ],
+      "confidence": 0.9
+    },
+    {
+      "head": "Reflection Pattern",
+      "head_type": "Concept",
+      "relation": "extends",
+      "tail": "Multi-Agent Collaboration",
+      "tail_type": "Concept",
+      "evidence_pages": [
+        9
+      ],
+      "confidence": 0.6
+    },
+    {
+      "head": "Self-Refine",
+      "head_type": "Method",
+      "relation": "instance_of",
+      "tail": "Reflection Pattern",
+      "tail_type": "Concept",
+      "evidence_pages": [
+        10
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "Reflexion",
+      "head_type": "Method",
+      "relation": "instance_of",
+      "tail": "Reflection Pattern",
+      "tail_type": "Concept",
+      "evidence_pages": [
+        10
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "CRITIC",
+      "head_type": "Method",
+      "relation": "instance_of",
+      "tail": "Reflection Pattern",
+      "tail_type": "Concept",
+      "evidence_pages": [
+        10
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "Agentic RAG",
+      "head_type": "Method",
+      "relation": "uses",
+      "tail": "Reflection Pattern",
+      "tail_type": "Concept",
+      "evidence_pages": [
+        9,
+        10
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "Agentic RAG",
+      "head_type": "Method",
+      "relation": "uses",
+      "tail": "Planning Pattern",
+      "tail_type": "Concept",
+      "evidence_pages": [
+        10
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "Agentic RAG",
+      "head_type": "Method",
+      "relation": "uses",
+      "tail": "Tool Use Pattern",
+      "tail_type": "Concept",
+      "evidence_pages": [
+        11
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "Agentic RAG",
+      "head_type": "Method",
+      "relation": "uses",
+      "tail": "Multi-Agent Collaboration",
+      "tail_type": "Concept",
+      "evidence_pages": [
+        11
+      ],
+      "confidence": 0.95
+    },
+    {
+      "head": "Agentic RAG",
+      "head_type": "Method",
+      "relation": "uses",
+      "tail": "Prompt Chaining",
+      "tail_type": "Concept",
+      "evidence_pages": [
+        11,
+        12
+      ],
+      "confidence": 0.9
+    },
+    {
+      "head": "Agentic RAG",
+      "head_type": "Method",
+      "relation": "uses",
+      "tail": "Routing",
+      "tail_type": "Concept",
+      "evidence_pages": [
+        12
+      ],
+      "confidence": 0.9
+    },
+    {
+      "head": "Agentic RAG",
+      "head_type": "Method",
+      "relation": "uses",
+      "tail": "Parallelization",
+      "tail_type": "Concept",
+      "evidence_pages": [
+        13
+      ],
+      "confidence": 0.9
+    },
+    {
+      "head": "Agentic RAG",
+      "head_type": "Method",
+      "relation": "uses",
+      "tail": "Orchestrator-Workers",
+      "tail_type": "Concept",
+      "evidence_pages": [
+        13
+      ],
+      "confidence": 0.9
+    },
+    {
+      "head": "Agentic RAG",
+      "head_type": "Method",
+      "relation": "uses",
+      "tail": "Evaluator-Optimizer",
+      "tail_type": "Concept",
+      "evidence_pages": [
+        14
+      ],
+      "confidence": 0.9
+    },
+    {
+      "head": "Agentic RAG",
+      "head_type": "Method",
+      "relation": "uses",
+      "tail": "Multi-hop Reasoning",
+      "tail_type": "Concept",
+      "evidence_pages": [
+        10
+      ],
+      "confidence": 0.9
+    },
+    {
+      "head": "Agentic RAG",
+      "head_type": "Method",
+      "relation": "applies_to",
+      "tail": "Customer Support",
+      "tail_type": "Task",
+      "evidence_pages": [
+        29
+      ],
+      "confidence": 0.9
+    },
+    {
+      "head": "Agentic RAG",
+      "head_type": "Method",
+      "relation": "applies_to",
+      "tail": "Healthcare Diagnostics",
+      "tail_type": "Task",
+      "evidence_pages": [
+        25,
+        30
+      ],
+      "confidence": 0.9
+    },
+    {
+      "head": "Agentic RAG",
+      "head_type": "Method",
+      "relation": "applies_to",
+      "tail": "Contract Review",
+      "tail_type": "Task",
+      "evidence_pages": [
+        30
+      ],
+      "confidence": 0.9
+    },
+    {
+      "head": "Agentic RAG",
+      "head_type": "Method",
+      "relation": "applies_to",
+      "tail": "Question Answering",
+      "tail_type": "Task",
+      "evidence_pages": [
+        27
+      ],
+      "confidence": 0.9
+    },
+    {
+      "head": "Agentic RAG",
+      "head_type": "Method",
+      "relation": "applies_to",
+      "tail": "Multi-hop Question Answering",
+      "tail_type": "Task",
+      "evidence_pages": [
+        27
+      ],
+      "confidence": 0.9
+    },
+    {
+      "head": "Agentic RAG",
+      "head_type": "Method",
+      "relation": "evaluated_on",
+      "tail": "BEIR",
+      "tail_type": "Dataset",
+      "evidence_pages": [
+        33
+      ],
+      "confidence": 0.85
+    },
+    {
+      "head": "Agentic RAG",
+      "head_type": "Method",
+      "relation": "evaluated_on",
+      "tail": "MS MARCO",
+      "tail_type": "Dataset",
+      "evidence_pages": [
+        33
+      ],
+      "confidence": 0.85
+    },
+    {
+      "head": "Agentic RAG",
+      "head_type": "Method",
+      "relation": "evaluated_on",
+      "tail": "HotpotQA",
+      "tail_type": "Dataset",
+      "evidence_pages": [
+        33
+      ],
+      "confidence": 0.9
+    },
+    {
+      "head": "Agentic RAG",
+      "head_type": "Method",
+      "relation": "evaluated_on",
+      "tail": "RAGBench",
+      "tail_type": "Dataset",
+      "evidence_pages": [
+        33
+      ],
+      "confidence": 0.85
+    },
+    {
+      "head": "Agentic RAG",
+      "head_type": "Method",
+      "relation": "evaluated_on",
+      "tail": "AgentG Benchmark",
+      "tail_type": "Dataset",
+      "evidence_pages": [
+        33
+      ],
+      "confidence": 0.85
+    },
+    {
+      "head": "FlashRAG",
+      "head_type": "Method",
+      "relation": "extends",
+      "tail": "Retrieval-Augmented Generation",
+      "tail_type": "Method",
+      "evidence_pages": [
+        33
+      ],
+      "confidence": 0.85
+    },
+    {
+      "head": "BERGEN",
+      "head_type": "Method",
+      "relation": "extends",
+      "tail": "Retrieval-Augmented Generation",
+      "tail_type": "Method",
+      "evidence_pages": [
+        33
+      ],
+      "confidence": 0.85
+    },
+    {
+      "head": "GNN-RAG",
+      "head_type": "Method",
+      "relation": "extends",
+      "tail": "Graph RAG",
+      "tail_type": "Method",
+      "evidence_pages": [
+        33
+      ],
+      "confidence": 0.85
+    },
+    {
+      "head": "LangChain",
+      "head_type": "Method",
+      "relation": "applies_to",
+      "tail": "Question Answering",
+      "tail_type": "Task",
+      "evidence_pages": [
+        31
+      ],
+      "confidence": 0.8
+    },
+    {
+      "head": "LangGraph",
+      "head_type": "Method",
+      "relation": "extends",
+      "tail": "LangChain",
+      "tail_type": "Method",
+      "evidence_pages": [
+        31
+      ],
+      "confidence": 0.85
+    },
+    {
+      "head": "LlamaIndex",
+      "head_type": "Method",
+      "relation": "uses",
+      "tail": "Agentic Document Workflows",
+      "tail_type": "Method",
+      "evidence_pages": [
+        31
+      ],
+      "confidence": 0.9
+    },
+    {
+      "head": "watsonx.ai",
+      "head_type": "Method",
+      "relation": "uses",
+      "tail": "Granite-3-8B-Instruct",
+      "tail_type": "Model",
+      "evidence_pages": [
+        32
+      ],
+      "confidence": 0.9
+    },
+    {
+      "head": "Agentic RAG",
+      "head_type": "Method",
+      "relation": "proposed_by",
+      "tail": "Aditi Singh",
+      "tail_type": "Author",
+      "evidence_pages": [
+        1
+      ],
+      "confidence": 0.7
+    },
+    {
+      "head": "Agentic RAG",
+      "head_type": "Method",
+      "relation": "proposed_by",
+      "tail": "Abul Ehtesham",
+      "tail_type": "Author",
+      "evidence_pages": [
+        1
+      ],
+      "confidence": 0.7
+    },
+    {
+      "head": "Agentic RAG",
+      "head_type": "Method",
+      "relation": "proposed_by",
+      "tail": "Saket Kumar",
+      "tail_type": "Author",
+      "evidence_pages": [
+        1
+      ],
+      "confidence": 0.7
+    },
+    {
+      "head": "Agentic RAG",
+      "head_type": "Method",
+      "relation": "proposed_by",
+      "tail": "Tala Talaei Khoei",
+      "tail_type": "Author",
+      "evidence_pages": [
+        1
+      ],
+      "confidence": 0.7
+    },
+    {
+      "head": "Agentic RAG",
+      "head_type": "Method",
+      "relation": "proposed_by",
+      "tail": "Athanasios V. Vasilakos",
+      "tail_type": "Author",
+      "evidence_pages": [
+        1
+      ],
+      "confidence": 0.7
+    },
+    {
+      "head": "Corrective RAG",
+      "head_type": "Method",
+      "relation": "compared_to",
+      "tail": "Adaptive RAG",
+      "tail_type": "Method",
+      "evidence_pages": [
+        19,
+        21
+      ],
+      "confidence": 0.7
+    },
+    {
+      "head": "Corrective RAG",
+      "head_type": "Method",
+      "relation": "compared_to",
+      "tail": "Naive RAG",
+      "tail_type": "Method",
+      "evidence_pages": [
+        19
+      ],
+      "confidence": 0.75
+    },
+    {
+      "head": "Single-Agent Agentic RAG",
+      "head_type": "Method",
+      "relation": "compared_to",
+      "tail": "Multi-Agent Agentic RAG",
+      "tail_type": "Method",
+      "evidence_pages": [
+        16,
+        32
+      ],
+      "confidence": 0.85
+    },
+    {
+      "head": "Agentic Document Workflows",
+      "head_type": "Method",
+      "relation": "compared_to",
+      "tail": "Agentic RAG",
+      "tail_type": "Method",
+      "evidence_pages": [
+        29
+      ],
+      "confidence": 0.9
+    },
+    {
+      "head": "Agentic Document Workflows",
+      "head_type": "Method",
+      "relation": "compared_to",
+      "tail": "Retrieval-Augmented Generation",
+      "tail_type": "Method",
+      "evidence_pages": [
+        29
+      ],
+      "confidence": 0.9
+    },
+    {
+      "head": "Agentic RAG",
+      "head_type": "Method",
+      "relation": "compared_to",
+      "tail": "Retrieval-Augmented Generation",
+      "tail_type": "Method",
+      "evidence_pages": [
+        29
+      ],
+      "confidence": 0.95
+    }
+  ]
+}

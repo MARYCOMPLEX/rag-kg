@@ -1,0 +1,157 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {"type": "grafana", "uid": "-- Grafana --"},
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "USD spend by model and library, useful for budget tracking and chargeback.",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "id": 1,
+      "type": "table",
+      "title": "LLM cost USD by model",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "gridPos": {"h": 9, "w": 12, "x": 0, "y": 0},
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "custom": {"align": "auto", "displayMode": "auto"}
+        },
+        "overrides": [
+          {
+            "matcher": {"id": "byName", "options": "Value"},
+            "properties": [{"id": "displayName", "value": "Cost (USD)"}]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "footer": {"show": true, "reducer": ["sum"], "fields": ""}
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "sum by (model) (increase(rag_llm_cost_usd_total[$__range]))",
+          "format": "table",
+          "instant": true
+        }
+      ],
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {"Time": true, "__name__": true, "job": true, "instance": true},
+            "indexByName": {"model": 0, "Value": 1},
+            "renameByName": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "table",
+      "title": "Embedding cost USD by model",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "gridPos": {"h": 9, "w": 12, "x": 12, "y": 0},
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "custom": {"align": "auto", "displayMode": "auto"}
+        },
+        "overrides": [
+          {
+            "matcher": {"id": "byName", "options": "Value"},
+            "properties": [{"id": "displayName", "value": "Cost (USD)"}]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "footer": {"show": true, "reducer": ["sum"], "fields": ""}
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "sum by (model) (increase(rag_embedding_cost_usd_total[$__range]))",
+          "format": "table",
+          "instant": true
+        }
+      ],
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {"Time": true, "__name__": true, "job": true, "instance": true},
+            "indexByName": {"model": 0, "Value": 1},
+            "renameByName": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "barchart",
+      "title": "Cost per Library (last 7d)",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "gridPos": {"h": 10, "w": 24, "x": 0, "y": 9},
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "color": {"mode": "thresholds"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "orange", "value": 5},
+              {"color": "red", "value": 25}
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "showValue": "auto",
+        "stacking": "none",
+        "legend": {"displayMode": "list", "placement": "bottom"},
+        "tooltip": {"mode": "single"}
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "sum by (library_id) (increase(rag_llm_cost_usd_total[7d])) + sum by (library_id) (increase(rag_embedding_cost_usd_total[7d]))",
+          "legendFormat": "{{library_id}}",
+          "instant": true
+        }
+      ]
+    }
+  ],
+  "refresh": "5m",
+  "schemaVersion": 39,
+  "tags": ["rag", "cost", "finops"],
+  "templating": {"list": []},
+  "time": {"from": "now-7d", "to": "now"},
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "RAG Cost",
+  "uid": "rag-cost",
+  "version": 1,
+  "weekStart": ""
+}

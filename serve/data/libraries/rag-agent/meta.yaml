@@ -1,0 +1,10 @@
+library_id: rag-agent
+name: RAG & Agent Architectures
+description: >
+  Retrieval-Augmented Generation and LLM Agent architectures —
+  covering RAG variants (Self-RAG, CRAG, GraphRAG, HippoRAG),
+  agent frameworks (ReAct, Toolformer), agentic retrieval,
+  and evaluation benchmarks.
+domain: AI/NLP
+language: en
+created_at: "2026-04-27"
