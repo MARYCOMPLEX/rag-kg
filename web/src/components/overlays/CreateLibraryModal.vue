@@ -20,6 +20,7 @@ const template = ref('survey')
 const slugEdited = ref(false)
 const creating = ref(false)
 const languageOptions = ['en', 'zh', 'multi'] as const
+const slugPattern = /^[a-z][a-z0-9-]{2,30}$/
 
 const templates = [
   { id: 'empty', title: 'Empty', detail: 'Start with clean storage and defaults.' },
@@ -33,12 +34,16 @@ const slugStatus = computed(() => {
     return 'Required'
   if (slug.value.length < 3)
     return 'Too short'
-  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug.value))
+  if (slug.value.length > 31)
+    return 'Too long'
+  if (!/^[a-z]/.test(slug.value))
+    return 'Start with a letter'
+  if (!slugPattern.test(slug.value))
     return 'Use lowercase, digits, hyphens'
   return 'Checked on create'
 })
 
-const isSlugValid = computed(() => /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug.value) && slug.value.length >= 3)
+const isSlugValid = computed(() => slugPattern.test(slug.value))
 const slugStatusTone = computed(() => isSlugValid.value ? 'success' : 'danger')
 const isCreateValid = computed(() => name.value.trim().length > 0 && isSlugValid.value)
 
@@ -52,7 +57,7 @@ watch(name, (next) => {
     .trim()
     .replace(/\s+/g, '-')
     .replace(/-+/g, '-')
-    .slice(0, 30)
+    .slice(0, 31)
 })
 
 function closeModal() {

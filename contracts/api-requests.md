@@ -50,6 +50,12 @@ OpenAPI remains the single source of truth. Entries here are requests only; once
   - Frontend can run with `VITE_DATA_SOURCE=api` and `VITE_API_BASE_URL=http://localhost:8000`.
   - Dashboard covers loading, empty, error, and retry states from the real API.
 - Status: requested
+- Frontend verification note:
+  - Time: 2026-05-27 04:08 +08:00
+  - `GET /api/libraries`: verified with backend branch and returned library summaries.
+  - Invalid `POST /api/libraries` slug `1bad`: verified `400 VALIDATION_ERROR` envelope.
+  - Valid `POST /api/libraries`: blocked by backend `500 INTERNAL_ERROR` with `details.type: UnexpectedResponse` after Qdrant returned `502 Bad Gateway`.
+  - Follow-up `GET /api/libraries` included the failed create slug, so backend should make create atomic or avoid persisting the library before vector initialization succeeds.
 
 ## API Request: Library documents workspace and document detail
 

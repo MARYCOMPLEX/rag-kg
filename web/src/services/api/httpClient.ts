@@ -15,6 +15,13 @@ export class ApiError extends Error {
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
 
+interface ErrorEnvelope {
+  code: string
+  message: string
+  request_id: string
+  details?: unknown
+}
+
 function buildUrl(path: string, query?: ApiRequestOptions['query']) {
   const url = new URL(path, API_BASE_URL || window.location.origin)
   Object.entries(query ?? {}).forEach(([key, value]) => {
@@ -24,21 +31,60 @@ function buildUrl(path: string, query?: ApiRequestOptions['query']) {
   return url
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+function parseErrorEnvelope(payload: unknown): ErrorEnvelope | null {
+  if (!isRecord(payload))
+    return null
+
+  const { code, message, request_id: requestId } = payload
+  if (typeof code !== 'string' || typeof message !== 'string' || typeof requestId !== 'string')
+    return null
+
+  return {
+    code,
+    message,
+    request_id: requestId,
+    details: payload.details,
+  }
+}
+
+function buildErrorMessage(response: Response, payload: unknown) {
+  const envelope = parseErrorEnvelope(payload)
+  if (!envelope)
+    return response.statusText || 'API request failed'
+
+  return `${envelope.message} (${envelope.code}, request ${envelope.request_id})`
+}
+
 export async function apiRequest<T>(path: string, options: ApiRequestOptions = {}) {
   const { query, headers, ...init } = options
-  const response = await fetch(buildUrl(path, query), {
-    ...init,
-    headers: {
-      'Content-Type': 'application/json',
-      ...headers,
-    },
-  })
+  const requestUrl = buildUrl(path, query)
+  let response: Response
+
+  try {
+    response = await fetch(requestUrl, {
+      ...init,
+      headers: {
+        'Content-Type': 'application/json',
+        ...headers,
+      },
+    })
+  }
+  catch (reason) {
+    if (reason instanceof TypeError)
+      throw new ApiError(`Unable to reach API at ${requestUrl.href}.`, 0, reason.message)
+
+    throw reason
+  }
 
   const isJson = response.headers.get('content-type')?.includes('application/json')
   const payload = isJson ? await response.json() : await response.text()
 
   if (!response.ok)
-    throw new ApiError(response.statusText || 'API request failed', response.status, payload)
+    throw new ApiError(buildErrorMessage(response, payload), response.status, payload)
 
   return payload as T
 }
