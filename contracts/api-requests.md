@@ -49,4 +49,31 @@ OpenAPI remains the single source of truth. Entries here are requests only; once
   - Backend implements list and create without requiring frontend mock data.
   - Frontend can run with `VITE_DATA_SOURCE=api` and `VITE_API_BASE_URL=http://localhost:8000`.
   - Dashboard covers loading, empty, error, and retry states from the real API.
+- Status: verified
+
+## API Request: Library documents workspace and document detail
+
+- Page: Documents workspace and document detail drawer.
+- Component: `web/src/views/DocumentsView.vue`, `web/src/components/overlays/DocumentDrawer.vue`, `web/src/services/documents/documentRepository.ts`.
+- Endpoint:
+  - `/api/libraries/{libraryId}/documents`
+  - `/api/libraries/{libraryId}/documents/{documentId}`
+- Method: `GET`
+- Params:
+  - Path params: `libraryId`, `documentId`.
+- Required fields:
+  - Documents workspace response: `summary` and `documents`.
+  - `summary`: `libraryId`, `documentCountLabel`, `chunkCountLabel`, `lastSyncLabel`.
+  - Each document: `id`, `libraryId`, `title`, `authors`, `source`, `year`, `status`, `chunks`, `entities`, `ingestedLabel`.
+  - `status`: `kind`, `label`, `title`, `message`, `meta`, optional `progress`, optional `progressText`, optional `actionLabel`.
+  - Document detail response extends the document shape with `fileFormat`, `fileSizeLabel`, `ingestedAtLabel`, `pageCount`, `selectedPage`, `statistics`, `sections`, `chunksPreview`.
+  - `statistics`: `label`, `value`.
+  - `sections`: `id`, `orderLabel`, `title`, `pageLabel`.
+  - `chunksPreview`: `id`, `locationLabel`, `text`.
+  - Error contract for missing library, missing document, unauthorized access, and backend failure.
+- Acceptance criteria:
+  - OpenAPI defines both document read endpoints and all nested response schemas.
+  - Backend response supports empty document lists without treating them as errors.
+  - Frontend can remove mock-backed document reads when API mode is enabled.
+  - Document list and drawer retain loading, empty, error, and retry behavior against the real API.
 - Status: implemented

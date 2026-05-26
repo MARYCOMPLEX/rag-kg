@@ -61,6 +61,64 @@ paths:
           $ref: "#/components/responses/ValidationError"
         "500":
           $ref: "#/components/responses/InternalError"
+  /api/libraries/{libraryId}/documents:
+    get:
+      tags:
+        - libraries
+      summary: List frontend document workspace data for one library
+      operationId: listFrontendLibraryDocuments
+      parameters:
+        - name: libraryId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: graphrag-survey
+      responses:
+        "200":
+          description: Document workspace summary and rows.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentsWorkspace"
+        "401":
+          $ref: "#/components/responses/AuthError"
+        "404":
+          $ref: "#/components/responses/LibraryNotFoundError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/libraries/{libraryId}/documents/{documentId}:
+    get:
+      tags:
+        - libraries
+      summary: Get frontend document detail drawer data
+      operationId: getFrontendLibraryDocument
+      parameters:
+        - name: libraryId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: graphrag-survey
+        - name: documentId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: doc-001
+      responses:
+        "200":
+          description: Document detail data for the frontend drawer.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentDetail"
+        "401":
+          $ref: "#/components/responses/AuthError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "500":
+          $ref: "#/components/responses/InternalError"
 components:
   schemas:
     LibrarySummary:
@@ -168,6 +226,226 @@ components:
         redirectTo:
           type: string
           example: /libraries/graphrag-survey/docs?onboarding=1
+    DocumentStatus:
+      type: object
+      additionalProperties: false
+      required:
+        - kind
+        - label
+        - title
+        - message
+        - meta
+      properties:
+        kind:
+          type: string
+          enum:
+            - ready
+            - indexing
+            - parsing
+            - failed
+        label:
+          type: string
+          example: Ready
+        title:
+          type: string
+          example: Document ready
+        message:
+          type: string
+          example: Indexed and available for search, chat citations, and review generation.
+        meta:
+          type: string
+          example: "Chunks: 128"
+        progress:
+          type: integer
+          minimum: 0
+          maximum: 100
+        progressText:
+          type: string
+          example: 70%
+        actionLabel:
+          type: string
+          example: Retry ingestion
+    LibraryDocumentsSummary:
+      type: object
+      additionalProperties: false
+      required:
+        - libraryId
+        - documentCountLabel
+        - chunkCountLabel
+        - lastSyncLabel
+      properties:
+        libraryId:
+          type: string
+          example: graphrag-survey
+        documentCountLabel:
+          type: string
+          example: 2 documents
+        chunkCountLabel:
+          type: string
+          example: 222 chunks
+        lastSyncLabel:
+          type: string
+          example: Last sync 2026-05-27
+    LibraryDocument:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - libraryId
+        - title
+        - authors
+        - source
+        - year
+        - status
+        - chunks
+        - entities
+        - ingestedLabel
+      properties:
+        id:
+          type: string
+          example: doc-001
+        libraryId:
+          type: string
+          example: graphrag-survey
+        title:
+          type: string
+          example: GraphRAG Paper
+        authors:
+          type: string
+          description: Display-ready author list. Empty string when metadata is unavailable.
+          example: Edge et al.
+        source:
+          type: string
+          description: Display-ready source label, currently the uploaded file name when richer metadata is unavailable.
+          example: graphrag.pdf
+        year:
+          type: integer
+          description: Display year, using ingest year until publication metadata is available.
+          example: 2026
+        status:
+          $ref: "#/components/schemas/DocumentStatus"
+        chunks:
+          type: integer
+          nullable: true
+          minimum: 0
+          example: 128
+        entities:
+          type: integer
+          nullable: true
+          minimum: 0
+          example: 94
+        ingestedLabel:
+          type: string
+          example: Ingested 2026-05-27
+    DocumentStatistic:
+      type: object
+      additionalProperties: false
+      required:
+        - label
+        - value
+      properties:
+        label:
+          type: string
+          example: chunks
+        value:
+          type: string
+          example: "128"
+    DocumentSection:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - orderLabel
+        - title
+        - pageLabel
+      properties:
+        id:
+          type: string
+          example: abstract
+        orderLabel:
+          type: string
+          example: "01"
+        title:
+          type: string
+          example: Abstract and motivation
+        pageLabel:
+          type: string
+          example: p.1
+    DocumentChunk:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - locationLabel
+        - text
+      properties:
+        id:
+          type: string
+          example: chunk-001
+        locationLabel:
+          type: string
+          example: Methods / p.2
+        text:
+          type: string
+          example: Graph summaries ground the final response.
+    DocumentDetail:
+      allOf:
+        - $ref: "#/components/schemas/LibraryDocument"
+        - type: object
+          additionalProperties: false
+          required:
+            - fileFormat
+            - fileSizeLabel
+            - ingestedAtLabel
+            - pageCount
+            - selectedPage
+            - statistics
+            - sections
+            - chunksPreview
+          properties:
+            fileFormat:
+              type: string
+              example: PDF
+            fileSizeLabel:
+              type: string
+              description: Display-ready file size label. `Unknown` when storage metadata is unavailable.
+              example: Unknown
+            ingestedAtLabel:
+              type: string
+              example: 2026-05-27 10:45
+            pageCount:
+              type: integer
+              minimum: 0
+              example: 22
+            selectedPage:
+              type: integer
+              minimum: 1
+              example: 1
+            statistics:
+              type: array
+              items:
+                $ref: "#/components/schemas/DocumentStatistic"
+            sections:
+              type: array
+              items:
+                $ref: "#/components/schemas/DocumentSection"
+            chunksPreview:
+              type: array
+              items:
+                $ref: "#/components/schemas/DocumentChunk"
+    DocumentsWorkspace:
+      type: object
+      additionalProperties: false
+      required:
+        - summary
+        - documents
+      properties:
+        summary:
+          $ref: "#/components/schemas/LibraryDocumentsSummary"
+        documents:
+          type: array
+          items:
+            $ref: "#/components/schemas/LibraryDocument"
     ErrorEnvelope:
       type: object
       additionalProperties: false
@@ -197,6 +475,12 @@ components:
           description: Optional machine-readable error context.
   parameters: {}
   responses:
+    AuthError:
+      description: Authentication or authorization failed.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
     ValidationError:
       description: Request validation failed.
       content:
@@ -217,6 +501,32 @@ components:
                 request_id: req_123
                 details:
                   library_id: graphrag-survey
+    LibraryNotFoundError:
+      description: Library does not exist or is not visible to the caller.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+          examples:
+            missingLibrary:
+              value:
+                code: LIBRARY_NOT_FOUND
+                message: "Library not found: graphrag-survey"
+                request_id: req_123
+                details:
+                  library_id: graphrag-survey
+    NotFoundError:
+      description: Requested resource does not exist.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+          examples:
+            missingDocument:
+              value:
+                code: NOT_FOUND
+                message: "Document not found: doc-001"
+                request_id: req_123
     InternalError:
       description: Internal server error.
       content:

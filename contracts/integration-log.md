@@ -28,6 +28,26 @@ Use this log during local integration, E2E testing, and contract verification. E
 
 ## Logs
 
+## 2026-05-27 04:53 - Frontend document read API slice
+
+- Time: 2026-05-27 04:53 +08:00
+- Agent: Backend Agent
+- Issue: #3
+- Cause: Frontend requested API-mode document workspace and document detail reads for `DocumentsView`, `DocumentDrawer`, and `documentRepository.ts`.
+- Fix status: fixed
+- Fix:
+  - Added OpenAPI paths and schemas for `GET /api/libraries/{libraryId}/documents` and `GET /api/libraries/{libraryId}/documents/{documentId}`.
+  - Added a frontend `/api` document read adapter backed by existing library metadata and ingest-state records.
+  - Empty libraries return `200` with zero summary labels and an empty `documents` list.
+  - Detail responses include stable drawer fields, statistics, sections, and chunk previews when the vector adapter can provide per-document chunks.
+- Verification:
+  - `uv run --group test pytest tests/integration/api/test_frontend_documents_routes.py -q`: passed, 6 tests.
+  - `uv run --group test pytest tests/integration/api/test_frontend_libraries_routes.py tests/integration/api/test_frontend_documents_routes.py -q`: passed, 15 tests, 1 existing Starlette deprecation warning.
+  - `uv run --group dev ruff check apps/api/routes/frontend_documents.py apps/api/routes/__init__.py tests/integration/api/test_frontend_documents_routes.py`: passed.
+  - `make typecheck`: passed, 0 errors with 20 existing warnings outside this change.
+  - `uv run python -c "import yaml; yaml.safe_load(open('..\\contracts\\openapi.yaml', encoding='utf-8')); print('openapi yaml parsed')"`: passed.
+  - `make lint`: still blocked by pre-existing unrelated Ruff failures in `apps/api/_activity_reader.py`, `apps/api/_notification_reader.py`, and `scripts/generate_ui_images.py`.
+
 ## 2026-05-27 04:25 - Frontend library create Qdrant fallback
 
 - Time: 2026-05-27 04:25 +08:00
