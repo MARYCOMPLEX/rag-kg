@@ -10,10 +10,13 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, ConfigDict, Field
 
 from apps._shared.factories import AppContainer
+from apps.api._task_deps import get_task_queue
 from apps.api.auth import Principal, get_current_principal
 from apps.api.deps import get_container
 from packages.core.errors import LibraryNotFoundError
 from packages.ingestion.state import IngestRecord, IngestStateStore
+from packages.orchestration._internal.ulid import new_ulid
+from packages.orchestration.queue import TaskQueue, TaskSpec
 
 router = APIRouter(prefix="/api/libraries/{library_id}/documents", tags=["documents"])
 
@@ -101,6 +104,15 @@ class FrontendDocumentsWorkspace(BaseModel):
     documents: list[FrontendLibraryDocument]
 
 
+class FrontendDocumentMutationFeedback(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    tone: Literal["success", "info", "warning", "danger"]
+    title: str
+    detail: str
+    action: str | None = None
+
+
 @router.get(
     "",
     response_model=FrontendDocumentsWorkspace,
@@ -157,6 +169,57 @@ async def get_frontend_document(
         ],
         sections=[],
         chunksPreview=chunks_preview,
+    )
+
+
+@router.post(
+    "/{document_id}:retry",
+    response_model=FrontendDocumentMutationFeedback,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+async def retry_frontend_document_ingestion(
+    library_id: str,
+    document_id: str,
+    container: AppContainer = Depends(get_container),
+    queue: TaskQueue = Depends(get_task_queue),
+    _principal: Principal = Depends(get_current_principal),
+) -> FrontendDocumentMutationFeedback:
+    await _ensure_library(container, library_id)
+    record = _find_record(container, library_id, document_id)
+    if record is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Document not found: {document_id}",
+        )
+    if record.status == "pending":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Document ingestion is already running: {document_id}",
+        )
+    if record.status != "failed":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Document is already ready: {document_id}",
+        )
+
+    spec = TaskSpec(
+        library_id=library_id,
+        task_type="ingest_document",
+        input_payload={
+            "doc_id": document_id,
+            "file_sha256": record.file_sha256,
+            "file_name": record.file_name,
+            "parser": "auto",
+            "force": True,
+        },
+        dedup_key=f"frontend-retry:{document_id}:{new_ulid()}",
+    )
+    await queue.enqueue(library_id, spec)
+    return FrontendDocumentMutationFeedback(
+        tone="warning",
+        title="Retry queued",
+        detail=f"{record.file_name} ingestion retry queued.",
+        action="Logs",
     )
 
 

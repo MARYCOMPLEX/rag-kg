@@ -119,6 +119,42 @@ paths:
           $ref: "#/components/responses/NotFoundError"
         "500":
           $ref: "#/components/responses/InternalError"
+  /api/libraries/{libraryId}/documents/{documentId}:retry:
+    post:
+      tags:
+        - libraries
+      summary: Queue a frontend document ingestion retry
+      operationId: retryFrontendLibraryDocumentIngestion
+      parameters:
+        - name: libraryId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: graphrag-survey
+        - name: documentId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: doc-001
+      responses:
+        "202":
+          description: Retry was accepted and queued.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentMutationFeedback"
+        "401":
+          $ref: "#/components/responses/AuthError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+        "503":
+          $ref: "#/components/responses/UpstreamError"
+        "500":
+          $ref: "#/components/responses/InternalError"
 components:
   schemas:
     LibrarySummary:
@@ -446,6 +482,31 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/LibraryDocument"
+    DocumentMutationFeedback:
+      type: object
+      additionalProperties: false
+      required:
+        - tone
+        - title
+        - detail
+      properties:
+        tone:
+          type: string
+          enum:
+            - success
+            - info
+            - warning
+            - danger
+          example: warning
+        title:
+          type: string
+          example: Retry queued
+        detail:
+          type: string
+          example: failed.pdf ingestion retry queued.
+        action:
+          type: string
+          example: Logs
     ErrorEnvelope:
       type: object
       additionalProperties: false
@@ -527,6 +588,24 @@ components:
                 code: NOT_FOUND
                 message: "Document not found: doc-001"
                 request_id: req_123
+    ConflictError:
+      description: Request conflicts with current resource state.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+          examples:
+            ingestionAlreadyRunning:
+              value:
+                code: CONFLICT
+                message: "Document ingestion is already running: doc-001"
+                request_id: req_123
+    UpstreamError:
+      description: Upstream dependency rejected the request.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
     InternalError:
       description: Internal server error.
       content:

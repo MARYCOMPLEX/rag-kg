@@ -77,3 +77,39 @@ OpenAPI remains the single source of truth. Entries here are requests only; once
   - Frontend can remove mock-backed document reads when API mode is enabled.
   - Document list and drawer retain loading, empty, error, and retry behavior against the real API.
 - Status: implemented
+
+## API Request: Document ingestion retry mutation
+
+- Page: Documents workspace and document detail drawer.
+- Component: `web/src/views/DocumentsView.vue`, `web/src/components/overlays/DocumentDrawer.vue`, `web/src/services/documents/documentRepository.ts`.
+- Endpoint: `/api/libraries/{libraryId}/documents/{documentId}:retry`
+- Method: `POST`
+- Params:
+  - Path params: `libraryId`, `documentId`.
+  - Request body: none.
+- Required fields:
+  - Mutation feedback response: `tone`, `title`, `detail`, optional `action`.
+  - `tone` values required by UI: `success`, `info`, `warning`, `danger`.
+  - Error contract for missing library, missing document, ingestion already running, retry conflict, queue rejection, and server failure.
+- Acceptance criteria:
+  - OpenAPI defines the retry request, response, and error schemas.
+  - Backend queues an ingestion retry for failed documents without changing existing `/v1/libraries/{library_id}/docs/{doc_id}/retry` behavior.
+  - Frontend can show real mutation feedback and preserve traceable error toasts.
+- Status: implemented
+
+## API Request: Document upload transport
+
+- Page: Documents workspace.
+- Component: `web/src/views/DocumentsView.vue`, `web/src/services/documents/documentRepository.ts`.
+- Endpoint: `/api/libraries/{libraryId}/documents:upload`
+- Method: `POST`
+- Params:
+  - Path param: `libraryId`.
+  - Upload body is still unclear: frontend needs the contract to specify whether this is multipart file upload, queued picker initialization, direct-to-storage presign, or another transport.
+- Required fields:
+  - Mutation feedback response: `tone`, `title`, `detail`, optional `action`.
+  - Error contract for invalid file, unsupported file type, duplicate upload, ingestion already running, missing library, and server failure.
+- Acceptance criteria:
+  - OpenAPI defines upload content type, file field names, response schema, and error responses.
+  - Frontend can remove upload mock behavior without guessing transport details.
+- Status: blocked

@@ -14,6 +14,7 @@ from httpx import ASGITransport, AsyncClient
 from apps._shared.factories import AppContainer
 from apps._shared.factories.ingest_runner import _state_store
 from apps._shared.persistence.library_fs import FilesystemLibraryRepository, make_library
+from apps.api._task_deps import reset_task_bundle, set_task_bundle_for_testing
 from apps.api.deps import get_container
 from apps.api.main import app
 from packages.context.budget import CharCountTokenCounter
@@ -26,6 +27,13 @@ from packages.context.service import ContextService
 from packages.core.config import Settings
 from packages.ingestion.state import IngestRecord
 from packages.llm.protocols import LLMResponse
+from packages.orchestration.queue import (
+    TaskEvent,
+    TaskHandle,
+    TaskId,
+    TaskSpec,
+    TaskState,
+)
 
 
 class _Sentinel:
@@ -97,6 +105,47 @@ class _BrokenLibraryRepository:
     async def exists(self, library_id: str) -> bool:
         _ = library_id
         raise RuntimeError("repository unavailable")
+
+
+class _FakeQueue:
+    def __init__(self) -> None:
+        self.enqueued: list[TaskSpec] = []
+
+    async def enqueue(self, library_id: str, spec: TaskSpec) -> TaskHandle:
+        self.enqueued.append(spec)
+        return TaskHandle(
+            library_id=library_id,
+            task_id="01HZAAAAAAAAAAAAAAAAAAAAAA",
+            enqueued_at=datetime.now(UTC),
+        )
+
+    async def get(self, library_id: str, task_id: TaskId) -> TaskState | None:
+        _ = library_id, task_id
+        return None
+
+    async def cancel(self, library_id: str, task_id: TaskId) -> bool:
+        _ = library_id, task_id
+        return False
+
+    async def list_active(self, library_id: str) -> tuple[TaskHandle, ...]:
+        _ = library_id
+        return ()
+
+
+class _FakeBus:
+    async def emit(self, event: TaskEvent) -> None:
+        _ = event
+
+    async def stream(
+        self,
+        library_id: str,
+        task_id: TaskId,
+        *,
+        since_seq: int | None = None,
+    ) -> AsyncIterator[TaskEvent]:
+        _ = library_id, task_id, since_seq
+        if False:
+            yield  # pragma: no cover
 
 
 def _build_container(
@@ -188,7 +237,12 @@ def _seed_record(
 
 
 @pytest.fixture
-async def client(tmp_path: Path) -> AsyncIterator[AsyncClient]:
+def queue() -> _FakeQueue:
+    return _FakeQueue()
+
+
+@pytest.fixture
+async def client(tmp_path: Path, queue: _FakeQueue) -> AsyncIterator[AsyncClient]:
     container = _build_container(tmp_path)
     await container.library_repo.create(make_library(library_id="lib-docs", name="Docs Lib"))
     _seed_record(
@@ -209,10 +263,15 @@ async def client(tmp_path: Path) -> AsyncIterator[AsyncClient]:
         last_error="parse failed",
     )
     app.dependency_overrides[get_container] = lambda: container
+    set_task_bundle_for_testing(
+        queue=queue,  # type: ignore[arg-type]
+        events=_FakeBus(),  # type: ignore[arg-type]
+    )
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as instance:
         yield instance
     app.dependency_overrides.clear()
+    await reset_task_bundle()
 
 
 async def test_list_documents_returns_frontend_workspace_shape(client: AsyncClient) -> None:
@@ -300,6 +359,49 @@ async def test_get_document_missing_library_uses_error_envelope(client: AsyncCli
 
 async def test_get_document_missing_document_uses_error_envelope(client: AsyncClient) -> None:
     res = await client.get("/api/libraries/lib-docs/documents/missing-doc")
+
+    assert res.status_code == 404
+    body = res.json()
+    assert body["code"] == "NOT_FOUND"
+    assert body["message"] == "Document not found: missing-doc"
+
+
+async def test_retry_failed_document_returns_frontend_feedback(
+    client: AsyncClient,
+    queue: _FakeQueue,
+) -> None:
+    res = await client.post("/api/libraries/lib-docs/documents/doc-failed:retry")
+
+    assert res.status_code == 202
+    assert res.json() == {
+        "tone": "warning",
+        "title": "Retry queued",
+        "detail": "failed.pdf ingestion retry queued.",
+        "action": "Logs",
+    }
+    assert len(queue.enqueued) == 1
+    spec = queue.enqueued[0]
+    assert spec.task_type == "ingest_document"
+    assert spec.input_payload == {
+        "doc_id": "doc-failed",
+        "file_sha256": "sha-doc-failed",
+        "file_name": "failed.pdf",
+        "parser": "auto",
+        "force": True,
+    }
+
+
+async def test_retry_ready_document_returns_conflict(client: AsyncClient) -> None:
+    res = await client.post("/api/libraries/lib-docs/documents/doc-ready:retry")
+
+    assert res.status_code == 409
+    body = res.json()
+    assert body["code"] == "CONFLICT"
+    assert body["message"] == "Document is already ready: doc-ready"
+
+
+async def test_retry_missing_document_uses_error_envelope(client: AsyncClient) -> None:
+    res = await client.post("/api/libraries/lib-docs/documents/missing-doc:retry")
 
     assert res.status_code == 404
     body = res.json()

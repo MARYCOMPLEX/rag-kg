@@ -28,6 +28,26 @@ Use this log during local integration, E2E testing, and contract verification. E
 
 ## Logs
 
+## 2026-05-27 05:05 - Frontend document retry mutation API slice
+
+- Time: 2026-05-27 05:05 +08:00
+- Agent: Backend Agent
+- Issue: #3
+- Cause: Frontend requested API-mode document mutation feedback for `DocumentsView`, `DocumentDrawer`, and `documentRepository.ts`.
+- Fix status: fixed
+- Fix:
+  - Added OpenAPI path and schema for `POST /api/libraries/{libraryId}/documents/{documentId}:retry`.
+  - Added a frontend `/api` retry adapter that queues an `ingest_document` task for failed documents and returns `{ tone, title, detail, action }`.
+  - Preserved existing `/v1/libraries/{library_id}/docs/{doc_id}/retry` behavior.
+  - Kept `/api/libraries/{libraryId}/documents:upload` blocked because upload transport and body fields remain undefined.
+- Verification:
+  - `uv run --group test pytest tests/integration/api/test_frontend_documents_routes.py -q`: passed, 9 tests.
+  - `uv run --group test pytest tests/integration/api/test_frontend_libraries_routes.py tests/integration/api/test_frontend_documents_routes.py -q`: passed, 18 tests, 1 existing Starlette deprecation warning.
+  - `uv run --group dev ruff check apps/api/routes/frontend_documents.py tests/integration/api/test_frontend_documents_routes.py`: passed.
+  - `make typecheck`: passed, 0 errors with 20 existing warnings outside this change.
+  - `uv run python -c "import yaml; yaml.safe_load(open('..\\contracts\\openapi.yaml', encoding='utf-8')); print('openapi yaml parsed')"`: passed.
+  - `make lint`: still blocked by pre-existing unrelated Ruff failures in `apps/api/_activity_reader.py`, `apps/api/_notification_reader.py`, and `scripts/generate_ui_images.py`.
+
 ## 2026-05-27 04:53 - Frontend document read API slice
 
 - Time: 2026-05-27 04:53 +08:00
