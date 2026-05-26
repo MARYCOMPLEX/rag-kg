@@ -91,7 +91,16 @@ OpenAPI remains the single source of truth. Entries here are requests only; once
   - Backend response supports empty document lists without treating them as errors.
   - Frontend can remove mock-backed document reads when API mode is enabled.
   - Document list and drawer retain loading, empty, error, and retry behavior against the real API.
-- Status: implemented
+- Status: verified
+- Frontend verification note:
+  - Time: 2026-05-27 05:53 +08:00
+  - Backend SHA tested: `ee96a8226e1ace1602e60c48e8582a5f0e74a9af`.
+  - Frontend SHA tested before log update: `7ed4092`.
+  - `GET /api/libraries/rag-agent/documents`: verified `200` with seeded ready row `2210.03629` and failed row `frontend-retry-failed`.
+  - `GET /api/libraries/rag-agent/documents/2210.03629`: verified `200` with the contracted document detail shape and drawer-rendered statistics/actions.
+  - Browser smoke at `http://127.0.0.1:5174/libraries/rag-agent/docs`: verified API-backed list rendering, ready document row open, `DocumentDrawer` successful detail rendering, drawer close, failed document row rendering, and failed-row retry UI feedback.
+  - `POST /api/libraries/rag-agent/documents/frontend-retry-failed:retry`: verified frontend sends the retry request and shows traceable failure feedback when local Redis/Arq is unavailable; live backend returned `503 UPSTREAM_ERROR`.
+  - Successful retry `202 { tone, title, detail, action }` remains pending a local run with Redis/Arq available.
 - Frontend verification note:
   - Time: 2026-05-27 05:07 +08:00
   - Backend SHA tested: `835a21d9895634236b900c82b448b10377915864`.

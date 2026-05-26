@@ -28,6 +28,27 @@ Use this log during local integration, E2E testing, and contract verification. E
 
 ## Logs
 
+## 2026-05-27 05:53 - Seeded document read/detail verified in API mode
+
+- Time: 2026-05-27 05:53 +08:00
+- Agent: Frontend Agent
+- Issue: #2
+- Cause: Backend handed back seeded `rag-agent` document data so frontend could verify successful document list/detail rendering and failed-row retry handling without frontend fixtures.
+- Fix status: verified for document read/detail; retry success still depends on Redis/Arq availability; upload remains requested.
+- Backend SHA: `ee96a8226e1ace1602e60c48e8582a5f0e74a9af`
+- Frontend SHA tested before log update: `7ed4092`
+- Verification:
+  - `GET http://localhost:8000/healthz`: passed with `{"status":"ok","version":"0.1.0"}`.
+  - `GET http://localhost:8000/api/libraries`: passed and returned `frontend-smoke-040442` and `rag-agent`.
+  - `OPTIONS http://localhost:8000/api/libraries/rag-agent/documents` from `http://127.0.0.1:5174`: passed with `Access-Control-Allow-Origin: http://127.0.0.1:5174`.
+  - `GET http://localhost:8000/api/libraries/rag-agent/documents`: passed with 2 seeded rows, ready document `2210.03629` and failed document `frontend-retry-failed`.
+  - `GET http://localhost:8000/api/libraries/rag-agent/documents/2210.03629`: passed with document detail fields, statistics, sections, and chunk preview arrays.
+  - `POST http://localhost:8000/api/libraries/rag-agent/documents/frontend-retry-failed:retry`: returned contracted `503 UPSTREAM_ERROR` while Redis/Arq was unavailable.
+  - Playwright via system Chrome against `http://127.0.0.1:5174/libraries/rag-agent/docs`: passed seeded list rendering, ready document drawer success path, drawer close, failed-row rendering, retry request dispatch, and retry error toast; observed API statuses `GET 200`, `GET 200`, `POST 503`.
+- Remaining backend follow-up:
+  - Run Redis/Arq or provide a verification environment where failed-document retry returns the successful `202 { tone, title, detail, action }` path.
+  - Update OpenAPI and implement `/api/libraries/{libraryId}/documents:upload` multipart transport, or reject the requested transport with a concrete alternate.
+
 ## 2026-05-27 05:32 - Document upload transport request clarified
 
 - Time: 2026-05-27 05:32 +08:00
