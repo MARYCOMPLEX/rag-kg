@@ -7,6 +7,8 @@ servers:
   - url: http://localhost:8000
     description: Local backend development server
 tags:
+  - name: libraries
+    description: Frontend library dashboard APIs.
   - name: auth
     description: Authentication and authorization APIs.
   - name: research
@@ -15,10 +17,211 @@ tags:
     description: Project management APIs.
   - name: tasks
     description: Task planning and execution APIs.
-paths: {}
+paths:
+  /api/libraries:
+    get:
+      tags:
+        - libraries
+      summary: List libraries for the frontend dashboard
+      operationId: listFrontendLibraries
+      responses:
+        "200":
+          description: Frontend library summaries.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LibrarySummary"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    post:
+      tags:
+        - libraries
+      summary: Create a library from the frontend create modal
+      operationId: createFrontendLibrary
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateLibraryRequest"
+      responses:
+        "201":
+          description: Created library and frontend redirect target.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateLibraryResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "409":
+          $ref: "#/components/responses/LibraryAlreadyExistsError"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "500":
+          $ref: "#/components/responses/InternalError"
 components:
-  schemas: {}
+  schemas:
+    LibrarySummary:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - name
+        - documentCountLabel
+        - chunkCountLabel
+        - entityCountLabel
+        - activityLabel
+        - statusLabel
+        - status
+        - accent
+      properties:
+        id:
+          type: string
+          description: Stable library slug used in frontend routes.
+          example: graphrag-survey
+        name:
+          type: string
+          example: GraphRAG Survey
+        documentCountLabel:
+          type: string
+          description: Display-ready document count label.
+          example: 0 documents
+        chunkCountLabel:
+          type: string
+          description: Display-ready chunk count label.
+          example: 0 chunks
+        entityCountLabel:
+          type: string
+          description: Display-ready entity count label.
+          example: 0 entities
+        activityLabel:
+          type: string
+          description: Display-ready recent activity label.
+          example: Created 2026-05-27
+        statusLabel:
+          type: string
+          example: Healthy
+        status:
+          type: string
+          enum:
+            - healthy
+            - indexing
+        accent:
+          type: string
+          enum:
+            - concept
+            - method
+            - dataset
+            - citation
+            - author
+        featured:
+          type: boolean
+          description: Optional frontend highlighting flag.
+    CreateLibraryRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - name
+        - slug
+        - description
+        - language
+        - template
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+          example: GraphRAG Survey
+        slug:
+          type: string
+          minLength: 3
+          maxLength: 31
+          pattern: ^[a-z][a-z0-9-]{2,30}$
+          example: graphrag-survey
+        description:
+          type: string
+          maxLength: 2000
+          example: Literature collection for GraphRAG papers.
+        language:
+          type: string
+          enum:
+            - en
+            - zh
+            - multi
+        template:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: Frontend-selected starter template key.
+          example: blank
+    CreateLibraryResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - library
+        - redirectTo
+      properties:
+        library:
+          $ref: "#/components/schemas/LibrarySummary"
+        redirectTo:
+          type: string
+          example: /libraries/graphrag-survey/docs?onboarding=1
+    ErrorEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+        - code
+        - message
+        - request_id
+      properties:
+        code:
+          type: string
+          enum:
+            - VALIDATION_ERROR
+            - AUTH_ERROR
+            - NOT_FOUND
+            - LIBRARY_NOT_FOUND
+            - LIBRARY_ALREADY_EXISTS
+            - CONFLICT
+            - RATE_LIMITED
+            - UPSTREAM_ERROR
+            - INTERNAL_ERROR
+        message:
+          type: string
+        request_id:
+          type: string
+        details:
+          nullable: true
+          description: Optional machine-readable error context.
   parameters: {}
-  responses: {}
+  responses:
+    ValidationError:
+      description: Request validation failed.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+    LibraryAlreadyExistsError:
+      description: Library slug already exists.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+          examples:
+            duplicateSlug:
+              value:
+                code: LIBRARY_ALREADY_EXISTS
+                message: "Library already exists: graphrag-survey"
+                request_id: req_123
+                details:
+                  library_id: graphrag-survey
+    InternalError:
+      description: Internal server error.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
   requestBodies: {}
   securitySchemes: {}

@@ -31,4 +31,22 @@ OpenAPI remains the single source of truth. Entries here are requests only; once
 
 ## Requests
 
-No API requests yet.
+## API Request: Library list and create
+
+- Page: Library dashboard, create library modal, top bar library selector.
+- Component: `web/src/views/LibraryDashboardView.vue`, `web/src/components/overlays/CreateLibraryModal.vue`, `web/src/components/layout/TopBar.vue`.
+- Endpoint: `/api/libraries`
+- Method: `GET`, `POST`
+- Params:
+  - `GET`: no frontend query params currently required.
+  - `POST` body: `name`, `slug`, `description`, `language`, `template`.
+- Required fields:
+  - `GET` response: array of library summaries with `id`, `name`, `documentCountLabel`, `chunkCountLabel`, `entityCountLabel`, `activityLabel`, `statusLabel`, `status`, `accent`, optional `featured`.
+  - `POST` response: `library` with the same summary shape plus `redirectTo`.
+  - Error contract for duplicate slug, invalid slug, validation failure, and server failure.
+- Acceptance criteria:
+  - OpenAPI defines request, response, and error schemas for both methods.
+  - Backend implements list and create without requiring frontend mock data.
+  - Frontend can run with `VITE_DATA_SOURCE=api` and `VITE_API_BASE_URL=http://localhost:8000`.
+  - Dashboard covers loading, empty, error, and retry states from the real API.
+- Status: implemented
