@@ -96,6 +96,10 @@ OpenAPI remains the single source of truth. Entries here are requests only; once
   - Backend queues an ingestion retry for failed documents without changing existing `/v1/libraries/{library_id}/docs/{doc_id}/retry` behavior.
   - Frontend can show real mutation feedback and preserve traceable error toasts.
 - Status: implemented
+- Backend fix note:
+  - Time: 2026-05-27 05:18 +08:00
+  - `POST /api/libraries/{libraryId}/documents/{documentId}:retry` now validates missing library and missing document before initializing the task queue, so Redis/Arq availability cannot mask contracted `404 LIBRARY_NOT_FOUND` or `404 NOT_FOUND` error envelopes.
+  - OpenAPI was already correct for these responses; no contract shape change was needed.
 
 ## API Request: Document upload transport
 

@@ -10,13 +10,13 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, ConfigDict, Field
 
 from apps._shared.factories import AppContainer
-from apps.api._task_deps import get_task_queue
+from apps.api._task_deps import get_task_bundle
 from apps.api.auth import Principal, get_current_principal
 from apps.api.deps import get_container
 from packages.core.errors import LibraryNotFoundError
 from packages.ingestion.state import IngestRecord, IngestStateStore
 from packages.orchestration._internal.ulid import new_ulid
-from packages.orchestration.queue import TaskQueue, TaskSpec
+from packages.orchestration.queue import TaskSpec
 
 router = APIRouter(prefix="/api/libraries/{library_id}/documents", tags=["documents"])
 
@@ -181,7 +181,6 @@ async def retry_frontend_document_ingestion(
     library_id: str,
     document_id: str,
     container: AppContainer = Depends(get_container),
-    queue: TaskQueue = Depends(get_task_queue),
     _principal: Principal = Depends(get_current_principal),
 ) -> FrontendDocumentMutationFeedback:
     await _ensure_library(container, library_id)
@@ -214,7 +213,8 @@ async def retry_frontend_document_ingestion(
         },
         dedup_key=f"frontend-retry:{document_id}:{new_ulid()}",
     )
-    await queue.enqueue(library_id, spec)
+    task_bundle = await get_task_bundle(container)
+    await task_bundle.queue.enqueue(library_id, spec)
     return FrontendDocumentMutationFeedback(
         tone="warning",
         title="Retry queued",

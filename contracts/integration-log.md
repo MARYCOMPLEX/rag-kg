@@ -28,6 +28,25 @@ Use this log during local integration, E2E testing, and contract verification. E
 
 ## Logs
 
+## 2026-05-27 05:18 - Document retry missing-resource envelope fix
+
+- Time: 2026-05-27 05:18 +08:00
+- Agent: Backend Agent
+- Issue: #3
+- Cause: Frontend API-mode verification found `POST /api/libraries/{libraryId}/documents/{documentId}:retry` returned delayed `500 INTERNAL_ERROR` with `TimeoutError` for missing libraries/documents because the task queue dependency initialized before resource validation.
+- Fix status: fixed
+- Fix:
+  - Moved frontend retry queue initialization until after library existence, document existence, and retry-state validation.
+  - Preserved successful failed-document retry behavior and existing `/v1/libraries/{library_id}/docs/{doc_id}/retry` behavior.
+  - Kept OpenAPI unchanged because `404 LIBRARY_NOT_FOUND` and `404 NOT_FOUND` were already contracted.
+- Verification:
+  - `uv run --group test pytest tests/integration/api/test_frontend_documents_routes.py -q`: passed, 11 tests.
+  - `uv run --group test pytest tests/integration/api/test_frontend_libraries_routes.py tests/integration/api/test_frontend_documents_routes.py -q`: passed, 20 tests, 1 existing Starlette deprecation warning.
+  - `uv run --group dev ruff check apps/api/routes/frontend_documents.py tests/integration/api/test_frontend_documents_routes.py`: passed.
+  - `make typecheck`: passed, 0 errors with 20 existing warnings outside this change.
+  - `uv run python -c "import yaml; yaml.safe_load(open('..\\contracts\\openapi.yaml', encoding='utf-8')); print('openapi yaml parsed')"`: passed.
+  - `make lint`: still blocked by pre-existing unrelated Ruff failures in `apps/api/_activity_reader.py`, `apps/api/_notification_reader.py`, and `scripts/generate_ui_images.py`.
+
 ## 2026-05-27 05:05 - Frontend document retry mutation API slice
 
 - Time: 2026-05-27 05:05 +08:00

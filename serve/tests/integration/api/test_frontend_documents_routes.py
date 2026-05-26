@@ -6,7 +6,7 @@ from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, NoReturn
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -14,6 +14,7 @@ from httpx import ASGITransport, AsyncClient
 from apps._shared.factories import AppContainer
 from apps._shared.factories.ingest_runner import _state_store
 from apps._shared.persistence.library_fs import FilesystemLibraryRepository, make_library
+from apps.api import _task_deps
 from apps.api._task_deps import reset_task_bundle, set_task_bundle_for_testing
 from apps.api.deps import get_container
 from apps.api.main import app
@@ -402,6 +403,55 @@ async def test_retry_ready_document_returns_conflict(client: AsyncClient) -> Non
 
 async def test_retry_missing_document_uses_error_envelope(client: AsyncClient) -> None:
     res = await client.post("/api/libraries/lib-docs/documents/missing-doc:retry")
+
+    assert res.status_code == 404
+    body = res.json()
+    assert body["code"] == "NOT_FOUND"
+    assert body["message"] == "Document not found: missing-doc"
+
+
+async def test_retry_missing_library_does_not_initialize_queue(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def fail_build_bundle(container: AppContainer) -> NoReturn:
+        _ = container
+        raise AssertionError("queue should not initialize before missing-library response")
+
+    await reset_task_bundle()
+    monkeypatch.setattr(_task_deps, "_build_bundle", fail_build_bundle)
+    container = _build_container(tmp_path)
+    app.dependency_overrides[get_container] = lambda: container
+    transport = ASGITransport(app=app, raise_app_exceptions=False)
+    async with AsyncClient(transport=transport, base_url="http://test") as instance:
+        res = await instance.post("/api/libraries/missing-lib/documents/missing-doc:retry")
+    app.dependency_overrides.clear()
+    await reset_task_bundle()
+
+    assert res.status_code == 404
+    body = res.json()
+    assert body["code"] == "LIBRARY_NOT_FOUND"
+    assert body["details"] == {"library_id": "missing-lib"}
+
+
+async def test_retry_missing_document_does_not_initialize_queue(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def fail_build_bundle(container: AppContainer) -> NoReturn:
+        _ = container
+        raise AssertionError("queue should not initialize before missing-document response")
+
+    await reset_task_bundle()
+    monkeypatch.setattr(_task_deps, "_build_bundle", fail_build_bundle)
+    container = _build_container(tmp_path)
+    await container.library_repo.create(make_library(library_id="lib-docs", name="Docs Lib"))
+    app.dependency_overrides[get_container] = lambda: container
+    transport = ASGITransport(app=app, raise_app_exceptions=False)
+    async with AsyncClient(transport=transport, base_url="http://test") as instance:
+        res = await instance.post("/api/libraries/lib-docs/documents/missing-doc:retry")
+    app.dependency_overrides.clear()
+    await reset_task_bundle()
 
     assert res.status_code == 404
     body = res.json()
