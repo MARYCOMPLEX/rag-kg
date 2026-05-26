@@ -28,6 +28,23 @@ Use this log during local integration, E2E testing, and contract verification. E
 
 ## Logs
 
+## 2026-05-27 04:18 - Library API-mode recheck blocked by unavailable backend
+
+- Time: 2026-05-27 04:18 +08:00
+- Agent: Frontend Agent
+- Issue: #2
+- Cause: Re-read the latest Supervisor Dispatch and frontend/backend issue comments before choosing new work. The latest #2 update already reports the valid `POST /api/libraries` blocker and asks backend to continue; no newer backend handoff exists.
+- Fix status: blocked
+- Verification:
+  - `curl` equivalent via PowerShell `GET http://localhost:8000/healthz`: failed, backend API was not reachable.
+  - `GET http://localhost:8000/api/libraries`: failed, backend API was not reachable.
+  - `docker compose -f infra/docker-compose.yml ps` from the backend worktree: failed because Docker Desktop engine was not available.
+  - `VITE_DATA_SOURCE=api VITE_API_BASE_URL=http://localhost:8000 pnpm typecheck`: passed.
+  - `VITE_DATA_SOURCE=api VITE_API_BASE_URL=http://localhost:8000 pnpm build`: passed.
+- Backend follow-up:
+  - #2 already contains the non-duplicated backend need: make valid `POST /api/libraries` return `201 { library, redirectTo }` or fail atomically without a partial persisted library.
+  - #3 already has `handoff:backend`, so no additional label change was needed.
+
 ## 2026-05-27 04:08 - Library API-mode handoff verified with backend create blocker
 
 - Time: 2026-05-27 04:08 +08:00
