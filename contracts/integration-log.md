@@ -28,6 +28,26 @@ Use this log during local integration, E2E testing, and contract verification. E
 
 ## Logs
 
+## 2026-05-27 05:20 - Document retry missing-resource responses verified
+
+- Time: 2026-05-27 05:20 +08:00
+- Agent: Frontend Agent
+- Issue: #2
+- Cause: Backend handed back the document retry mutation fix on `agent/backend-integration`; frontend needed to re-test the previous missing-resource `500` mismatch from API mode and browser origin.
+- Fix status: verified for missing-resource retry responses; blocked for successful retry feedback because no live failed document row exists.
+- Backend SHA: `835a21d9895634236b900c82b448b10377915864`
+- Frontend SHA tested before log update: `2426b8e`
+- Verification:
+  - `GET http://localhost:8000/healthz`: passed with `{"status":"ok","version":"0.1.0"}`.
+  - `GET http://localhost:8000/api/libraries`: passed and returned `frontend-smoke-040442` and `rag-agent`.
+  - `GET http://localhost:8000/api/libraries/rag-agent/documents`: passed with `200 { summary, documents: [] }`.
+  - `POST http://localhost:8000/api/libraries/rag-agent/documents/not-a-doc:retry`: passed with `404 NOT_FOUND`.
+  - `POST http://localhost:8000/api/libraries/missing-library/documents/not-a-doc:retry`: passed with `404 LIBRARY_NOT_FOUND`.
+  - Playwright via system Chrome against `http://127.0.0.1:5174/libraries/rag-agent/docs`: passed API-backed empty document state, frontend-origin CORS for document reads, and browser-visible retry error envelopes for missing document and missing library.
+- Remaining backend follow-up:
+  - Provide a failed document row so frontend can verify the successful `202 { tone, title, detail, action }` retry feedback path.
+  - Clarify and implement `/api/libraries/{libraryId}/documents:upload` request content type and file field names.
+
 ## 2026-05-27 05:07 - Document read API-mode verification partially blocked
 
 - Time: 2026-05-27 05:07 +08:00

@@ -125,6 +125,15 @@ OpenAPI remains the single source of truth. Entries here are requests only; once
   - Frontend can show real mutation feedback and preserve traceable error toasts.
 - Status: requested
 - Frontend verification note:
+  - Time: 2026-05-27 05:20 +08:00
+  - Backend SHA tested: `835a21d9895634236b900c82b448b10377915864`.
+  - Frontend SHA tested before log update: `2426b8e`.
+  - `POST /api/libraries/rag-agent/documents/not-a-doc:retry`: verified `404 NOT_FOUND` error envelope, request id `fc17d253cd3d4023ba2a18f71f3635eb`.
+  - `POST /api/libraries/missing-library/documents/not-a-doc:retry`: verified `404 LIBRARY_NOT_FOUND` error envelope, request id `3e483f4dbe75455299a72b37389e90e5`.
+  - Playwright browser smoke at `http://127.0.0.1:5174/libraries/rag-agent/docs`: verified API-backed empty document state, frontend-origin CORS for document reads, and browser-visible retry error envelopes for missing document and missing library.
+  - A successful `202 { tone, title, detail, action }` retry feedback path is still blocked because the live backend document lists are empty and no failed document row is available.
+  - Upload remains blocked because `/api/libraries/{libraryId}/documents:upload` request content type and file field names are still undefined.
+- Frontend verification note:
   - Time: 2026-05-27 05:08 +08:00
   - Backend SHA tested: `835a21d9895634236b900c82b448b10377915864`.
   - `POST /api/libraries/rag-agent/documents/not-a-doc:retry`: expected `404 NOT_FOUND` error envelope for a missing document; actual response was delayed and returned `500 INTERNAL_ERROR` with `details.type: TimeoutError`, request id `4e6db67589ec46b3bd8e3a5322925f63`.
