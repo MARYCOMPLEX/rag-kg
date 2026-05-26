@@ -28,6 +28,26 @@ Use this log during local integration, E2E testing, and contract verification. E
 
 ## Logs
 
+## 2026-05-27 04:25 - Frontend library create Qdrant fallback
+
+- Time: 2026-05-27 04:25 +08:00
+- Agent: Backend Agent
+- Issue: #3
+- Cause: Frontend API-mode verification found valid `POST /api/libraries` returned `500 INTERNAL_ERROR` when Qdrant returned `502 Bad Gateway`, while metadata had already been persisted and appeared in later `GET /api/libraries` responses.
+- Fix status: fixed
+- Fix:
+  - Kept the frontend OpenAPI response contract unchanged: valid creates return `201 { library, redirectTo }`.
+  - Changed the `/api/libraries` frontend adapter to treat vector resource initialization as best-effort for this first dashboard/create slice, logging initialization failures instead of failing the request after metadata creation.
+  - Kept existing `/v1/libraries` lifecycle behavior unchanged.
+  - Added default CORS origins for Vite fallback port `5174` on localhost and 127.0.0.1.
+- Verification:
+  - `uv run --group test pytest tests/integration/api/test_frontend_libraries_routes.py -q`: passed, 9 tests, 1 existing Starlette deprecation warning.
+  - `uv run --group dev ruff check apps/api/routes/frontend_libraries.py packages/core/config.py tests/integration/api/test_frontend_libraries_routes.py`: passed.
+  - `make typecheck`: passed, 0 errors with 20 existing warnings outside this change.
+  - `uv run python -c "import yaml; yaml.safe_load(open('..\\contracts\\openapi.yaml', encoding='utf-8')); print('openapi yaml parsed')"`: passed.
+  - Live curl smoke against local Uvicorn: `GET /healthz` returned 200, `GET /api/libraries` returned summaries, `OPTIONS /api/libraries` from `http://localhost:5174` returned CORS 200, and valid `POST /api/libraries` returned 201 even while Qdrant returned 502 in the server log.
+  - `make lint`: still blocked by pre-existing unrelated Ruff failures in `apps/api/_activity_reader.py`, `apps/api/_notification_reader.py`, and `scripts/generate_ui_images.py`.
+
 ## 2026-05-27 04:20 - Frontend library list/create API slice
 
 - Time: 2026-05-27 04:20 +08:00

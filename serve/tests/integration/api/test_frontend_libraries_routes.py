@@ -40,6 +40,12 @@ class _FakeVectorIndex:
         _ = library_id
 
 
+class _FailingVectorIndex(_FakeVectorIndex):
+    async def init_library(self, library_id: str) -> None:
+        _ = library_id
+        raise RuntimeError("qdrant unavailable")
+
+
 class _FakeLLM:
     async def complete(self, messages: Any, **kwargs: Any) -> LLMResponse:
         _ = messages, kwargs
@@ -186,6 +192,23 @@ async def test_libraries_allows_vite_dev_origin(
     assert res.headers["access-control-allow-origin"] == "http://localhost:5173"
 
 
+async def test_libraries_allows_vite_fallback_dev_origin(
+    setup: tuple[AsyncClient, AppContainer, _FakeVectorIndex],
+) -> None:
+    client, _container, _vector = setup
+
+    res = await client.options(
+        "/api/libraries",
+        headers={
+            "Origin": "http://localhost:5174",
+            "Access-Control-Request-Method": "POST",
+        },
+    )
+
+    assert res.status_code == 200
+    assert res.headers["access-control-allow-origin"] == "http://localhost:5174"
+
+
 async def test_post_libraries_creates_library_and_redirect(
     setup: tuple[AsyncClient, AppContainer, _FakeVectorIndex],
 ) -> None:
@@ -213,6 +236,31 @@ async def test_post_libraries_creates_library_and_redirect(
     stored = await container.library_repo.get("new-lib")
     assert stored is not None
     assert stored.language == "mixed"
+
+
+async def test_post_libraries_succeeds_when_vector_init_is_unavailable(tmp_path: Path) -> None:
+    container = _build_container(tmp_path, vector_index=_FailingVectorIndex())
+    app.dependency_overrides[get_container] = lambda: container
+    transport = ASGITransport(app=app, raise_app_exceptions=False)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        res = await client.post(
+            "/api/libraries",
+            json={
+                "name": "Frontend Smoke",
+                "slug": "frontend-smoke",
+                "description": "Created while Qdrant is unavailable",
+                "language": "en",
+                "template": "blank",
+            },
+        )
+    app.dependency_overrides.clear()
+
+    assert res.status_code == 201
+    body = res.json()
+    assert body["library"]["id"] == "frontend-smoke"
+    assert body["redirectTo"] == "/libraries/frontend-smoke/docs?onboarding=1"
+    stored = await container.library_repo.get("frontend-smoke")
+    assert stored is not None
 
 
 async def test_post_libraries_duplicate_slug_uses_error_envelope(

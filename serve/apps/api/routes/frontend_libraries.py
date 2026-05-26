@@ -8,6 +8,7 @@ into the field names currently consumed by the Vue frontend.
 from __future__ import annotations
 
 import hashlib
+import logging
 import re
 from typing import Literal
 
@@ -22,6 +23,7 @@ from packages.core.library_admin import init_library
 from packages.core.models import LIBRARY_ID_PATTERN, Language, Library, LibraryStatus
 
 router = APIRouter(prefix="/api/libraries", tags=["libraries"])
+logger = logging.getLogger(__name__)
 
 _LIBRARY_ID_RE = re.compile(LIBRARY_ID_PATTERN)
 
@@ -148,7 +150,14 @@ async def create_frontend_library(
         language=_language_to_backend(body.language),
     )
     await container.library_repo.create(library)
-    await init_library(body.slug, adapters=[container.vector_index])
+    try:
+        await init_library(body.slug, adapters=[container.vector_index])
+    except Exception:
+        logger.warning(
+            "Frontend library metadata created but resource initialization failed",
+            extra={"library_id": body.slug},
+            exc_info=True,
+        )
     return FrontendLibraryCreateResponse(
         library=_summary_from_library(library),
         redirectTo=f"/libraries/{body.slug}/docs?onboarding=1",
