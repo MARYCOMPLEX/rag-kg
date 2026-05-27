@@ -389,6 +389,117 @@ paths:
           $ref: "#/components/responses/ValidationError"
         "500":
           $ref: "#/components/responses/InternalError"
+  /api/libraries/{libraryId}/chat/session:
+    get:
+      tags:
+        - libraries
+      summary: Get the current frontend chat session for one library
+      operationId: getFrontendChatSession
+      parameters:
+        - name: libraryId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: rag-agent
+      responses:
+        "200":
+          description: Current chat session, with empty arrays when no conversation content exists.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatSession"
+              examples:
+                emptySession:
+                  value:
+                    sessionId: chat-session-1
+                    title: New chat
+                    createdAtLabel: "2026-05-27 18:00"
+                    messages: []
+                    evidence: []
+        "401":
+          $ref: "#/components/responses/AuthError"
+        "404":
+          $ref: "#/components/responses/LibraryNotFoundError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/libraries/{libraryId}/chat/questions:
+    post:
+      tags:
+        - libraries
+      summary: Create a chat question and return a stream task
+      operationId: createFrontendChatQuestion
+      parameters:
+        - name: libraryId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: rag-agent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatQuestionRequest"
+      responses:
+        "202":
+          description: Question accepted; connect to streamUrl for answer events.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatQuestionResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/AuthError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/libraries/{libraryId}/chat/questions/{taskId}/events:
+    get:
+      tags:
+        - libraries
+      summary: Stream frontend chat answer events
+      operationId: streamFrontendChatQuestionEvents
+      parameters:
+        - name: libraryId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: rag-agent
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: chat-0123456789abcdef
+      responses:
+        "200":
+          description: |
+            Server-Sent Events for the accepted chat task.
+
+            Event payloads:
+            - `token`: JSON object `{ "token": "<text>" }`.
+            - `citations`: JSON array of citation IDs matching `evidence[].id`.
+            - `evidence`: JSON array of `ChatEvidence` records.
+            - `status`: JSON object `{ "status": "idle|streaming|done|interrupted|unsubstantiated" }`.
+            - `done`: JSON object with the terminal status.
+            - `error`: JSON object `{ "code", "message", "request_id", "details" }`.
+          content:
+            text/event-stream:
+              schema:
+                $ref: "#/components/schemas/ChatStreamEvent"
+        "401":
+          $ref: "#/components/responses/AuthError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "500":
+          $ref: "#/components/responses/InternalError"
   /api/libraries/{libraryId}/graph:
     get:
       tags:
@@ -489,6 +600,187 @@ paths:
           $ref: "#/components/responses/InternalError"
 components:
   schemas:
+    ChatMessage:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - role
+        - text
+      properties:
+        id:
+          type: string
+          example: user-0123456789abcdef
+        role:
+          type: string
+          enum:
+            - user
+            - assistant
+        text:
+          type: string
+          example: How does GraphRAG combine graph retrieval and synthesis?
+        status:
+          type: string
+          enum:
+            - idle
+            - streaming
+            - done
+            - interrupted
+            - unsubstantiated
+        citations:
+          type: array
+          items:
+            type: string
+          example:
+            - chunk-1
+    ChatEvidence:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - label
+        - type
+        - title
+        - meta
+        - score
+        - snippet
+      properties:
+        id:
+          type: string
+          example: chunk-1
+        label:
+          type: string
+          example: "[1]"
+        type:
+          type: string
+          example: chunk
+        title:
+          type: string
+          example: "2210.03629"
+        meta:
+          type: string
+          example: p.2
+        score:
+          type: string
+          example: cited
+        snippet:
+          type: string
+          example: Graph retrieval grounds the final synthesis.
+    ChatSession:
+      type: object
+      additionalProperties: false
+      required:
+        - sessionId
+        - title
+        - createdAtLabel
+        - messages
+        - evidence
+      properties:
+        sessionId:
+          type: string
+          example: chat-session-1
+        title:
+          type: string
+          example: New chat
+        createdAtLabel:
+          type: string
+          example: "2026-05-27 18:00"
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChatMessage"
+        evidence:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChatEvidence"
+    ChatQuestionContext:
+      type: object
+      additionalProperties: false
+      properties:
+        evidenceIds:
+          type: array
+          items:
+            type: string
+          example:
+            - chunk-1
+        entityIds:
+          type: array
+          items:
+            type: string
+          example:
+            - method:graphrag
+    ChatQuestionRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - question
+      properties:
+        question:
+          type: string
+          minLength: 1
+          maxLength: 2000
+          example: How does GraphRAG answer grounded questions?
+        sessionId:
+          type: string
+          minLength: 1
+          maxLength: 64
+          description: Existing chat session to continue. Omit to create a new session.
+        context:
+          $ref: "#/components/schemas/ChatQuestionContext"
+    ChatQuestionResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - taskId
+        - streamUrl
+        - userMessage
+        - assistantMessage
+        - evidence
+      properties:
+        taskId:
+          type: string
+          example: chat-0123456789abcdef
+        streamUrl:
+          type: string
+          example: /api/libraries/rag-agent/chat/questions/chat-0123456789abcdef/events
+        userMessage:
+          $ref: "#/components/schemas/ChatMessage"
+        assistantMessage:
+          $ref: "#/components/schemas/ChatMessage"
+        evidence:
+          type: array
+          description: Optional initial evidence records. Empty when evidence arrives through the stream.
+          items:
+            $ref: "#/components/schemas/ChatEvidence"
+    ChatStreamEvent:
+      oneOf:
+        - type: object
+          additionalProperties: false
+          required:
+            - token
+          properties:
+            token:
+              type: string
+        - type: array
+          items:
+            type: string
+        - type: array
+          items:
+            $ref: "#/components/schemas/ChatEvidence"
+        - type: object
+          additionalProperties: false
+          required:
+            - status
+          properties:
+            status:
+              type: string
+              enum:
+                - idle
+                - streaming
+                - done
+                - interrupted
+                - unsubstantiated
+        - $ref: "#/components/schemas/ErrorEnvelope"
     LibrarySummary:
       type: object
       additionalProperties: false

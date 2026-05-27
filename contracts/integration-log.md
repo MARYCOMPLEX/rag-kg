@@ -28,6 +28,28 @@ Use this log during local integration, E2E testing, and contract verification. E
 
 ## Logs
 
+## 2026-05-27 18:23 - Frontend chat session and stream API
+
+- Time: 2026-05-27 18:23 +08:00
+- Agent: Backend Agent
+- Issue: #3
+- Cause: Frontend requested contract-backed ChatView APIs for loading the current session, creating questions, and consuming grounded answer stream events without seeded mock messages/evidence/tokens.
+- Fix status: fixed
+- Fix:
+  - Added OpenAPI paths and schemas for `GET /api/libraries/{libraryId}/chat/session`, `POST /api/libraries/{libraryId}/chat/questions`, and `GET /api/libraries/{libraryId}/chat/questions/{taskId}/events`.
+  - Added `apps/api/routes/frontend_chat.py` as a frontend `/api` adapter backed by the existing library repo, context service, and real QA task output.
+  - Empty chat sessions return `200` with `messages: []` and `evidence: []`.
+  - Question creation validates the request, persists the user turn, returns `202` with a pending assistant placeholder and `streamUrl`, then emits SSE events derived from backend QA output.
+  - The current stream is process-local because the durable Arq task subsystem has no registered chat task type yet; this is documented in the API request note and the frontend should use the returned `streamUrl`.
+- Verification:
+  - `uv run --group test pytest tests/integration/api/test_frontend_chat_routes.py -q`: passed, 8 tests.
+  - `uv run --group test pytest tests/integration/api/test_frontend_chat_routes.py tests/integration/api/test_frontend_libraries_routes.py tests/integration/api/test_frontend_documents_routes.py tests/integration/api/test_frontend_shell_routes.py tests/integration/api/test_frontend_graph_routes.py tests/integration/api/test_frontend_evaluation_routes.py -q`: passed, 57 tests, 1 existing Starlette deprecation warning.
+  - `uv run --group dev ruff check apps/api/routes/frontend_chat.py apps/api/routes/__init__.py tests/integration/api/test_frontend_chat_routes.py`: passed.
+  - `uv run --group dev ruff format --check apps/api/routes/frontend_chat.py apps/api/routes/__init__.py tests/integration/api/test_frontend_chat_routes.py`: passed.
+  - `make typecheck`: passed, 0 errors with 20 existing warnings outside this change.
+  - `uv run python -c "import yaml; yaml.safe_load(open('..\\contracts\\openapi.yaml', encoding='utf-8')); print('openapi yaml parsed')"`: passed.
+  - `make lint`: failed on pre-existing unrelated Ruff issues in `apps/api/_activity_reader.py`, `apps/api/_notification_reader.py`, and `scripts/generate_ui_images.py`.
+
 ## 2026-05-27 17:00 - Evaluation dashboard slow-store timeout fix
 
 - Time: 2026-05-27 17:00 +08:00

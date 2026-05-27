@@ -239,3 +239,45 @@ OpenAPI remains the single source of truth. Entries here are requests only; once
   - Frontend verification reported that valid evaluation dashboard reads timed out when the local eval stores were slow or unavailable, while validation and missing-library errors returned promptly.
   - The frontend `/api` evaluation adapter now bounds eval snapshot and alert reads and runs those reads concurrently. Slow or unavailable eval stores degrade to the already-contracted empty dashboard instead of blocking the request.
   - OpenAPI was unchanged because the response schema and error contract did not change.
+
+## API Request: Chat question lifecycle and grounded answer stream
+
+- Page: Chat workspace, citation popover, evidence panel.
+- Component: `web/src/views/ChatView.vue`, `web/src/stores/chat.ts`, `web/src/components/overlays/CitationPopover.vue`, `web/src/services/api/taskStreamClient.ts`.
+- Endpoint:
+  - `/api/libraries/{libraryId}/chat/session`
+  - `/api/libraries/{libraryId}/chat/questions`
+  - `/api/libraries/{libraryId}/chat/questions/{taskId}/events`
+- Method:
+  - `GET` current session.
+  - `POST` question creation.
+  - `GET` SSE stream.
+- Params:
+  - Current session path param: `libraryId`.
+  - Question creation path param: `libraryId`.
+  - Question creation body: `question`, optional `sessionId`, optional `context`.
+  - `context` may contain selected `evidenceIds` and `entityIds`.
+  - Stream path params: `libraryId`, `taskId`.
+- Required fields:
+  - Current session response: `sessionId`, `title`, `createdAtLabel`, `messages`, `evidence`.
+  - Question creation response: `202` with `taskId`, `streamUrl`, `userMessage`, `assistantMessage`, and optional initial `evidence`.
+  - Message fields: `id`, `role`, `text`, optional `status`, optional `citations`.
+  - Message roles: `user`, `assistant`.
+  - Message statuses: `idle`, `streaming`, `done`, `interrupted`, `unsubstantiated`.
+  - Evidence fields: `id`, `label`, `type`, `title`, `meta`, `score`, `snippet`.
+  - SSE events: `token` with `{ token }`, `citations` with citation IDs, `evidence` with evidence records, `status` with `{ status }`, `done`, and `error` with `{ code, message, request_id, details? }`.
+  - Error contract for missing library, invalid session/library, invalid body, upstream answer failure, and stream task not found.
+- Acceptance criteria:
+  - OpenAPI defines current session, question creation, and SSE event payloads.
+  - Backend exposes a stream URL the frontend can consume without seeded messages, seeded evidence, or seeded answer tokens.
+  - Empty sessions return `200` with empty `messages` and `evidence` arrays.
+  - Question creation returns a pending assistant message immediately so the frontend can render loading/streaming state before the first token.
+  - Frontend can replace `web/src/mocks/chat.ts` with repository/service-backed state.
+- Status: implemented
+- Backend implementation note:
+  - Time: 2026-05-27 18:23 +08:00
+  - Added `/api/libraries/{libraryId}/chat/session`, `/api/libraries/{libraryId}/chat/questions`, and `/api/libraries/{libraryId}/chat/questions/{taskId}/events`.
+  - `GET /chat/session` creates or returns the current backend conversation and maps stored turns/evidence to the frontend fields.
+  - `POST /chat/questions` validates `question`, optional `sessionId`, and optional context IDs; it persists the user turn, returns a pending assistant placeholder, and starts a real QA-backed SSE stream.
+  - Because the durable Arq task queue has no registered chat task type yet, this first chat stream is process-local and returns a frontend `streamUrl` instead of using `/v1/tasks/{taskId}/events`.
+  - Stream events are derived from real QA output; no seeded chat messages, seeded evidence, or seeded answer tokens are returned.
