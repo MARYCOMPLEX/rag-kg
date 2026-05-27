@@ -37,6 +37,11 @@ const { failureCases } = storeToRefs(evaluation)
           </tr>
         </thead>
         <tbody>
+          <tr v-if="!failureCases.length">
+            <td colspan="9" class="empty-cell">
+              No failure cases for the selected dashboard filters.
+            </td>
+          </tr>
           <tr v-for="row in failureCases" :key="row.id">
             <td class="id-cell">{{ row.id }}</td>
             <td>{{ row.dataset }}</td>
@@ -170,6 +175,11 @@ tbody tr:hover {
 
 .metric-cell {
   text-align: right;
+}
+
+.empty-cell {
+  color: var(--color-on-surface-variant);
+  text-align: center;
 }
 
 .metric-cell.danger {

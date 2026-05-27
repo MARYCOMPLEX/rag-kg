@@ -16,7 +16,7 @@ use([CanvasRenderer, BarChart, GridComponent, TooltipComponent])
 const graph = useGraphStore()
 const palette = useCssChartPalette()
 const { goToScreen } = useWorkspaceNavigation()
-const { coOccurring, entityDetail, mentions } = storeToRefs(graph)
+const { coOccurring, detailError, detailState, entityDetail, mentions } = storeToRefs(graph)
 
 const mentionsOption = computed(() => ({
   animation: true,
@@ -44,6 +44,11 @@ async function askInChat() {
   graph.citeNodeInChat()
   await goToScreen('chat')
 }
+
+function retryDetail() {
+  if (graph.selectedEntityId)
+    void graph.loadEntityDetail(graph.selectedEntityId)
+}
 </script>
 
 <template>
@@ -56,7 +61,7 @@ async function askInChat() {
             <AppIcon name="chat" :size="16" />
             Ask in Chat
           </button>
-          <button type="button" aria-label="Close entity detail">
+          <button type="button" aria-label="Close entity detail" @click="graph.closeEntityDetail">
             <AppIcon name="close" :size="18" />
           </button>
         </div>
@@ -71,13 +76,22 @@ async function askInChat() {
       </p>
     </header>
 
-    <nav class="entity-tabs" aria-label="Entity detail tabs">
+    <div v-if="detailState === 'loading'" class="entity-state" role="status">
+      Loading entity details...
+    </div>
+    <div v-else-if="detailState === 'error'" class="entity-state is-error" role="alert">
+      <strong>Unable to load entity.</strong>
+      <span>{{ detailError }}</span>
+      <button type="button" @click="retryDetail">Retry</button>
+    </div>
+
+    <nav v-else class="entity-tabs" aria-label="Entity detail tabs">
       <button class="active" type="button">Overview</button>
       <button type="button">Connections ({{ entityDetail?.connectionCountLabel }})</button>
       <button type="button">Evidence ({{ entityDetail?.evidenceCountLabel }})</button>
     </nav>
 
-    <div class="entity-drawer-body">
+    <div v-if="detailState === 'success'" class="entity-drawer-body">
       <p class="entity-summary">
         {{ entityDetail?.summary }}
       </p>
@@ -122,7 +136,7 @@ async function askInChat() {
       </section>
     </div>
 
-    <footer class="entity-drawer-footer">
+    <footer v-if="detailState === 'success'" class="entity-drawer-footer">
       <button class="view-library-button" type="button">
         View in library
       </button>
@@ -233,6 +247,36 @@ async function askInChat() {
   gap: 4px;
   border-bottom: 1px solid var(--color-outline-variant);
   padding: 8px 16px 0;
+}
+
+.entity-state {
+  display: grid;
+  place-items: center;
+  min-height: 140px;
+  gap: 8px;
+  padding: 16px;
+  color: var(--color-on-surface-variant);
+  font-size: 13px;
+  text-align: center;
+}
+
+.entity-state strong {
+  color: var(--color-error);
+}
+
+.entity-state span {
+  line-height: 20px;
+}
+
+.entity-state button {
+  height: 32px;
+  border: 1px solid var(--color-outline-variant);
+  border-radius: var(--radius-control);
+  background: var(--color-surface-container-lowest);
+  padding: 0 14px;
+  color: var(--color-primary);
+  font-size: 13px;
+  font-weight: 700;
 }
 
 .entity-tabs button {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import AppIcon from '../components/base/AppIcon.vue'
 import EvalKpiCard from '../components/evaluation/EvalKpiCard.vue'
@@ -13,19 +13,52 @@ import { useLibraryStore } from '../stores/library'
 const evaluation = useEvaluationStore()
 const library = useLibraryStore()
 const { goToScreen } = useWorkspaceNavigation()
-const { kpis, usesApiData } = storeToRefs(evaluation)
+const {
+  budgetAlert,
+  error,
+  filters,
+  isEmpty,
+  kpis,
+  librarySettings,
+  selectedDataset,
+  selectedTimeRange,
+  state,
+  summary,
+} = storeToRefs(evaluation)
 const { activeLibrary, libraries, loading: librariesLoading } = storeToRefs(library)
 
 const activeEvaluationLibraryName = computed(() => {
   const selected = libraries.value.find(item => item.id === activeLibrary.value)
   return selected?.name || activeLibrary.value || 'No library selected'
 })
+const dashboardQuery = computed(() => ({
+  dataset: selectedDataset.value || undefined,
+  timeRange: selectedTimeRange.value,
+}))
 
 async function selectEvaluationLibrary(event: Event) {
   const target = event.target as HTMLSelectElement
   library.selectLibrary(target.value)
   await goToScreen('eval')
 }
+
+function selectDataset(event: Event) {
+  const target = event.target as HTMLSelectElement
+  evaluation.setDataset(target.value as typeof selectedDataset.value)
+}
+
+function selectTimeRange(event: Event) {
+  const target = event.target as HTMLSelectElement
+  evaluation.setTimeRange(target.value as typeof selectedTimeRange.value)
+}
+
+function reloadDashboard() {
+  void evaluation.loadDashboard(activeLibrary.value, dashboardQuery.value)
+}
+
+watch([activeLibrary, selectedDataset, selectedTimeRange], ([libraryId]) => {
+  void evaluation.loadDashboard(libraryId, dashboardQuery.value)
+}, { immediate: true })
 
 onMounted(() => {
   void library.loadLibraries()
@@ -38,10 +71,11 @@ onMounted(() => {
       <header class="evaluation-header">
         <div>
           <h1>Evaluation dashboard</h1>
-          <p v-if="usesApiData">
-            Waiting for <strong>/api/libraries/{libraryId}/evaluation/dashboard</strong>
+          <p v-if="summary">
+            {{ summary.datasetSummaryLabel }} / <strong>{{ summary.timeRangeLabel }}</strong>
+            <span v-if="summary.lastRunLabel"> / {{ summary.lastRunLabel }}</span>
           </p>
-          <p v-else>smoke (10) · multihop (32) · review (5) · <strong>last 30 days</strong></p>
+          <p v-else>Loading dashboard filters and metrics...</p>
         </div>
         <div class="evaluation-filters">
           <label class="library-filter">
@@ -59,36 +93,63 @@ onMounted(() => {
             </select>
             <AppIcon name="chevron" :size="14" />
           </label>
-          <button class="filter-button" type="button">
-            <AppIcon name="filter" :size="15" />
-            Filter
-          </button>
+          <label class="library-filter compact">
+            <select :value="selectedDataset" @change="selectDataset">
+              <option value="">All datasets</option>
+              <option v-for="dataset in filters.datasets" :key="dataset.key" :value="dataset.key">
+                {{ dataset.label }} ({{ dataset.count }})
+              </option>
+            </select>
+            <AppIcon name="filter" :size="14" />
+          </label>
+          <label class="library-filter compact">
+            <select :value="selectedTimeRange" @change="selectTimeRange">
+              <option v-for="range in filters.timeRanges" :key="range.key" :value="range.key">
+                {{ range.label }}
+              </option>
+            </select>
+            <AppIcon name="calendar" :size="14" />
+          </label>
         </div>
       </header>
 
-      <div v-if="usesApiData" class="evaluation-empty-state" role="status">
+      <div v-if="state === 'loading'" class="evaluation-empty-state" role="status">
         <AppIcon name="info" :size="18" />
         <div>
-          <h2>No evaluation API contract yet</h2>
-          <p>
-            API mode hides mock KPIs, trend data, failure cases, budget warnings, and model settings until
-            OpenAPI defines the evaluation dashboard response.
-          </p>
+          <h2>Loading evaluation dashboard</h2>
+          <p>Fetching filters, KPI snapshots, trend data, failure cases, and library settings.</p>
         </div>
       </div>
 
-      <div v-else class="budget-banner" role="status">
+      <div v-else-if="state === 'error'" class="evaluation-empty-state is-error" role="alert">
+        <AppIcon name="warning" :size="18" />
+        <div>
+          <h2>Unable to load evaluation dashboard</h2>
+          <p>{{ error }}</p>
+          <button type="button" @click="reloadDashboard">Retry</button>
+        </div>
+      </div>
+
+      <div v-else-if="isEmpty" class="evaluation-empty-state" role="status">
+        <AppIcon name="info" :size="18" />
+        <div>
+          <h2>No evaluation data yet</h2>
+          <p>The backend returned an empty dashboard for this library. Run evaluations to populate KPIs and trends.</p>
+        </div>
+      </div>
+
+      <div v-if="budgetAlert" class="budget-banner" :class="budgetAlert.tone" role="status">
         <span>
-          <AppIcon name="warning" :size="16" />
-          <strong>Budget Exceeded</strong>
-          <span>· LLM limits reached for current billing cycle. Expensive features disabled.</span>
+          <AppIcon :name="budgetAlert.tone === 'danger' || budgetAlert.tone === 'warning' ? 'warning' : 'info'" :size="16" />
+          <strong>{{ budgetAlert.title }}</strong>
+          <span>{{ budgetAlert.detail }}</span>
         </span>
-        <button type="button" aria-label="Dismiss budget warning">
+        <button v-if="budgetAlert.dismissible" type="button" aria-label="Dismiss budget warning">
           <AppIcon name="close" :size="15" />
         </button>
       </div>
 
-      <div v-if="!usesApiData" class="eval-kpi-grid">
+      <div v-if="kpis.length" class="eval-kpi-grid">
         <EvalKpiCard
           v-for="item in kpis"
           :key="item.title"
@@ -101,12 +162,15 @@ onMounted(() => {
         />
       </div>
 
-      <div v-if="!usesApiData" class="evaluation-main-row">
+      <div v-if="state === 'success' && !isEmpty" class="evaluation-main-row">
         <EvalTrendChart />
-        <LibrarySettingsPanel :library-label="activeEvaluationLibraryName" />
+        <LibrarySettingsPanel
+          :library-label="librarySettings?.libraryLabel ?? activeEvaluationLibraryName"
+          :settings="librarySettings"
+        />
       </div>
 
-      <FailureCaseTable v-if="!usesApiData" />
+      <FailureCaseTable v-if="state === 'success' && !isEmpty" />
     </div>
   </section>
 </template>
@@ -184,26 +248,16 @@ onMounted(() => {
   font-size: 13px;
 }
 
+.library-filter.compact select {
+  width: 168px;
+}
+
 .library-filter :deep(.app-icon) {
   position: absolute;
   top: 11px;
   right: 10px;
   color: var(--color-on-surface-variant);
   pointer-events: none;
-}
-
-.filter-button {
-  display: inline-flex;
-  align-items: center;
-  height: 36px;
-  gap: 4px;
-  border: 1px solid var(--color-outline-variant);
-  border-radius: var(--radius-control);
-  background: var(--color-surface-container-lowest);
-  padding: 0 12px;
-  color: var(--color-on-surface);
-  font-size: 13px;
-  box-shadow: var(--shadow-xs);
 }
 
 .budget-banner {
@@ -216,6 +270,19 @@ onMounted(() => {
   background: var(--color-error-container);
   padding: 8px 16px;
   color: var(--color-error);
+}
+
+.budget-banner.info,
+.budget-banner.success {
+  border-color: var(--color-alpha-primary-20);
+  background: var(--color-primary-fixed);
+  color: var(--color-primary);
+}
+
+.budget-banner.warning {
+  border-color: var(--color-warning-750-exact);
+  background: var(--color-warning-50-exact);
+  color: var(--color-on-surface);
 }
 
 .budget-banner span {
@@ -235,7 +302,7 @@ onMounted(() => {
   border: 0;
   border-radius: var(--radius-control);
   background: transparent;
-  color: var(--color-error);
+  color: currentcolor;
 }
 
 .budget-banner button:hover {
@@ -271,6 +338,24 @@ onMounted(() => {
   margin: 4px 0 0;
   font-size: 13px;
   line-height: 20px;
+}
+
+.evaluation-empty-state.is-error :deep(.app-icon),
+.evaluation-empty-state.is-error h2 {
+  color: var(--color-error);
+}
+
+.evaluation-empty-state button {
+  width: fit-content;
+  height: 32px;
+  margin-top: 12px;
+  border: 1px solid var(--color-outline-variant);
+  border-radius: var(--radius-control);
+  background: var(--color-surface-container-lowest);
+  padding: 0 14px;
+  color: var(--color-primary);
+  font-size: 13px;
+  font-weight: 700;
 }
 
 .eval-kpi-grid {

@@ -1,5 +1,6 @@
 export interface ApiRequestOptions extends RequestInit {
   query?: Record<string, string | number | boolean | undefined>
+  timeoutMs?: number
 }
 
 export class ApiError extends Error {
@@ -60,24 +61,37 @@ function buildErrorMessage(response: Response, payload: unknown) {
 }
 
 export async function apiRequest<T>(path: string, options: ApiRequestOptions = {}) {
-  const { query, headers, ...init } = options
+  const { query, headers, timeoutMs = 20000, ...init } = options
   const requestUrl = buildUrl(path, query)
+  const requestHeaders = new Headers(headers)
+  if (!(init.body instanceof FormData) && !requestHeaders.has('Content-Type'))
+    requestHeaders.set('Content-Type', 'application/json')
+
   let response: Response
+  const controller = init.signal ? null : new AbortController()
+  const timeoutId = controller
+    ? window.setTimeout(() => controller.abort(), timeoutMs)
+    : undefined
 
   try {
     response = await fetch(requestUrl, {
       ...init,
-      headers: {
-        'Content-Type': 'application/json',
-        ...headers,
-      },
+      headers: requestHeaders,
+      signal: init.signal ?? controller?.signal,
     })
   }
   catch (reason) {
+    if (reason instanceof DOMException && reason.name === 'AbortError')
+      throw new ApiError(`API request timed out after ${timeoutMs}ms at ${requestUrl.href}.`, 0, reason.message)
+
     if (reason instanceof TypeError)
       throw new ApiError(`Unable to reach API at ${requestUrl.href}.`, 0, reason.message)
 
     throw reason
+  }
+  finally {
+    if (timeoutId !== undefined)
+      window.clearTimeout(timeoutId)
   }
 
   const isJson = response.headers.get('content-type')?.includes('application/json')

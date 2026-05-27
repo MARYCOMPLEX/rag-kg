@@ -16,10 +16,13 @@ const {
   documents,
   listState,
   listError,
+  uploadState,
+  uploadError,
   docSelection,
   selectedDocsLabel,
 } = storeToRefs(docs)
 const openStatusId = ref<string | null>(null)
+const fileInput = ref<HTMLInputElement | null>(null)
 const libraryId = computed(() => String(route.params.libraryId ?? ''))
 type QueueStatusKind = Extract<LibraryDocument['status']['kind'], 'indexing' | 'parsing' | 'failed'>
 
@@ -103,14 +106,34 @@ async function retryIngestion(document: LibraryDocument) {
   }
 }
 
-async function queueUpload() {
+function openFilePicker() {
+  fileInput.value?.click()
+}
+
+async function queueUpload(files: File[]) {
+  if (files.length === 0) {
+    ui.pushToast('warning', 'No PDF selected', 'Choose one or more PDF files before uploading.')
+    return
+  }
+
   try {
-    const feedback = await docs.queueUpload()
+    const feedback = await docs.queueUpload(files)
     ui.pushToast(feedback.tone, feedback.title, feedback.detail, feedback.action)
   }
-  catch {
-    ui.pushToast('danger', 'Upload failed', 'Unable to queue documents for ingestion.', 'Try again')
+  catch (error) {
+    const detail = error instanceof Error ? error.message : 'Unable to queue documents for ingestion.'
+    ui.pushToast('danger', 'Upload failed', detail, 'Try again')
   }
+}
+
+function handleFileInput(event: Event) {
+  const target = event.target as HTMLInputElement
+  void queueUpload(Array.from(target.files ?? []))
+  target.value = ''
+}
+
+function handleFileDrop(event: DragEvent) {
+  void queueUpload(Array.from(event.dataTransfer?.files ?? []))
 }
 
 function renderCount(value: number | null) {
@@ -125,16 +148,32 @@ function renderCount(value: number | null) {
         <h1>Documents</h1>
         <p>{{ summaryLine }}</p>
       </div>
-      <button class="primary-btn" type="button" @click="queueUpload">
+      <button class="primary-btn" type="button" :disabled="uploadState === 'loading'" @click="openFilePicker">
         <AppIcon name="upload" :size="15" />
-        Upload PDFs
+        {{ uploadState === 'loading' ? 'Uploading...' : 'Upload PDFs' }}
       </button>
+      <input
+        ref="fileInput"
+        class="visually-hidden"
+        type="file"
+        multiple
+        accept="application/pdf,.pdf"
+        @change="handleFileInput"
+      >
     </div>
 
-    <button class="drop-zone" type="button" @click="queueUpload">
+    <button
+      class="drop-zone"
+      type="button"
+      :disabled="uploadState === 'loading'"
+      @click="openFilePicker"
+      @dragover.prevent
+      @drop.prevent="handleFileDrop"
+    >
       <AppIcon name="upload" :size="28" />
       <strong>Drag & drop PDFs here, or click to browse</strong>
-      <span>Supports scanned PDFs / Auto OCR with MinerU</span>
+      <span v-if="uploadState === 'error'">{{ uploadError }}</span>
+      <span v-else>Supports scanned PDFs / Auto OCR with MinerU</span>
     </button>
 
     <div v-if="docSelection.length" class="selection-bar">
@@ -176,7 +215,7 @@ function renderCount(value: number | null) {
             <td colspan="6">
               <strong>No documents yet.</strong>
               <span>Upload PDFs to start ingestion for this library.</span>
-              <button type="button" @click="queueUpload">
+              <button type="button" @click="openFilePicker">
                 Upload PDFs
               </button>
             </td>
@@ -270,5 +309,14 @@ function renderCount(value: number | null) {
 
 .queue-status-note {
   color: var(--color-on-surface-variant);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
 }
 </style>

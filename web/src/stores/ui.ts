@@ -6,13 +6,14 @@ import {
   commandActionTemplates,
 } from '../app/staticNavigation'
 import {
-  libraryStats,
-  recentSessions,
-  shellProfile,
   storageStat,
 } from '../mocks/navigation'
 import { useLibraryStore } from './library'
+import { createSearchRepository } from '../services/search/searchRepository'
+import type { ShellMetadata } from '../domain/search/types'
 import type { CommandItem, ScreenId, ToastItem, ToastTone } from '../types/application'
+
+const searchRepository = createSearchRepository()
 
 export const useUiStore = defineStore('ui', () => {
   const library = useLibraryStore()
@@ -27,15 +28,19 @@ export const useUiStore = defineStore('ui', () => {
   const drawerPinned = ref(false)
   const citationPreview = ref<string | null>(null)
   const commandQuery = ref('')
+  const shellMetadata = ref<ShellMetadata | null>(null)
+  const shellState = ref<'idle' | 'loading' | 'success' | 'error'>('idle')
+  const shellError = ref<string | null>(null)
   const toastSeq = ref(1)
   const toasts = ref<ToastItem[]>([])
 
   const currentScreenTitle = computed(() => screens.find(item => item.id === activeScreen.value)?.label ?? 'Chat')
   const mainNavigationItems = computed(() => mainNavigation)
-  const recentSessionItems = computed(() => usesApiData ? [] : recentSessions)
-  const libraryStatItems = computed(() => usesApiData ? [] : libraryStats)
+  const recentSessionItems = computed(() => shellMetadata.value?.recentSessions ?? [])
+  const libraryStatItems = computed(() => shellMetadata.value?.libraryStats ?? [])
   const storageStatItem = computed(() => usesApiData ? null : storageStat)
-  const shellProfileItem = computed(() => usesApiData ? null : shellProfile)
+  const shellProfileItem = computed(() => shellMetadata.value?.profile ?? null)
+  const shellNotifications = computed(() => shellMetadata.value?.notifications ?? null)
   const visibleToasts = computed(() => toasts.value.slice(0, 3))
   const commandItems = computed(() => {
     const query = commandQuery.value.trim().toLowerCase()
@@ -57,6 +62,27 @@ export const useUiStore = defineStore('ui', () => {
     commandOpen.value = false
     if (screen !== 'docs')
       documentDrawerOpen.value = false
+  }
+
+  async function loadShellMetadata(libraryId = library.activeLibrary, force = false) {
+    if (!libraryId)
+      return
+
+    if (!force && shellState.value === 'success')
+      return
+
+    shellState.value = 'loading'
+    shellError.value = null
+
+    try {
+      shellMetadata.value = await searchRepository.getShellMetadata(libraryId)
+      shellState.value = 'success'
+    }
+    catch (reason) {
+      shellMetadata.value = null
+      shellError.value = reason instanceof Error ? reason.message : 'Unable to load shell metadata.'
+      shellState.value = 'error'
+    }
   }
 
   function pushToast(tone: ToastTone, title: string, detail: string, action?: string, timeout = 5000) {
@@ -105,6 +131,8 @@ export const useUiStore = defineStore('ui', () => {
     drawerPinned,
     citationPreview,
     commandQuery,
+    shellState,
+    shellError,
     commandItems,
     currentScreenTitle,
     mainNavigationItems,
@@ -112,8 +140,10 @@ export const useUiStore = defineStore('ui', () => {
     libraryStatItems,
     storageStatItem,
     shellProfileItem,
+    shellNotifications,
     visibleToasts,
     setActiveScreen,
+    loadShellMetadata,
     pushToast,
     openCommand,
     openCreateLibrary,

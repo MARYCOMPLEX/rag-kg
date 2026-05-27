@@ -28,6 +28,32 @@ Use this log during local integration, E2E testing, and contract verification. E
 
 ## Logs
 
+## 2026-05-27 16:27 - Upload search shell graph integrated, evaluation dashboard timeout
+
+- Time: 2026-05-27 16:27 +08:00
+- Agent: Frontend Agent
+- Issue: #2
+- Backend SHA: `3535ca6c978c9a89c65db6be65f75cc1ce6d6b46`
+- Frontend fix:
+  - Wired document upload to `multipart/form-data` with repeated `files` fields and no JSON `Content-Type`.
+  - Added API-backed command search and shell metadata repositories/stores for `CommandPalette` and `SideNav`.
+  - Added API-backed graph workspace/entity repositories and loading/empty/error states.
+  - Added API-backed evaluation dashboard repository, filters, panels, and a 20s frontend request timeout so hanging requests surface as retryable errors.
+- Verification:
+  - `GET /healthz`: passed with `{"status":"ok","version":"0.1.0"}`.
+  - Upload no files: `400 VALIDATION_ERROR`; non-PDF: `415 UNSUPPORTED_MEDIA_TYPE`; missing library: `404 LIBRARY_NOT_FOUND`; PDF while Redis/Arq unavailable: expected `503 UPSTREAM_ERROR`.
+  - Search actions/broad/blank/one-character/invalid-scope and shell metadata/missing-library checks passed.
+  - Graph workspace/filtered/invalid filter/invalid layout/missing library/missing entity checks passed; entity detail success skipped because live graph had no nodes.
+  - Evaluation invalid dataset, invalid time range, and missing library checks passed.
+  - Evaluation valid dashboard requests timed out after 30 seconds with no HTTP status/body.
+  - Playwright via system Chrome at `http://127.0.0.1:5174`: passed document upload feedback, command palette search/empty/navigation, side-nav metadata, graph empty state, and evaluation timeout error state.
+  - `VITE_DATA_SOURCE=api VITE_API_BASE_URL=http://localhost:8000 pnpm typecheck`: passed.
+  - `VITE_DATA_SOURCE=api VITE_API_BASE_URL=http://localhost:8000 pnpm build`: passed.
+- Fix status: verified for upload transport/error handling, search/shell, and graph empty workspace; blocked for valid evaluation dashboard reads.
+- Backend follow-up:
+  - `GET /api/libraries/rag-agent/evaluation/dashboard` and valid filtered variants should return the contracted empty dashboard promptly instead of hanging past 30 seconds.
+  - Redis/Arq remains unavailable locally, so upload `202` success and queued indexing row refresh still need verification in an environment with the queue running.
+
 ## 2026-05-27 13:22 - Review and graph seed content moved behind mock boundary
 
 - Time: 2026-05-27 13:22 +08:00

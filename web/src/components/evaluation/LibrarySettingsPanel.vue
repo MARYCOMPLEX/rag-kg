@@ -1,16 +1,37 @@
 <script setup lang="ts">
+import { computed } from 'vue'
+import type { EvaluationLibrarySettings } from '../../domain/evaluation/types'
 import AppIcon from '../base/AppIcon.vue'
 
-defineProps<{
+const props = defineProps<{
   libraryLabel: string
+  settings?: EvaluationLibrarySettings | null
 }>()
+
+const fallbackSettings = computed<EvaluationLibrarySettings>(() => ({
+  libraryLabel: props.libraryLabel,
+  models: {
+    routerLabel: 'Router: research-balanced',
+    embeddingLabel: 'BAAI/bge-large-en-v1.5 (1024d)',
+    warning: 'Changing the embedding model requires a full index rebuild. Currently disabled due to budget limit.',
+  },
+  budgetLimits: [
+    { key: 'llmIn', label: 'LLM in', value: '8,192' },
+    { key: 'llmOut', label: 'LLM out', value: '2,048' },
+    { key: 'embedTokens', label: 'Embed tkns', value: '16,384' },
+    { key: 'rerankDocs', label: 'Rerank docs', value: '40' },
+    { key: 'maxHops', label: 'Max hops', value: '3' },
+  ],
+  dataActions: { canExport: true, canPurge: true },
+}))
+const resolvedSettings = computed(() => props.settings ?? fallbackSettings.value)
 </script>
 
 <template>
   <aside class="library-settings-panel" aria-label="Library settings">
     <header>
       <h2>Library settings</h2>
-      <p>{{ libraryLabel }} · <i>per-library overrides</i></p>
+      <p>{{ resolvedSettings.libraryLabel }} / <i>per-library overrides</i></p>
     </header>
 
     <div class="settings-body">
@@ -18,19 +39,19 @@ defineProps<{
         <h3>Models</h3>
         <label class="setting-select">
           <select disabled>
-            <option>Router: research-balanced</option>
+            <option>{{ resolvedSettings.models.routerLabel }}</option>
           </select>
           <AppIcon name="chevron" :size="14" />
         </label>
         <label class="setting-select">
           <select disabled>
-            <option>BAAI/bge-large-en-v1.5 (1024d)</option>
+            <option>{{ resolvedSettings.models.embeddingLabel }}</option>
           </select>
           <AppIcon name="chevron" :size="14" />
         </label>
-        <div class="settings-warning">
+        <div v-if="resolvedSettings.models.warning" class="settings-warning">
           <AppIcon name="warning" :size="15" />
-          <p>Changing the embedding model requires a full index rebuild. Currently disabled due to budget limit.</p>
+          <p>{{ resolvedSettings.models.warning }}</p>
         </div>
       </section>
 
@@ -40,37 +61,33 @@ defineProps<{
           <AppIcon name="settings" :size="14" />
         </h3>
         <div class="budget-grid">
-          <label>
-            <span>LLM in</span>
-            <input disabled value="8,192">
-          </label>
-          <label>
-            <span>LLM out</span>
-            <input disabled value="2,048">
-          </label>
-          <label>
-            <span>Embed tkns</span>
-            <input disabled value="16,384">
-          </label>
-          <label>
-            <span>Rerank docs</span>
-            <input disabled value="40">
-          </label>
-          <label class="wide">
-            <span>Max hops</span>
-            <input disabled value="3">
+          <label
+            v-for="(limit, index) in resolvedSettings.budgetLimits"
+            :key="limit.key"
+            :class="{ wide: resolvedSettings.budgetLimits.length % 2 === 1 && index === resolvedSettings.budgetLimits.length - 1 }"
+          >
+            <span>{{ limit.label }}</span>
+            <input disabled :value="limit.value">
           </label>
         </div>
       </section>
 
       <section class="settings-section data-section">
         <h3>Data</h3>
-        <button class="export-library-button" type="button">
+        <button
+          class="export-library-button"
+          type="button"
+          :disabled="resolvedSettings.dataActions?.canExport === false"
+        >
           <AppIcon name="download" :size="15" />
           Export Library...
         </button>
         <div class="purge-area">
-          <button class="purge-library-button" type="button">
+          <button
+            class="purge-library-button"
+            type="button"
+            :disabled="resolvedSettings.dataActions?.canPurge === false"
+          >
             <AppIcon name="trash" :size="15" />
             Purge Library (irreversible)
           </button>
@@ -248,6 +265,11 @@ defineProps<{
 .export-library-button {
   border: 1px solid var(--color-secondary);
   color: var(--color-secondary);
+}
+
+.export-library-button:disabled,
+.purge-library-button:disabled {
+  opacity: .55;
 }
 
 .purge-area {

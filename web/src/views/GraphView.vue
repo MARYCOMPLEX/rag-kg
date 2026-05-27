@@ -1,34 +1,54 @@
 <script setup lang="ts">
+import { computed, watch } from 'vue'
 import { storeToRefs } from 'pinia'
+import { useRoute } from 'vue-router'
 import { useWorkspaceNavigation } from '../app/useWorkspaceNavigation'
 import AppIcon from '../components/base/AppIcon.vue'
 import GraphEntityDrawer from '../components/graph/GraphEntityDrawer.vue'
 import { useGraphStore } from '../stores/graph'
 
+const route = useRoute()
 const graph = useGraphStore()
-const { canvas, entityTypes, usesApiData } = storeToRefs(graph)
+const { canvas, entityTypes, selectedEntityId, workspaceError, workspaceState } = storeToRefs(graph)
 const { goToScreen } = useWorkspaceNavigation()
+const libraryId = computed(() => String(route.params.libraryId ?? ''))
+
+watch(libraryId, (nextLibraryId) => {
+  void graph.loadWorkspace(nextLibraryId, true)
+}, { immediate: true })
 
 async function citeNodeInChat() {
   graph.citeNodeInChat()
   await goToScreen('chat')
 }
+
+function reloadGraph() {
+  void graph.loadWorkspace(libraryId.value, true)
+}
 </script>
 
 <template>
   <section class="kg-workspace">
-    <div v-if="usesApiData" class="kg-pending-state" role="status">
+    <div v-if="workspaceState === 'loading'" class="kg-pending-state" role="status">
       <AppIcon name="graph" :size="28" />
-      <h1>Graph contract pending</h1>
-      <p>
-        API mode hides mock entity filters, static nodes and edges, graph counts, entity details, mention trends,
-        co-occurring entities, and cite-in-chat behavior until
-        <code>/api/libraries/{libraryId}/graph</code> and
-        <code>/api/libraries/{libraryId}/graph/entities/{entityId}</code> are defined.
-      </p>
+      <h1>Loading graph workspace</h1>
+      <p>Fetching graph filters, canvas data, and summary labels from this library.</p>
     </div>
 
-    <aside v-else class="kg-filter-panel" aria-label="Filters">
+    <div v-else-if="workspaceState === 'error'" class="kg-pending-state is-error" role="alert">
+      <AppIcon name="warning" :size="28" />
+      <h1>Unable to load graph</h1>
+      <p>{{ workspaceError }}</p>
+      <button type="button" @click="reloadGraph">Retry</button>
+    </div>
+
+    <div v-else-if="canvas && canvas.nodes.length === 0" class="kg-pending-state" role="status">
+      <AppIcon name="graph" :size="28" />
+      <h1>No graph data yet</h1>
+      <p>{{ canvas.summaryLabel }} / {{ canvas.confidenceLabel }}. Upload and index documents to populate the knowledge graph.</p>
+    </div>
+
+    <aside v-else-if="canvas" class="kg-filter-panel" aria-label="Filters">
       <header>
         <h2>Filters</h2>
         <div>
@@ -42,7 +62,7 @@ async function citeNodeInChat() {
       <div class="kg-filter-body">
         <section>
           <h3>Entity Types</h3>
-          <label v-for="type in entityTypes" :key="type.label" class="kg-filter-row">
+          <label v-for="type in entityTypes" :key="type.key ?? type.label" class="kg-filter-row">
             <span>
               <input :checked="type.checked" type="checkbox">
               <i :class="type.tone" />
@@ -55,9 +75,9 @@ async function citeNodeInChat() {
         <section class="confidence-filter">
           <div>
             <h3>Confidence</h3>
-            <b>&gt;= 0.65</b>
+            <b>{{ canvas.confidenceLabel }}</b>
           </div>
-          <input type="range" min="0" max="1" step="0.05" value="0.65">
+          <input type="range" min="0" max="1" step="0.05" :value="graph.workspace?.filters.minConfidence ?? 0">
         </section>
       </div>
 
@@ -69,7 +89,7 @@ async function citeNodeInChat() {
       </footer>
     </aside>
 
-    <main v-if="!usesApiData" class="kg-canvas-panel" role="application" aria-label="Knowledge graph">
+    <main v-if="canvas && canvas.nodes.length" class="kg-canvas-panel" role="application" aria-label="Knowledge graph">
       <div class="kg-canvas-note top-note">{{ canvas?.topNote }}</div>
       <div class="kg-canvas-note bottom-note">{{ canvas?.bottomNote }}</div>
 
@@ -124,7 +144,7 @@ async function citeNodeInChat() {
           :transform="`translate(${node.x}, ${node.y})`"
           tabindex="0"
           @contextmenu.prevent="graph.openNodeContext"
-          @click="graph.selectNode(node.label)"
+          @click="graph.selectNode(node.id)"
         >
           <circle v-if="node.outerRadius" class="outer" :r="node.outerRadius" />
           <circle :class="{ inner: node.selected }" :r="node.radius" />
@@ -143,7 +163,7 @@ async function citeNodeInChat() {
       </footer>
     </main>
 
-    <GraphEntityDrawer v-if="!usesApiData" />
+    <GraphEntityDrawer v-if="selectedEntityId && canvas?.nodes.length" />
   </section>
 </template>
 
@@ -194,6 +214,22 @@ async function citeNodeInChat() {
 .kg-pending-state code {
   color: var(--color-on-surface);
   font-size: .92em;
+}
+
+.kg-pending-state.is-error :deep(.app-icon),
+.kg-pending-state.is-error h1 {
+  color: var(--color-error);
+}
+
+.kg-pending-state button {
+  height: 34px;
+  border: 1px solid var(--color-outline-variant);
+  border-radius: var(--radius-control);
+  background: var(--color-surface-container-lowest);
+  padding: 0 14px;
+  color: var(--color-primary);
+  font-size: 13px;
+  font-weight: 700;
 }
 
 .kg-filter-panel {

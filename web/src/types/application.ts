@@ -39,16 +39,29 @@ export interface ChatMessage {
 }
 
 export interface CommandItem {
+  id?: string
+  type?: 'document' | 'entity' | 'library' | 'action'
   label: string
   meta: string
   screen: ScreenId
   shortcut?: string
+  target?: CommandSearchTarget
 }
 
 export interface CommandSearchResult extends CommandItem {
-  icon: string
+  id?: string
+  icon?: string
   shortcut?: string
   tone?: string
+}
+
+export interface CommandSearchTarget {
+  libraryId?: string
+  documentId?: string
+  entityId?: string
+  sessionId?: string
+  reviewRunId?: string
+  query?: string
 }
 
 export interface NavEntry {
@@ -60,9 +73,12 @@ export interface NavEntry {
 }
 
 export interface RecentSession {
+  id?: string
   title: string
   time: string
+  screen?: ScreenId
   active?: boolean
+  target?: CommandSearchTarget
 }
 
 export interface LibraryStat {
@@ -160,14 +176,17 @@ export interface EvaluationFailureCase {
 }
 
 export interface GraphEntityType {
+  key?: string
   label: string
-  count: string
+  count: string | number
   checked: boolean
   tone: string
 }
 
 export interface GraphCanvasEdge {
   id: string
+  source?: string
+  target?: string
   x1: number
   y1: number
   x2: number
@@ -178,6 +197,7 @@ export interface GraphCanvasEdge {
 export interface GraphCanvasNode {
   id: string
   label: string
+  type?: string
   tone: string
   x: number
   y: number
@@ -190,6 +210,8 @@ export interface GraphCanvasNode {
 export interface GraphCanvasSnapshot {
   edges: GraphCanvasEdge[]
   nodes: GraphCanvasNode[]
+  layout?: 'static' | 'force' | 'webgl'
+  largeGraph?: boolean
   summaryLabel: string
   legendItems: Array<{
     label: string
@@ -203,6 +225,8 @@ export interface GraphCanvasSnapshot {
 }
 
 export interface GraphEntityDetail {
+  id?: string
+  label?: string
   kind: string
   stableId: string
   summary: string

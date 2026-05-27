@@ -138,7 +138,17 @@ OpenAPI remains the single source of truth. Entries here are requests only; once
   - OpenAPI defines retry and upload request/response schemas.
   - OpenAPI defines `/api/libraries/{libraryId}/documents:upload` as `multipart/form-data` with repeated `files` PDF upload fields, or explicitly rejects this frontend request with an alternate contract before implementation.
   - Frontend can show real mutation feedback and preserve traceable error toasts.
-- Status: requested
+- Status: verified
+- Frontend verification note:
+  - Time: 2026-05-27 16:27 +08:00
+  - Backend SHA tested: `3535ca6c978c9a89c65db6be65f75cc1ce6d6b46`.
+  - Frontend route and components: `/libraries/rag-agent/docs`, `web/src/views/DocumentsView.vue`, `web/src/stores/documents.ts`, `web/src/services/documents/documentRepository.ts`.
+  - Frontend now sends `multipart/form-data` with each selected file appended under repeated field `files`; JSON `Content-Type` is not set for `FormData`.
+  - `POST /api/libraries/rag-agent/documents:upload` with no files: verified `400 VALIDATION_ERROR`.
+  - `POST /api/libraries/rag-agent/documents:upload` with `notes.txt`: verified `415 UNSUPPORTED_MEDIA_TYPE`.
+  - `POST /api/libraries/missing-library/documents:upload` with a PDF: verified `404 LIBRARY_NOT_FOUND`.
+  - `POST /api/libraries/rag-agent/documents:upload` with a PDF while Redis/Arq is unavailable: verified expected `503 UPSTREAM_ERROR` with message `Document upload queue unavailable`; no fake success row is rendered.
+  - Browser smoke at `http://127.0.0.1:5174/libraries/rag-agent/docs`: verified file picker upload feedback, document list refresh attempt, non-PDF error toast, PDF queue-unavailable error toast, and API-mode document list remains backend-backed.
 - Frontend clarification note:
   - Time: 2026-05-27 05:32 +08:00
   - Issue: #2
@@ -320,7 +330,19 @@ OpenAPI remains the single source of truth. Entries here are requests only; once
   - Backend supports empty graphs with `200` and empty `canvas.nodes`/`canvas.edges` arrays.
   - Backend supports large graphs predictably through `canvas.largeGraph`, `canvas.layout`, and a warning/error contract instead of relying on frontend hardcoded thresholds.
   - Frontend can replace `web/src/mocks/graph.ts`, hardcoded SVG nodes/edges/counts in `GraphView.vue`, and hardcoded entity detail values in `GraphEntityDrawer.vue`.
-- Status: requested
+- Status: verified
+- Frontend verification note:
+  - Time: 2026-05-27 16:27 +08:00
+  - Backend SHA tested: `3535ca6c978c9a89c65db6be65f75cc1ce6d6b46`.
+  - Frontend route and components: `/libraries/rag-agent/kg`, `web/src/views/GraphView.vue`, `web/src/components/graph/GraphEntityDrawer.vue`, `web/src/stores/graph.ts`.
+  - `GET /api/libraries/rag-agent/graph`: verified `200` empty workspace with `filters.entityTypes: []`, `canvas.nodes: []`, `canvas.edges: []`, `layout: static`, `largeGraph: false`, and zero/no-confidence summary labels.
+  - Filtered graph query with `entityTypes=method,dataset&minConfidence=0.75&layout=force&limit=100`: verified `200` empty workspace with requested filter/layout values.
+  - Invalid entity type `bad!`: verified `400 VALIDATION_ERROR`.
+  - Invalid layout `circular`: verified `400 VALIDATION_ERROR`.
+  - Missing library: verified `404 LIBRARY_NOT_FOUND`.
+  - Missing entity detail: verified `404 NOT_FOUND`.
+  - Real entity detail success was skipped because the live graph response returned no `canvas.nodes`.
+  - Browser smoke at `http://127.0.0.1:5174/libraries/rag-agent/kg`: verified API-backed empty graph workspace and side-nav shell metadata.
 - Frontend clarification note:
   - Time: 2026-05-27 11:02 +08:00
   - Issue: #2
@@ -378,7 +400,20 @@ OpenAPI remains the single source of truth. Entries here are requests only; once
   - Backend can return `budgetAlert: null` when there is no budget issue.
   - Frontend can remove hardcoded library selector options, budget warning, model labels, budget limit inputs, trend labels, and failure cases from `EvaluationView.vue` and `web/src/mocks/evaluation.ts`.
   - Frontend can replace `web/src/mocks/evaluation.ts` with service-backed state.
-- Status: requested
+- Status: blocked
+- Frontend verification note:
+  - Time: 2026-05-27 16:27 +08:00
+  - Backend SHA tested: `3535ca6c978c9a89c65db6be65f75cc1ce6d6b46`.
+  - Frontend route and components: `/libraries/rag-agent/eval`, `web/src/views/EvaluationView.vue`, `web/src/stores/evaluation.ts`, `web/src/components/evaluation/*`.
+  - Frontend now calls `GET /api/libraries/{libraryId}/evaluation/dashboard`, wires dataset/time-range filters to query params, and renders loading, empty, error, retry, budget alert, KPI, trend, failure-case, and library-settings states from the response.
+  - Valid `GET /api/libraries/rag-agent/evaluation/dashboard`: blocked; curl timed out after 30 seconds with no HTTP status/body.
+  - Valid query `dataset=smoke&timeRange=7d`: blocked; curl timed out after 30 seconds with no HTTP status/body.
+  - Valid explicit date query `dataset=smoke&from=2026-05-01&to=2026-05-27`: blocked; curl timed out after 30 seconds with no HTTP status/body.
+  - Invalid dataset `unknown`: verified `400 VALIDATION_ERROR`.
+  - Invalid time range `14d`: verified `400 VALIDATION_ERROR`.
+  - Missing library: verified `404 LIBRARY_NOT_FOUND`.
+  - Frontend added a 20s API request timeout so the evaluation page reaches a traceable error/retry state instead of spinning indefinitely.
+  - Browser smoke at `http://127.0.0.1:5174/libraries/rag-agent/eval`: verified evaluation loading reaches the error/retry state for the valid-request timeout.
 - Frontend clarification note:
   - Time: 2026-05-27 11:17 +08:00
   - Issue: #2
@@ -435,7 +470,18 @@ OpenAPI remains the single source of truth. Entries here are requests only; once
   - Backend supports empty recent session and library stat arrays without seeded/fake values.
   - Frontend can replace `web/src/mocks/search.ts` and the dynamic `recentSessions`/`libraryStats` exports from `web/src/mocks/navigation.ts`.
   - Frontend-static decision: route/navigation structure remains frontend-owned. `screenNavigation`, `mainNavigation`, TopBar `sectionLabels`, keyboard shortcut labels, command palette footer hints, and icon names should stay static in frontend code because they describe local routes and UI chrome, not backend data.
-- Status: requested
+- Status: verified
+- Frontend verification note:
+  - Time: 2026-05-27 16:27 +08:00
+  - Backend SHA tested: `3535ca6c978c9a89c65db6be65f75cc1ce6d6b46`.
+  - Frontend route and components: `web/src/components/overlays/CommandPalette.vue`, `web/src/components/layout/SideNav.vue`, `web/src/stores/search.ts`, `web/src/stores/ui.ts`.
+  - `GET /api/libraries/rag-agent/search?q=review&scope=actions&limit=10`: verified `200` action result `generate_review`.
+  - Broad search `q=graph&scope=documents,entities,libraries,actions&limit=10`: verified `200` with backend search results.
+  - Blank search and one-character search: verified `200 { results: [] }` empty state.
+  - Invalid scope `unknown`: verified `400 VALIDATION_ERROR`.
+  - `GET /api/libraries/rag-agent/shell/metadata`: verified `200` with backend `recentSessions` and `libraryStats`.
+  - Missing library shell metadata: verified `404 LIBRARY_NOT_FOUND`.
+  - Browser smoke at `http://127.0.0.1:5174`: verified command palette result rendering, empty search state, result navigation to graph, and side-nav metadata rendering.
 - Frontend clarification note:
   - Time: 2026-05-27 11:19 +08:00
   - Issue: #2
