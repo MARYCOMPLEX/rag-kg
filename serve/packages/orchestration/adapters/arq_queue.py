@@ -106,13 +106,26 @@ class ArqTaskQueue:
 
             task_id: TaskId = new_ulid()
             enqueued_at = datetime.now(UTC)
-            handle = await self._store.insert(task_id=task_id, spec=spec, enqueued_at=enqueued_at)
+            try:
+                handle = await self._store.insert(
+                    task_id=task_id,
+                    spec=spec,
+                    enqueued_at=enqueued_at,
+                )
+            except Exception as exc:
+                await logger.aerror(
+                    "task_store_insert_failed",
+                    library_id=library_id,
+                    task_id=task_id,
+                    error=str(exc),
+                )
+                raise QueueFullError(f"Task store unavailable: {exc}") from exc
             try:
                 await self._arq.enqueue_job(
                     _job_name_for(spec.task_type),
-                    library_id,
-                    task_id,
-                    spec.input_payload,
+                    library_id=library_id,
+                    task_id=task_id,
+                    input_payload=spec.input_payload,
                     _job_id=task_id,
                     _queue_name=self._queue_name,
                 )

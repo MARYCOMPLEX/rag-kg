@@ -29,6 +29,7 @@ _TASK_MODULES: tuple[str, ...] = (
     "extract_kg",
     "rebuild_community",
     "run_review",
+    "run_chat",
     "run_reason",
     "run_hypothesize",
     "library_status_check",
@@ -71,6 +72,7 @@ async def startup(ctx: dict[str, object]) -> None:
     """
     from sqlalchemy.ext.asyncio import create_async_engine
 
+    from apps._shared.factories import build_container
     from packages.orchestration.adapters.postgres_task_store import PostgresTaskStore
     from packages.orchestration.adapters.redis_event_bus import RedisTaskEventBus
 
@@ -80,11 +82,26 @@ async def startup(ctx: dict[str, object]) -> None:
 
     redis_client = _connect_redis(settings.redis_url)
     bus = RedisTaskEventBus(redis_client)
+    container = build_container(settings)
 
     ctx["postgres_engine"] = engine
     ctx["task_store"] = store
     ctx["task_events"] = bus
     ctx["redis_client"] = redis_client
+    ctx["settings"] = settings
+    ctx["app_container"] = container
+    ctx["qa_task"] = container.qa_task
+    ctx["review_task"] = container.review_task
+    ctx["reasoning_task"] = container.reasoning_task
+    ctx["hypothesis_task"] = container.hypothesis_task
+    ctx["context_service"] = container.context_service
+    ctx["query_rewriter"] = container.query_rewriter
+    ctx["turn_compactor"] = container.turn_compactor
+    ctx["research_memory"] = container.research_memory
+    ctx["prompt_composer"] = container.prompt_composer
+    ctx["context_budget"] = container.context_budget
+    ctx["retrieval_planner"] = container.planner
+    ctx["llm_client"] = container.llm
     await logger.ainfo("worker_started", redis_url=_safe_url(settings.redis_url))
 
 
@@ -93,6 +110,9 @@ async def shutdown(ctx: dict[str, object]) -> None:
     engine = ctx.get("postgres_engine")
     if engine is not None:
         await engine.dispose()  # type: ignore[union-attr]
+    container = ctx.get("app_container")
+    if container is not None:
+        await container.aclose()  # type: ignore[union-attr]
     redis_client = ctx.get("redis_client")
     if redis_client is not None:
         try:

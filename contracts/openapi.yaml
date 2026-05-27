@@ -59,6 +59,8 @@ paths:
           $ref: "#/components/responses/LibraryAlreadyExistsError"
         "422":
           $ref: "#/components/responses/ValidationError"
+        "503":
+          $ref: "#/components/responses/UpstreamError"
         "500":
           $ref: "#/components/responses/InternalError"
   /api/libraries/{libraryId}/documents:
@@ -249,6 +251,8 @@ paths:
           $ref: "#/components/responses/LibraryNotFoundError"
         "422":
           $ref: "#/components/responses/ValidationError"
+        "503":
+          $ref: "#/components/responses/UpstreamError"
         "500":
           $ref: "#/components/responses/InternalError"
   /api/libraries/{libraryId}/shell/metadata:
@@ -457,6 +461,8 @@ paths:
           $ref: "#/components/responses/NotFoundError"
         "422":
           $ref: "#/components/responses/ValidationError"
+        "503":
+          $ref: "#/components/responses/UpstreamError"
         "500":
           $ref: "#/components/responses/InternalError"
   /api/libraries/{libraryId}/chat/questions/{taskId}/events:
@@ -498,6 +504,8 @@ paths:
           $ref: "#/components/responses/AuthError"
         "404":
           $ref: "#/components/responses/NotFoundError"
+        "503":
+          $ref: "#/components/responses/UpstreamError"
         "500":
           $ref: "#/components/responses/InternalError"
   /api/libraries/{libraryId}/graph:
@@ -780,7 +788,22 @@ components:
                 - done
                 - interrupted
                 - unsubstantiated
+        - $ref: "#/components/schemas/ChatStreamDoneEvent"
         - $ref: "#/components/schemas/ErrorEnvelope"
+    ChatStreamDoneEvent:
+      type: object
+      additionalProperties: false
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum:
+            - idle
+            - streaming
+            - done
+            - interrupted
+            - unsubstantiated
     LibrarySummary:
       type: object
       additionalProperties: false

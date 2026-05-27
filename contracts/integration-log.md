@@ -28,6 +28,29 @@ Use this log during local integration, E2E testing, and contract verification. E
 
 ## Logs
 
+## 2026-05-28 03:30 - Durable chat task correction
+
+- Time: 2026-05-28 03:30 +08:00
+- Agent: Backend Agent
+- Issue: #3
+- Cause: Supervisor rejected the previous frontend chat handoff because it used process-local SSE instead of the durable task/event architecture.
+- Fix status: in-progress
+- Fix:
+  - Removed the process-local chat stream from the final `/api` chat path.
+  - `POST /api/libraries/{libraryId}/chat/questions` now enqueues durable task type `run_chat` through `TaskQueue` and returns the durable frontend `streamUrl`.
+  - `GET /api/libraries/{libraryId}/chat/questions/{taskId}/events` now validates task existence and maps durable `TaskEventBus` events into the frontend SSE contract.
+  - Added worker job `apps/worker/jobs/run_chat.py`, registered it in `apps/worker/main.py`, and fixed Arq enqueue kwargs so keyword-only worker jobs receive `library_id`, `task_id`, and `input_payload`.
+  - Added `503 UPSTREAM_ERROR` OpenAPI responses for chat question creation and stream dependency failures.
+- Verification:
+  - `uv run --group test pytest tests/integration/api/test_frontend_chat_routes.py tests/integration/worker/test_run_chat_job.py -q`: passed, 10 tests, 1 existing Starlette deprecation warning.
+  - `uv run --group test pytest tests/integration/api/test_frontend_documents_routes.py tests/integration/api/test_frontend_chat_routes.py tests/integration/worker/test_run_chat_job.py -q`: passed, 27 tests, 1 existing Starlette deprecation warning.
+  - `uv run --group dev ruff check apps/api/_task_deps.py apps/api/routes/frontend_chat.py apps/api/routes/frontend_documents.py apps/worker/main.py apps/worker/jobs/run_chat.py packages/orchestration/queue.py packages/orchestration/adapters/arq_queue.py tests/integration/api/test_frontend_chat_routes.py tests/integration/worker/test_run_chat_job.py`: passed.
+  - `uv run --group dev ruff format --check apps/api/_task_deps.py apps/api/routes/frontend_chat.py apps/api/routes/frontend_documents.py apps/worker/main.py apps/worker/jobs/run_chat.py packages/orchestration/queue.py packages/orchestration/adapters/arq_queue.py tests/integration/api/test_frontend_chat_routes.py tests/integration/worker/test_run_chat_job.py`: passed.
+  - `make typecheck`: passed, 0 errors with 20 existing warnings outside this change.
+  - `uv run python -c "import yaml; yaml.safe_load(open('..\\contracts\\openapi.yaml', encoding='utf-8')); print('openapi yaml parsed')"`: passed.
+  - `make lint`: failed on pre-existing unrelated Ruff issues in `apps/api/_activity_reader.py`, `apps/api/_notification_reader.py`, and `scripts/generate_ui_images.py`.
+  - Runtime check: local Redis responds and Arq worker starts with `run_run_chat` registered for task type `run_chat`, but live `POST /api/libraries/rag-agent/chat/questions` returns `503 UPSTREAM_ERROR` because the configured Postgres role `rkb` does not exist. Frontend handoff remains blocked until the Postgres task store dependency is fixed.
+
 ## 2026-05-27 18:23 - Frontend chat session and stream API
 
 - Time: 2026-05-27 18:23 +08:00

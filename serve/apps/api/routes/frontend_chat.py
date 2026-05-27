@@ -1,42 +1,40 @@
-"""Frontend `/api` chat adapter.
-
-This route keeps the frontend-facing ChatView contract separate from the
-existing `/v1/libraries/*/conversations` surfaces. The current backend does
-not have a durable chat task type registered with Arq, so question streams are
-process-local SSE streams backed by the real QA task output.
-"""
+"""Frontend `/api` chat adapter backed by durable tasks and task events."""
 
 from __future__ import annotations
 
-import asyncio
 import contextlib
 import uuid
-from collections.abc import AsyncIterator
-from dataclasses import dataclass, field
+from collections.abc import AsyncIterator, Mapping
 from datetime import datetime
-from typing import Literal
+from typing import Literal, cast
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Path, Request, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field
 
 from apps._shared.factories import AppContainer
+from apps.api._task_deps import get_task_event_bus, get_task_queue
 from apps.api.auth import Principal, get_current_principal
 from apps.api.deps import get_container
+from apps.api.middleware.sse_bridge import parse_last_event_id
 from apps.api.sse import SSE_HEADERS, SSE_MEDIA_TYPE, encode_event
 from packages.context.protocols import Conversation, Turn
+from packages.core.api_errors import ErrorCode, ErrorEnvelope
 from packages.core.errors import LibraryNotFoundError
 from packages.orchestration.errors import TaskNotFoundError
-from packages.orchestration.protocols import AnsweredQuery, Citation
+from packages.orchestration.protocols import Citation
+from packages.orchestration.queue import (
+    TaskEvent,
+    TaskEventBus,
+    TaskEventType,
+    TaskQueue,
+    TaskSpec,
+)
 
 router = APIRouter(prefix="/api/libraries/{library_id}/chat", tags=["libraries"])
 
 ChatRole = Literal["user", "assistant"]
 ChatMessageStatus = Literal["idle", "streaming", "done", "interrupted", "unsubstantiated"]
-_TOKEN_CHUNK_SIZE = 48
-_TOKEN_DELAY_S = 0.02
-_STREAM_HEARTBEAT_S = 15.0
-_BACKGROUND_TASKS: set[asyncio.Task[None]] = set()
 
 
 class ChatEvidence(BaseModel):
@@ -52,10 +50,6 @@ class ChatEvidence(BaseModel):
 
 
 def _empty_chat_evidence() -> list[ChatEvidence]:
-    return []
-
-
-def _empty_stream_events() -> list[tuple[str, object]]:
     return []
 
 
@@ -104,25 +98,8 @@ class ChatQuestionResponse(BaseModel):
     evidence: list[ChatEvidence] = Field(default_factory=_empty_chat_evidence)
 
 
-@dataclass(slots=True)
-class _StreamRecord:
-    library_id: str
-    session_id: str
-    task_id: str
-    assistant_message_id: str
-    events: list[tuple[str, object]] = field(default_factory=_empty_stream_events)
-    done: bool = False
-    condition: asyncio.Condition = field(default_factory=asyncio.Condition)
-
-    async def add(self, event: str, payload: object, *, terminal: bool = False) -> None:
-        async with self.condition:
-            self.events.append((event, payload))
-            if terminal:
-                self.done = True
-            self.condition.notify_all()
-
-
-_STREAMS: dict[str, _StreamRecord] = {}
+def _new_id(prefix: str) -> str:
+    return f"{prefix}-{uuid.uuid4().hex[:16]}"
 
 
 async def _ensure_library(container: AppContainer, library_id: str) -> None:
@@ -130,13 +107,9 @@ async def _ensure_library(container: AppContainer, library_id: str) -> None:
         raise LibraryNotFoundError(library_id)
 
 
-@router.get(
-    "/session",
-    response_model=ChatSessionResponse,
-    response_model_by_alias=True,
-)
+@router.get("/session", response_model=ChatSessionResponse, response_model_by_alias=True)
 async def get_current_chat_session(
-    library_id: str,
+    library_id: str = Path(..., description="Library slug"),
     container: AppContainer = Depends(get_container),
     _principal: Principal = Depends(get_current_principal),
 ) -> ChatSessionResponse:
@@ -161,9 +134,10 @@ async def get_current_chat_session(
     status_code=status.HTTP_202_ACCEPTED,
 )
 async def create_chat_question(
-    library_id: str,
     body: ChatQuestionRequest,
+    library_id: str = Path(..., description="Library slug"),
     container: AppContainer = Depends(get_container),
+    queue: TaskQueue = Depends(get_task_queue),
     _principal: Principal = Depends(get_current_principal),
 ) -> ChatQuestionResponse:
     await _ensure_library(container, library_id)
@@ -173,38 +147,39 @@ async def create_chat_question(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="question must not be empty",
         )
-    conversation = await _open_or_create_conversation(container, library_id, body, question)
-    user_turn = await container.context_service.append_user_turn(
-        conversation=conversation,
-        content=question,
-    )
 
-    task_id = _new_id("chat")
-    assistant_message_id = _new_id("assistant")
-    record = _StreamRecord(
-        library_id=library_id,
-        session_id=conversation.conversation_id,
-        task_id=task_id,
-        assistant_message_id=assistant_message_id,
-    )
-    _STREAMS[task_id] = record
-    background = asyncio.create_task(
-        _run_answer_task(
-            container=container,
-            record=record,
-            question=question,
-            conversation=conversation,
+    created_new_session = body.session_id is None
+    conversation = await _open_or_create_conversation(container, library_id, body, question)
+
+    try:
+        handle = await queue.enqueue(
+            library_id,
+            TaskSpec(
+                library_id=library_id,
+                task_type="run_chat",
+                input_payload=_chat_task_payload(
+                    conversation_id=conversation.conversation_id,
+                    question=question,
+                    context=body.context,
+                ),
+            ),
         )
-    )
-    _BACKGROUND_TASKS.add(background)
-    background.add_done_callback(_BACKGROUND_TASKS.discard)
+    except Exception:
+        if created_new_session:
+            with contextlib.suppress(Exception):
+                await container.context_service.delete(library_id, conversation.conversation_id)
+        raise
 
     return ChatQuestionResponse(
-        taskId=task_id,
-        streamUrl=f"/api/libraries/{library_id}/chat/questions/{task_id}/events",
-        userMessage=ChatMessage(id=user_turn.turn_id, role="user", text=question),
+        taskId=handle.task_id,
+        streamUrl=f"/api/libraries/{library_id}/chat/questions/{handle.task_id}/events",
+        userMessage=ChatMessage(
+            id=_new_id("user"),
+            role="user",
+            text=question,
+        ),
         assistantMessage=ChatMessage(
-            id=assistant_message_id,
+            id=_new_id("assistant"),
             role="assistant",
             text="",
             status="streaming",
@@ -216,18 +191,26 @@ async def create_chat_question(
 
 @router.get("/questions/{task_id}/events")
 async def stream_chat_question_events(
-    library_id: str,
-    task_id: str,
     request: Request,
+    library_id: str = Path(..., description="Library slug"),
+    task_id: str = Path(..., description="Task identifier"),
     container: AppContainer = Depends(get_container),
+    queue: TaskQueue = Depends(get_task_queue),
+    bus: TaskEventBus = Depends(get_task_event_bus),
     _principal: Principal = Depends(get_current_principal),
 ) -> StreamingResponse:
     await _ensure_library(container, library_id)
-    record = _STREAMS.get(task_id)
-    if record is None or record.library_id != library_id:
+    state = await queue.get(library_id, task_id)
+    if state is None:
         raise TaskNotFoundError(library_id, task_id)
     return StreamingResponse(
-        _stream_events(request, record),
+        _stream_chat_events(
+            request=request,
+            bus=bus,
+            library_id=library_id,
+            task_id=task_id,
+            since_seq=parse_last_event_id(request),
+        ),
         media_type=SSE_MEDIA_TYPE,
         headers=SSE_HEADERS,
     )
@@ -256,84 +239,118 @@ async def _open_or_create_conversation(
         ) from exc
 
 
-async def _run_answer_task(
+async def _stream_chat_events(
     *,
-    container: AppContainer,
-    record: _StreamRecord,
-    question: str,
-    conversation: Conversation,
-) -> None:
-    try:
-        answered = await container.qa_task.answer(record.library_id, question)
-    except Exception as exc:
-        await record.add(
-            "error",
-            {
-                "code": "UPSTREAM_ERROR",
-                "message": "Chat answer generation failed",
-                "request_id": record.task_id,
-                "details": {"type": type(exc).__name__},
-            },
-            terminal=True,
-        )
-        return
-
-    for chunk in _chunk_text(answered.answer):
-        await record.add("token", {"token": chunk})
-        await asyncio.sleep(_TOKEN_DELAY_S)
-
-    evidence = _evidence_from_answer(answered)
-    if evidence:
-        await record.add("evidence", [item.model_dump() for item in evidence])
-    citation_ids = [item.id for item in evidence]
-    await record.add("citations", citation_ids)
-    final_status: ChatMessageStatus = "done" if citation_ids else "unsubstantiated"
-    await record.add("status", {"status": final_status})
-    try:
-        await container.context_service.append_assistant_turn(
-            conversation=conversation,
-            content=answered.answer,
-            citations=answered.citations,
-            model=answered.model,
-            input_tokens=answered.tokens.input_tokens,
-            output_tokens=answered.tokens.output_tokens,
-        )
-    except Exception as exc:
-        await record.add(
-            "error",
-            {
-                "code": "INTERNAL_ERROR",
-                "message": "Chat answer persistence failed",
-                "request_id": record.task_id,
-                "details": {"type": type(exc).__name__},
-            },
-            terminal=True,
-        )
-        return
-    await record.add("done", {"status": final_status}, terminal=True)
-
-
-async def _stream_events(request: Request, record: _StreamRecord) -> AsyncIterator[bytes]:
-    cursor = 0
-    while True:
+    request: Request,
+    bus: TaskEventBus,
+    library_id: str,
+    task_id: str,
+    since_seq: int | None,
+) -> AsyncIterator[bytes]:
+    citations_seen: list[str] = []
+    async for event in bus.stream(library_id, task_id, since_seq=since_seq):
         if await request.is_disconnected():
             return
-        frame: bytes | None = None
-        async with record.condition:
-            while cursor >= len(record.events) and not record.done:
-                try:
-                    await asyncio.wait_for(record.condition.wait(), timeout=_STREAM_HEARTBEAT_S)
-                except TimeoutError:
-                    break
-            if cursor >= len(record.events):
-                if record.done:
-                    return
-                frame = b": keep-alive\n\n"
-            else:
-                event, payload = record.events[cursor]
-                cursor += 1
-                frame = encode_event(event, payload)
-        yield frame
+        for frame, terminal in _frames_for_task_event(
+            event,
+            citations_seen=citations_seen,
+            task_id=task_id,
+        ):
+            yield frame
+            if terminal:
+                return
+
+
+def _frames_for_task_event(
+    event: TaskEvent,
+    *,
+    citations_seen: list[str],
+    task_id: str,
+) -> list[tuple[bytes, bool]]:
+    if event.type == TaskEventType.TASK_STARTED:
+        return [(_encode_sse("status", {"status": "streaming"}, event.seq), False)]
+    if event.type == TaskEventType.TOKEN:
+        token = _payload_str(event.payload, "token")
+        if token is None:
+            return []
+        return [(_encode_sse("token", {"token": token}, event.seq), False)]
+    if event.type == TaskEventType.STAGE_COMPLETED and event.stage_name == "evidence":
+        evidence = _payload_evidence(event.payload)
+        if not evidence:
+            return []
+        return [(_encode_sse("evidence", evidence, event.seq), False)]
+    if event.type == TaskEventType.CITATION_ADDED:
+        citation_ids = _payload_string_list(event.payload, "citation_ids")
+        if not citation_ids:
+            citation_ids = _payload_string_list(event.payload, "citations")
+        if not citation_ids:
+            return []
+        citations_seen[:] = citation_ids
+        return [(_encode_sse("citations", citation_ids, event.seq), False)]
+    if event.type == TaskEventType.TASK_CANCELLED:
+        frame = _encode_sse("status", {"status": "interrupted"}, event.seq)
+        done = _encode_sse("done", {"status": "interrupted"}, event.seq)
+        return [(frame, False), (done, True)]
+    if event.type == TaskEventType.TASK_FAILED:
+        payload = event.payload
+        envelope = ErrorEnvelope(
+            code=ErrorCode.UPSTREAM_ERROR,
+            message=str(payload.get("message") or "Chat answer generation failed"),
+            request_id=str(payload.get("request_id") or task_id),
+            details={"type": payload.get("error_code") or "TaskFailed"},
+        ).model_dump(mode="json")
+        return [(_encode_sse("error", envelope, event.seq), True)]
+    if event.type == TaskEventType.TASK_COMPLETED:
+        status_value = "done" if citations_seen else "unsubstantiated"
+        status_frame = _encode_sse("status", {"status": status_value}, event.seq)
+        done_frame = _encode_sse("done", {"status": status_value}, event.seq)
+        return [(status_frame, False), (done_frame, True)]
+    return []
+
+
+def _encode_sse(event: str, payload: object, seq: int) -> bytes:
+    return f"id: {seq}\n".encode() + encode_event(event, payload)
+
+
+def _payload_str(payload: dict[str, object], key: str) -> str | None:
+    value = payload.get(key)
+    return value if isinstance(value, str) else None
+
+
+def _payload_string_list(payload: dict[str, object], key: str) -> list[str]:
+    value = payload.get(key)
+    if not isinstance(value, list):
+        return []
+    items: list[object] = cast("list[object]", value)
+    return [item for item in items if isinstance(item, str)]
+
+
+def _payload_evidence(payload: dict[str, object]) -> list[dict[str, object]]:
+    value = payload.get("evidence")
+    if not isinstance(value, list):
+        return []
+    items: list[object] = cast("list[object]", value)
+    evidence: list[dict[str, object]] = []
+    for item in items:
+        if isinstance(item, Mapping):
+            mapped = cast("Mapping[object, object]", item)
+            evidence.append({str(key): item_value for key, item_value in mapped.items()})
+    return evidence
+
+
+def _chat_task_payload(
+    *,
+    conversation_id: str,
+    question: str,
+    context: ChatQuestionContext | None,
+) -> dict[str, object]:
+    payload: dict[str, object] = {
+        "conversation_id": conversation_id,
+        "question": question,
+    }
+    if context is not None:
+        payload["context"] = context.model_dump(mode="json", by_alias=True)
+    return payload
 
 
 def _session_response(conversation: Conversation, turns: tuple[Turn, ...]) -> ChatSessionResponse:
@@ -347,14 +364,19 @@ def _session_response(conversation: Conversation, turns: tuple[Turn, ...]) -> Ch
 
 
 def _message_from_turn(turn: Turn) -> ChatMessage:
-    if turn.role == "user":
-        return ChatMessage(id=turn.turn_id, role="user", text=turn.content)
+    role = turn.role
+    if role == "user":
+        return ChatMessage(
+            id=turn.turn_id,
+            role="user",
+            text=turn.content,
+        )
     citation_ids = [citation.chunk_id for citation in turn.citations]
     return ChatMessage(
         id=turn.turn_id,
         role="assistant",
         text=turn.content,
-        status=("done" if citation_ids else "unsubstantiated"),
+        status="done" if citation_ids else "unsubstantiated",
         citations=citation_ids,
     )
 
@@ -364,48 +386,33 @@ def _evidence_from_turns(turns: tuple[Turn, ...]) -> list[ChatEvidence]:
     evidence: list[ChatEvidence] = []
     for turn in turns:
         for citation in turn.citations:
-            if citation.chunk_id in seen:
+            chunk_id = citation.chunk_id
+            if chunk_id in seen:
                 continue
-            seen.add(citation.chunk_id)
+            seen.add(chunk_id)
             evidence.append(_evidence_from_citation(citation, len(evidence) + 1))
     return evidence
 
 
-def _evidence_from_answer(answered: AnsweredQuery) -> list[ChatEvidence]:
-    return [
-        _evidence_from_citation(citation, index)
-        for index, citation in enumerate(answered.citations, start=1)
-    ]
-
-
 def _evidence_from_citation(citation: Citation, index: int) -> ChatEvidence:
-    page = f"p.{citation.page}" if citation.page is not None else "Page unknown"
+    page = citation.page
+    meta = f"p.{page}" if page is not None else "Page unknown"
     return ChatEvidence(
         id=citation.chunk_id,
         label=f"[{index}]",
         type="chunk",
         title=citation.doc_id,
-        meta=page,
+        meta=meta,
         score="cited",
         snippet=citation.snippet,
     )
 
 
-def _chunk_text(text: str) -> list[str]:
-    if not text:
-        return []
-    return [
-        text[index : index + _TOKEN_CHUNK_SIZE] for index in range(0, len(text), _TOKEN_CHUNK_SIZE)
-    ]
-
-
-def _new_id(prefix: str) -> str:
-    return f"{prefix}-{uuid.uuid4().hex[:16]}"
-
-
 def _title_from_question(question: str) -> str:
-    compact = " ".join(question.split())
-    return compact[:80] if compact else "New chat"
+    text = question.strip()
+    if len(text) <= 48:
+        return text or "New chat"
+    return f"{text[:45].rstrip()}..."
 
 
 def _format_datetime_label(value: datetime) -> str:
@@ -413,12 +420,4 @@ def _format_datetime_label(value: datetime) -> str:
 
 
 async def clear_chat_streams_for_testing() -> None:
-    for task in tuple(_BACKGROUND_TASKS):
-        task.cancel()
-        with contextlib.suppress(asyncio.CancelledError):
-            await task
-    _BACKGROUND_TASKS.clear()
-    _STREAMS.clear()
-
-
-__all__ = ["clear_chat_streams_for_testing", "router"]
+    """Compatibility test hook for older process-local chat tests."""

@@ -19,7 +19,6 @@ from packages.core.errors import LibraryNotFoundError
 from packages.ingestion.extractor import LIMITS
 from packages.ingestion.state import IngestRecord, IngestStateStore
 from packages.orchestration._internal.ulid import new_ulid
-from packages.orchestration.errors import QueueFullError
 from packages.orchestration.queue import TaskSpec
 
 router = APIRouter(prefix="/api/libraries/{library_id}/documents", tags=["documents"])
@@ -274,8 +273,6 @@ async def retry_frontend_document_ingestion(
     try:
         task_bundle = await get_task_bundle(container)
         await task_bundle.queue.enqueue(library_id, spec)
-    except QueueFullError:
-        raise
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -462,8 +459,6 @@ async def _queue_uploaded_documents(
                 dedup_key=f"frontend-upload:{item.file_sha256}",
             )
             await task_bundle.queue.enqueue(library_id, spec)
-    except QueueFullError:
-        raise
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
