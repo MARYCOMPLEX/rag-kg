@@ -21,12 +21,45 @@ const {
 } = storeToRefs(docs)
 const openStatusId = ref<string | null>(null)
 const libraryId = computed(() => String(route.params.libraryId ?? ''))
+type QueueStatusKind = Extract<LibraryDocument['status']['kind'], 'indexing' | 'parsing' | 'failed'>
+
+function isQueueStatusKind(kind: LibraryDocument['status']['kind']): kind is QueueStatusKind {
+  return kind === 'indexing' || kind === 'parsing' || kind === 'failed'
+}
+
 const summaryLine = computed(() => {
   const current = summary.value
   if (!current)
     return 'Loading document library...'
 
   return `${current.documentCountLabel} in ${current.libraryId} / ${current.chunkCountLabel} / ${current.lastSyncLabel}`
+})
+const queueStatusItems = computed(() => {
+  const counts: Record<QueueStatusKind, number> = {
+    indexing: 0,
+    parsing: 0,
+    failed: 0,
+  }
+
+  documents.value.forEach((document) => {
+    if (isQueueStatusKind(document.status.kind))
+      counts[document.status.kind] += 1
+  })
+
+  return [
+    { kind: 'indexing', label: 'indexing', count: counts.indexing },
+    { kind: 'parsing', label: 'parsing', count: counts.parsing },
+    { kind: 'failed', label: 'failed', count: counts.failed },
+  ].filter(item => item.count > 0)
+})
+const queueStatusLabel = computed(() => {
+  if (listState.value === 'loading')
+    return 'Loading queue...'
+
+  if (queueStatusItems.value.length === 0)
+    return 'No active ingestion'
+
+  return null
 })
 
 watch(libraryId, (nextLibraryId) => {
@@ -178,10 +211,14 @@ function renderCount(value: number | null) {
 
     <div class="ingest-queue-bar">
       <span>Queue</span>
-      <b>14 indexing</b>
-      <b>3 parsing</b>
-      <b class="failed">1 failed</b>
-      <span class="daily-cap">Today $0.36 / $5.00 daily cap <i /></span>
+      <b
+        v-for="item in queueStatusItems"
+        :key="item.kind"
+        :class="{ failed: item.kind === 'failed' }"
+      >
+        {{ item.count }} {{ item.label }}
+      </b>
+      <span v-if="queueStatusLabel" class="queue-status-note">{{ queueStatusLabel }}</span>
     </div>
   </section>
 </template>
@@ -229,5 +266,9 @@ function renderCount(value: number | null) {
 
 .document-state-row.is-error span {
   color: var(--color-error);
+}
+
+.queue-status-note {
+  color: var(--color-on-surface-variant);
 }
 </style>

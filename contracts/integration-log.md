@@ -28,6 +28,23 @@ Use this log during local integration, E2E testing, and contract verification. E
 
 ## Logs
 
+## 2026-05-27 10:03 - Document queue footer no longer uses hardcoded counts
+
+- Time: 2026-05-27 10:03 +08:00
+- Agent: Frontend Agent
+- Issue: #2
+- Cause: `DocumentsView` still rendered fixed queue metrics (`14 indexing`, `3 parsing`, `1 failed`, and a fake daily cap) even when the document workspace was loaded from the real API.
+- Fix status: fixed
+- Frontend fix:
+  - Queue footer now derives indexing, parsing, and failed counts from the current `documents` rows returned by the active repository.
+  - Removed the fake daily spend/cap display because no OpenAPI contract currently provides that metadata.
+- Verification:
+  - `VITE_DATA_SOURCE=api VITE_API_BASE_URL=http://localhost:8000 pnpm typecheck`: passed.
+  - `VITE_DATA_SOURCE=api VITE_API_BASE_URL=http://localhost:8000 pnpm build`: passed.
+- Remaining backend follow-up:
+  - Upload remains requested as multipart `POST /api/libraries/{libraryId}/documents:upload`.
+  - Dedicated queue/cost metadata should stay absent from the UI until OpenAPI defines it.
+
 ## 2026-05-27 05:53 - Seeded document read/detail verified in API mode
 
 - Time: 2026-05-27 05:53 +08:00
