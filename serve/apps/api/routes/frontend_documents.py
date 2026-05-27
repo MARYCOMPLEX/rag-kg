@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import hashlib
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path, PurePath
 from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from pydantic import BaseModel, ConfigDict, Field
 
 from apps._shared.factories import AppContainer
@@ -14,6 +16,7 @@ from apps.api._task_deps import get_task_bundle
 from apps.api.auth import Principal, get_current_principal
 from apps.api.deps import get_container
 from packages.core.errors import LibraryNotFoundError
+from packages.ingestion.extractor import LIMITS
 from packages.ingestion.state import IngestRecord, IngestStateStore
 from packages.orchestration._internal.ulid import new_ulid
 from packages.orchestration.errors import QueueFullError
@@ -22,6 +25,19 @@ from packages.orchestration.queue import TaskSpec
 router = APIRouter(prefix="/api/libraries/{library_id}/documents", tags=["documents"])
 
 type FrontendDocumentStatusKind = Literal["ready", "indexing", "parsing", "failed"]
+
+_PDF_MAGIC = b"%PDF-"
+_UPLOAD_CHUNK_SIZE = 1024 * 1024
+_ALLOWED_PDF_MEDIA_TYPES = {"application/pdf", "application/x-pdf"}
+
+
+@dataclass(frozen=True, slots=True)
+class _StagedPdfUpload:
+    file_name: str
+    file_path: Path
+    file_sha256: str
+    doc_id: str
+    size_bytes: int
 
 
 class FrontendDocumentStatus(BaseModel):
@@ -174,6 +190,47 @@ async def get_frontend_document(
 
 
 @router.post(
+    ":upload",
+    response_model=FrontendDocumentMutationFeedback,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+async def upload_frontend_documents(
+    library_id: str,
+    files: list[UploadFile] | None = File(default=None),
+    container: AppContainer = Depends(get_container),
+    _principal: Principal = Depends(get_current_principal),
+) -> FrontendDocumentMutationFeedback:
+    await _ensure_library(container, library_id)
+    if not files:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="At least one PDF file is required in multipart field 'files'",
+        )
+
+    staged: list[_StagedPdfUpload] = []
+    queued = False
+    try:
+        for upload in files:
+            staged.append(await _stage_pdf_upload(container, library_id, upload))
+        _ensure_unique_uploads(staged)
+        _ensure_uploads_are_new(container, library_id, staged)
+        await _queue_uploaded_documents(container, library_id, staged)
+        queued = True
+        _record_pending_uploads(container, library_id, staged)
+    except Exception:
+        if not queued:
+            _cleanup_staged_uploads(staged)
+        raise
+
+    return FrontendDocumentMutationFeedback(
+        tone="info",
+        title="Upload queued",
+        detail=_upload_feedback_detail(staged),
+        action="View documents",
+    )
+
+
+@router.post(
     "/{document_id}:retry",
     response_model=FrontendDocumentMutationFeedback,
     status_code=status.HTTP_202_ACCEPTED,
@@ -259,6 +316,198 @@ def _find_record(
 
 def _state_store(container: AppContainer) -> IngestStateStore:
     return IngestStateStore(Path(container.settings.ingest_state_dir) / "ingest.sqlite")
+
+
+async def _stage_pdf_upload(
+    container: AppContainer,
+    library_id: str,
+    upload: UploadFile,
+) -> _StagedPdfUpload:
+    file_name = _safe_upload_name(upload.filename)
+    if file_name is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Uploaded file must include a file name",
+        )
+    media_type = upload.content_type or ""
+    if media_type and media_type not in _ALLOWED_PDF_MEDIA_TYPES:
+        raise HTTPException(
+            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            detail=f"Unsupported media type for {file_name}: {media_type}",
+        )
+    if PurePath(file_name).suffix.lower() != ".pdf":
+        raise HTTPException(
+            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            detail=f"Only PDF files are supported: {file_name}",
+        )
+
+    upload_root = Path(container.settings.data_dir) / "uploads" / library_id
+    upload_root.mkdir(parents=True, exist_ok=True)
+    temp_path = upload_root / f".upload-{new_ulid()}.tmp"
+    sha256 = hashlib.sha256()
+    total = 0
+    saw_magic = False
+
+    try:
+        with temp_path.open("wb") as dst:
+            while True:
+                chunk = await upload.read(_UPLOAD_CHUNK_SIZE)
+                if not chunk:
+                    break
+                if not saw_magic:
+                    if len(chunk) < len(_PDF_MAGIC) or not chunk.startswith(_PDF_MAGIC):
+                        raise HTTPException(
+                            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+                            detail=f"Only PDF files are supported: {file_name}",
+                        )
+                    saw_magic = True
+                total += len(chunk)
+                if total > LIMITS.max_pdf_size_bytes:
+                    raise HTTPException(
+                        status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                        detail=(
+                            f"Uploaded PDF exceeds max size "
+                            f"{LIMITS.max_pdf_size_bytes} bytes: {file_name}"
+                        ),
+                    )
+                sha256.update(chunk)
+                dst.write(chunk)
+    except Exception:
+        temp_path.unlink(missing_ok=True)
+        raise
+    finally:
+        await upload.close()
+
+    if total == 0:
+        temp_path.unlink(missing_ok=True)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Uploaded file is empty: {file_name}",
+        )
+
+    digest = sha256.hexdigest()
+    doc_id = digest[:12]
+    target_dir = upload_root / digest
+    target_dir.mkdir(parents=True, exist_ok=True)
+    target_path = target_dir / file_name
+    temp_path.replace(target_path)
+    return _StagedPdfUpload(
+        file_name=file_name,
+        file_path=target_path,
+        file_sha256=digest,
+        doc_id=doc_id,
+        size_bytes=total,
+    )
+
+
+def _safe_upload_name(filename: str | None) -> str | None:
+    if not filename:
+        return None
+    safe_name = PurePath(filename).name
+    if not safe_name or safe_name in {".", ".."}:
+        return None
+    return safe_name
+
+
+def _ensure_unique_uploads(staged: list[_StagedPdfUpload]) -> None:
+    seen: set[str] = set()
+    for item in staged:
+        if item.file_sha256 in seen:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Duplicate upload in request: {item.file_name}",
+            )
+        seen.add(item.file_sha256)
+
+
+def _ensure_uploads_are_new(
+    container: AppContainer,
+    library_id: str,
+    staged: list[_StagedPdfUpload],
+) -> None:
+    store = _state_store(container)
+    try:
+        for item in staged:
+            existing = store.get(library_id, item.file_sha256)
+            if existing is None or existing.doc_id is None:
+                continue
+            if existing.status == "pending":
+                detail = f"Document ingestion is already running: {existing.doc_id}"
+            else:
+                detail = f"Document already exists: {existing.doc_id}"
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=detail)
+    finally:
+        store.close()
+
+
+async def _queue_uploaded_documents(
+    container: AppContainer,
+    library_id: str,
+    staged: list[_StagedPdfUpload],
+) -> None:
+    try:
+        task_bundle = await get_task_bundle(container)
+        for item in staged:
+            spec = TaskSpec(
+                library_id=library_id,
+                task_type="ingest_document",
+                input_payload={
+                    "file_path": str(item.file_path),
+                    "doc_id": item.doc_id,
+                    "file_sha256": item.file_sha256,
+                    "file_name": item.file_name,
+                    "parser": "auto",
+                    "force": False,
+                },
+                dedup_key=f"frontend-upload:{item.file_sha256}",
+            )
+            await task_bundle.queue.enqueue(library_id, spec)
+    except QueueFullError:
+        raise
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Document upload queue unavailable",
+        ) from exc
+
+
+def _record_pending_uploads(
+    container: AppContainer,
+    library_id: str,
+    staged: list[_StagedPdfUpload],
+) -> None:
+    store = _state_store(container)
+    now = datetime.now(UTC).isoformat()
+    try:
+        for item in staged:
+            store.put(
+                IngestRecord(
+                    library_id=library_id,
+                    file_sha256=item.file_sha256,
+                    file_name=item.file_name,
+                    doc_id=item.doc_id,
+                    title=PurePath(item.file_name).stem,
+                    status="pending",
+                    chunks_created=0,
+                    chunks_upserted=0,
+                    last_error=None,
+                    created_at=now,
+                    updated_at=now,
+                )
+            )
+    finally:
+        store.close()
+
+
+def _cleanup_staged_uploads(staged: list[_StagedPdfUpload]) -> None:
+    for item in staged:
+        item.file_path.unlink(missing_ok=True)
+
+
+def _upload_feedback_detail(staged: list[_StagedPdfUpload]) -> str:
+    if len(staged) == 1:
+        return f"{staged[0].file_name} queued for ingestion."
+    return f"{len(staged)} documents queued for ingestion."
 
 
 def _summary_from_records(

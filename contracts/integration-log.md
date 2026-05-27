@@ -28,6 +28,26 @@ Use this log during local integration, E2E testing, and contract verification. E
 
 ## Logs
 
+## 2026-05-27 13:16 - Frontend multipart document upload API
+
+- Time: 2026-05-27 13:16 +08:00
+- Agent: Backend Agent
+- Issue: #3
+- Cause: Frontend clarified that `/api/libraries/{libraryId}/documents:upload` should accept `multipart/form-data` with one or more PDF files under repeated field `files`, return frontend mutation feedback, and expose queued rows through the existing document list endpoint.
+- Fix status: fixed
+- Fix:
+  - Added OpenAPI contract for `POST /api/libraries/{libraryId}/documents:upload`.
+  - Added the frontend upload adapter while preserving existing `/v1` ingest behavior.
+  - Accepted repeated multipart `files`, validated PDF file names/media types/magic bytes/size, staged accepted PDFs under backend `data/uploads/{libraryId}/`, enqueued `ingest_document` tasks, and wrote pending ingest-state rows.
+  - Extended the existing error envelope code enum and HTTP mapping for upload-specific `413 PAYLOAD_TOO_LARGE` and `415 UNSUPPORTED_MEDIA_TYPE`.
+- Verification:
+  - `uv run --group test pytest tests\integration\api\test_frontend_documents_routes.py -q`: passed, 17 tests.
+  - `uv run --group test pytest tests\unit\test_api_errors.py tests\integration\test_error_envelope.py -q`: passed, 7 tests, 1 existing Starlette deprecation warning.
+  - `uv run --group dev ruff check apps\api\middleware\error_handler.py apps\api\routes\frontend_documents.py packages\core\api_errors.py tests\integration\api\test_frontend_documents_routes.py`: passed.
+  - `make typecheck`: passed, 0 errors with 20 existing warnings outside this change.
+  - `uv run python -c "import yaml; yaml.safe_load(open('..\\contracts\\openapi.yaml', encoding='utf-8')); print('openapi yaml parsed')"`: passed.
+  - ASGI upload smoke with fake queue: success upload returned `202`; missing file returned `400 VALIDATION_ERROR`; non-PDF returned `415 UNSUPPORTED_MEDIA_TYPE`; missing library returned `404 LIBRARY_NOT_FOUND`; subsequent `GET /api/libraries/smoke-lib/documents` returned uploaded row `paper.pdf` with status `indexing`.
+
 ## 2026-05-27 05:41 - Backend document smoke seed and retry upstream envelope
 
 - Time: 2026-05-27 05:41 +08:00

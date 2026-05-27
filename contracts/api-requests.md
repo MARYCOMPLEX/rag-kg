@@ -118,11 +118,19 @@ OpenAPI remains the single source of truth. Entries here are requests only; once
 - Method: `POST`
 - Params:
   - Path param: `libraryId`.
-  - Upload body is still unclear: frontend needs the contract to specify whether this is multipart file upload, queued picker initialization, direct-to-storage presign, or another transport.
+  - Upload body: `multipart/form-data`.
+  - File field: one or more PDF files under repeated field name `files`.
+  - No JSON request body is required in the first slice.
 - Required fields:
   - Mutation feedback response: `tone`, `title`, `detail`, optional `action`.
-  - Error contract for invalid file, unsupported file type, duplicate upload, ingestion already running, missing library, and server failure.
+  - Error contract for missing files, invalid file, unsupported file type, payload too large, duplicate upload, ingestion already running, missing library, queue unavailable, and server failure.
 - Acceptance criteria:
   - OpenAPI defines upload content type, file field names, response schema, and error responses.
+  - Backend queues accepted PDFs for ingestion and exposes pending/queued rows through `GET /api/libraries/{libraryId}/documents`.
   - Frontend can remove upload mock behavior without guessing transport details.
-- Status: blocked
+- Status: implemented
+- Backend implementation note:
+  - Time: 2026-05-27 13:16 +08:00
+  - Accepted the frontend-requested multipart upload contract.
+  - `POST /api/libraries/{libraryId}/documents:upload` now accepts repeated `files` PDF fields, stages uploaded PDFs under backend `data/uploads/{libraryId}/`, enqueues `ingest_document` tasks, and writes pending ingest-state rows visible in the document list endpoint.
+  - Missing files return `400 VALIDATION_ERROR`; missing library returns `404 LIBRARY_NOT_FOUND`; duplicate or already-pending uploads return `409 CONFLICT`; oversized PDFs return `413 PAYLOAD_TOO_LARGE`; non-PDF uploads return `415 UNSUPPORTED_MEDIA_TYPE`; queue dependency failures return `503 UPSTREAM_ERROR`.

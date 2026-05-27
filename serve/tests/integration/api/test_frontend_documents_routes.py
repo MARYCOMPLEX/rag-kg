@@ -237,6 +237,10 @@ def _seed_record(
         store.close()
 
 
+def _pdf_bytes(label: str = "hello") -> bytes:
+    return f"%PDF-1.7\n1 0 obj\n({label})\nendobj\n%%EOF\n".encode("ascii")
+
+
 @pytest.fixture
 def queue() -> _FakeQueue:
     return _FakeQueue()
@@ -365,6 +369,100 @@ async def test_get_document_missing_document_uses_error_envelope(client: AsyncCl
     body = res.json()
     assert body["code"] == "NOT_FOUND"
     assert body["message"] == "Document not found: missing-doc"
+
+
+async def test_upload_documents_accepts_pdf_files_and_shows_pending_rows(
+    client: AsyncClient,
+    queue: _FakeQueue,
+) -> None:
+    res = await client.post(
+        "/api/libraries/lib-docs/documents:upload",
+        files=[
+            ("files", ("queued-a.pdf", _pdf_bytes("a"), "application/pdf")),
+            ("files", ("queued-b.pdf", _pdf_bytes("b"), "application/pdf")),
+        ],
+    )
+
+    assert res.status_code == 202
+    assert res.json() == {
+        "tone": "info",
+        "title": "Upload queued",
+        "detail": "2 documents queued for ingestion.",
+        "action": "View documents",
+    }
+    assert [spec.task_type for spec in queue.enqueued] == [
+        "ingest_document",
+        "ingest_document",
+    ]
+    assert all("file_path" in spec.input_payload for spec in queue.enqueued)
+    assert all(spec.input_payload["parser"] == "auto" for spec in queue.enqueued)
+
+    list_res = await client.get("/api/libraries/lib-docs/documents")
+    assert list_res.status_code == 200
+    body = list_res.json()
+    documents = {row["source"]: row for row in body["documents"]}
+    assert documents["queued-a.pdf"]["status"]["kind"] == "indexing"
+    assert documents["queued-a.pdf"]["chunks"] is None
+    assert documents["queued-b.pdf"]["status"]["progressText"] == "Queued"
+
+
+async def test_upload_documents_missing_files_uses_validation_envelope(
+    client: AsyncClient,
+) -> None:
+    res = await client.post("/api/libraries/lib-docs/documents:upload")
+
+    assert res.status_code == 400
+    body = res.json()
+    assert body["code"] == "VALIDATION_ERROR"
+    assert body["message"] == "At least one PDF file is required in multipart field 'files'"
+
+
+async def test_upload_documents_rejects_non_pdf_media(
+    client: AsyncClient,
+) -> None:
+    res = await client.post(
+        "/api/libraries/lib-docs/documents:upload",
+        files=[("files", ("notes.txt", b"plain text", "text/plain"))],
+    )
+
+    assert res.status_code == 415
+    body = res.json()
+    assert body["code"] == "UNSUPPORTED_MEDIA_TYPE"
+    assert body["message"] == "Unsupported media type for notes.txt: text/plain"
+
+
+async def test_upload_documents_missing_library_uses_error_envelope(
+    client: AsyncClient,
+) -> None:
+    res = await client.post(
+        "/api/libraries/missing-lib/documents:upload",
+        files=[("files", ("queued.pdf", _pdf_bytes(), "application/pdf"))],
+    )
+
+    assert res.status_code == 404
+    body = res.json()
+    assert body["code"] == "LIBRARY_NOT_FOUND"
+    assert body["details"] == {"library_id": "missing-lib"}
+
+
+async def test_upload_documents_rejects_duplicate_file(
+    client: AsyncClient,
+) -> None:
+    payload = _pdf_bytes("duplicate")
+    first = await client.post(
+        "/api/libraries/lib-docs/documents:upload",
+        files=[("files", ("duplicate.pdf", payload, "application/pdf"))],
+    )
+    second = await client.post(
+        "/api/libraries/lib-docs/documents:upload",
+        files=[("files", ("duplicate.pdf", payload, "application/pdf"))],
+    )
+
+    assert first.status_code == 202
+    assert second.status_code == 409
+    body = second.json()
+    assert body["code"] == "CONFLICT"
+    assert body["message"].startswith("Document ingestion is already running:")
 
 
 async def test_retry_failed_document_returns_frontend_feedback(
