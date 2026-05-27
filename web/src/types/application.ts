@@ -103,6 +103,41 @@ export interface ReviewRunStat {
   accent?: boolean
 }
 
+export interface ReviewDraftCitationMarker {
+  id: string
+  label: string
+  ariaLabel: string
+  warning?: boolean
+}
+
+export interface ReviewDraftTextSegment {
+  text: string
+  citation?: ReviewDraftCitationMarker
+}
+
+export interface ReviewDraftParagraph {
+  id: string
+  segments: ReviewDraftTextSegment[]
+  trailingCaret?: boolean
+}
+
+export interface ReviewDraftSection {
+  id: string
+  heading: string
+  paragraphs: ReviewDraftParagraph[]
+}
+
+export interface ReviewDraftContent {
+  title: string
+  metadata: string[]
+  badge: string
+  runningLabel: string
+  pausedLabel: string
+  modelLabel: string
+  tokenLimit: number
+  sections: ReviewDraftSection[]
+}
+
 export interface EvaluationKpi {
   title: string
   value: string
@@ -129,4 +164,56 @@ export interface GraphEntityType {
   count: string
   checked: boolean
   tone: string
+}
+
+export interface GraphCanvasEdge {
+  id: string
+  x1: number
+  y1: number
+  x2: number
+  y2: number
+  muted?: boolean
+}
+
+export interface GraphCanvasNode {
+  id: string
+  label: string
+  tone: string
+  x: number
+  y: number
+  radius: number
+  selected?: boolean
+  faded?: boolean
+  outerRadius?: number
+}
+
+export interface GraphCanvasSnapshot {
+  edges: GraphCanvasEdge[]
+  nodes: GraphCanvasNode[]
+  summaryLabel: string
+  legendItems: Array<{
+    label: string
+    tone: string
+  }>
+  confidenceLabel: string
+  filterCountLabel: string
+  zoomLabel: string
+  topNote: string
+  bottomNote: string
+}
+
+export interface GraphEntityDetail {
+  kind: string
+  stableId: string
+  summary: string
+  aliases: string[]
+  hiddenAliasCountLabel?: string
+  connectionCountLabel: string
+  evidenceCountLabel: string
+  stats: Array<{
+    label: string
+    value: string
+  }>
+  mentionsStartLabel: string
+  mentionsEndLabel: string
 }

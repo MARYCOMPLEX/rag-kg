@@ -1,6 +1,6 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
-import { reviewCitations, reviewPipelineSteps, reviewRunStats } from '../mocks/review'
+import { reviewCitations, reviewDraftContent, reviewPipelineSteps, reviewRunStats } from '../mocks/review'
 import { useUiStore } from './ui'
 
 export const useReviewStore = defineStore('review', () => {
@@ -17,6 +17,7 @@ export const useReviewStore = defineStore('review', () => {
   const pipelineSteps = computed(() => usesApiData.value ? [] : reviewPipelineSteps)
   const liveCitations = computed(() => usesApiData.value ? [] : reviewCitations)
   const runStats = computed(() => usesApiData.value ? [] : reviewRunStats)
+  const draftContent = computed(() => usesApiData.value ? null : reviewDraftContent)
 
   let taskTimer: number | null = null
   let citationHighlightTimer: number | null = null
@@ -105,6 +106,7 @@ export const useReviewStore = defineStore('review', () => {
     pipelineSteps,
     liveCitations,
     runStats,
+    draftContent,
     startTaskRuntime,
     stopTaskRuntime,
     activateCitation,

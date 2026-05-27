@@ -16,7 +16,7 @@ use([CanvasRenderer, BarChart, GridComponent, TooltipComponent])
 const graph = useGraphStore()
 const palette = useCssChartPalette()
 const { goToScreen } = useWorkspaceNavigation()
-const { coOccurring, mentions } = storeToRefs(graph)
+const { coOccurring, entityDetail, mentions } = storeToRefs(graph)
 
 const mentionsOption = computed(() => ({
   animation: true,
@@ -50,7 +50,7 @@ async function askInChat() {
   <aside class="kg-entity-drawer" aria-label="Entity detail">
     <header class="entity-drawer-head">
       <div class="drawer-title-row">
-        <span class="entity-kind">Concept</span>
+        <span class="entity-kind">{{ entityDetail?.kind }}</span>
         <div class="drawer-head-actions">
           <button type="button" @click="askInChat">
             <AppIcon name="chat" :size="16" />
@@ -66,39 +66,37 @@ async function askInChat() {
         <AppIcon name="star" :size="17" />
       </h2>
       <p>
-        ID: MOCK-ENTITY-001
+        ID: {{ entityDetail?.stableId }}
         <AppIcon name="copy" :size="13" />
       </p>
     </header>
 
     <nav class="entity-tabs" aria-label="Entity detail tabs">
       <button class="active" type="button">Overview</button>
-      <button type="button">Connections (24)</button>
-      <button type="button">Evidence (18)</button>
+      <button type="button">Connections ({{ entityDetail?.connectionCountLabel }})</button>
+      <button type="button">Evidence ({{ entityDetail?.evidenceCountLabel }})</button>
     </nav>
 
     <div class="entity-drawer-body">
       <p class="entity-summary">
-        A methodology for enhancing Retrieval-Augmented Generation (RAG) by incorporating knowledge graphs to improve context retrieval, particularly for complex, multi-hop queries over private datasets.
+        {{ entityDetail?.summary }}
       </p>
 
       <section>
         <h3>Aliases</h3>
         <div class="alias-list">
-          <span>Graph-augmented RAG</span>
-          <span>G-RAG</span>
-          <span>KG-RAG</span>
-          <span class="muted">+2</span>
+          <span v-for="alias in entityDetail?.aliases" :key="alias">{{ alias }}</span>
+          <span v-if="entityDetail?.hiddenAliasCountLabel" class="muted">{{ entityDetail.hiddenAliasCountLabel }}</span>
         </div>
       </section>
 
       <section>
         <h3>Network Statistics</h3>
         <dl class="network-stat-grid">
-          <div><dt>Degree</dt><dd>24</dd></div>
-          <div><dt>Confidence</dt><dd>0.87</dd></div>
-          <div><dt>Incoming</dt><dd>11</dd></div>
-          <div><dt>Mentions</dt><dd>152</dd></div>
+          <div v-for="stat in entityDetail?.stats" :key="stat.label">
+            <dt>{{ stat.label }}</dt>
+            <dd>{{ stat.value }}</dd>
+          </div>
         </dl>
       </section>
 
@@ -106,8 +104,8 @@ async function askInChat() {
         <h3>Mentions Trend</h3>
         <VChart class="mentions-chart" :option="mentionsOption" autoresize />
         <div class="mentions-axis">
-          <span>Jan 2023</span>
-          <span>Dec 2023</span>
+          <span>{{ entityDetail?.mentionsStartLabel }}</span>
+          <span>{{ entityDetail?.mentionsEndLabel }}</span>
         </div>
       </section>
 

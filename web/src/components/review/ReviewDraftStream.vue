@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import type { ReviewDraftContent } from '../../types/application'
 import AppIcon from '../base/AppIcon.vue'
 
 defineProps<{
+  draft: ReviewDraftContent
   running: boolean
   draftTokens: number
 }>()
@@ -14,45 +16,42 @@ const emit = defineEmits<{
 <template>
   <article class="review-draft-panel" aria-label="Review draft stream" aria-live="polite">
     <header class="draft-document-header">
-      <h1>Seeded review draft<br>2024&ndash;2025</h1>
+      <h1>{{ draft.title }}</h1>
       <div class="draft-metadata">
-        <span>Mock Author</span>
-        <span>May 16 2025</span>
-        <span class="draft-badge">Draft</span>
-        <span>14,328 tokens</span>
+        <span class="draft-badge">{{ draft.badge }}</span>
+        <span v-for="item in draft.metadata" :key="item">{{ item }}</span>
       </div>
     </header>
 
     <div class="draft-document-body">
-      <h2>## 1. Pre-trained models</h2>
-      <p>
-        Recent advancements in GraphRAG have heavily leveraged large pre-trained models to align unstructured text with structured knowledge graphs
-        <button class="draft-citation" type="button" aria-label="Open citation 1" @click="emit('citation', '1')">[1]</button>.
-        By embedding both nodes and relationships into high-dimensional vector spaces, systems can perform semantic retrieval over graphs with unprecedented accuracy
-        <button class="draft-citation" type="button" aria-label="Open citation 2" @click="emit('citation', '2')">[2]</button>.
-        Furthermore, fine-tuning techniques applied to domain-specific corpora have shown significant improvements in reducing hallucination rates
-        <button class="draft-citation" type="button" aria-label="Open citation 3" @click="emit('citation', '3')">[3]</button>.
-      </p>
-
-      <h2>## 2. Hierarchical KG</h2>
-      <p>
-        The integration of hierarchical structures within Knowledge Graphs represents a paradigm shift for complex reasoning tasks
-        <button class="draft-citation" type="button" aria-label="Open citation 4" @click="emit('citation', '4')">[4]</button>.
-        Instead of treating all entities uniformly, modern pipelines segment sub-graphs into distinct abstraction layers. This allows the RAG system to traverse from abstract concepts down to specific facts seamlessly
-        <button class="draft-citation" type="button" aria-label="Open citation 5" @click="emit('citation', '5')">[5]</button>.
-        Current methodologies emphasize community detection algorithms to generate these hierarchies dynamically during the ingestion phase, which significantly optimizes context window utilization during synthesis
-        <button class="draft-citation is-warning" type="button" aria-label="Unsubstantiated citation">[?]</button>
-        <span v-if="running" class="draft-caret" aria-hidden="true" />
-      </p>
+      <template v-for="section in draft.sections" :key="section.id">
+        <h2>{{ section.heading }}</h2>
+        <p v-for="paragraph in section.paragraphs" :key="paragraph.id">
+          <template v-for="(segment, index) in paragraph.segments" :key="`${paragraph.id}-${index}`">
+            {{ segment.text }}
+            <button
+              v-if="segment.citation"
+              class="draft-citation"
+              :class="{ 'is-warning': segment.citation.warning }"
+              type="button"
+              :aria-label="segment.citation.ariaLabel"
+              @click="emit('citation', segment.citation.id)"
+            >
+              {{ segment.citation.label }}
+            </button>
+          </template>
+          <span v-if="running && paragraph.trailingCaret" class="draft-caret" aria-hidden="true" />
+        </p>
+      </template>
     </div>
 
     <footer class="draft-stream-status">
       <span class="drafting-state" :class="{ paused: !running }">
         <AppIcon name="pencil" :size="15" />
-        {{ running ? 'Drafting subtopic 2' : 'Generation paused' }}
+        {{ running ? draft.runningLabel : draft.pausedLabel }}
       </span>
-      <span>Haiku 4.5</span>
-      <span>{{ draftTokens }} / 800 tokens</span>
+      <span>{{ draft.modelLabel }}</span>
+      <span>{{ draftTokens }} / {{ draft.tokenLimit }} tokens</span>
     </footer>
   </article>
 </template>
@@ -86,6 +85,7 @@ const emit = defineEmits<{
   font-weight: 600;
   letter-spacing: 0;
   line-height: 40px;
+  white-space: pre-line;
 }
 
 .draft-metadata {

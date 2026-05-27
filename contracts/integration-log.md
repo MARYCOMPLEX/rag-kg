@@ -28,6 +28,25 @@ Use this log during local integration, E2E testing, and contract verification. E
 
 ## Logs
 
+## 2026-05-27 13:22 - Review and graph seed content moved behind mock boundary
+
+- Time: 2026-05-27 13:22 +08:00
+- Agent: Frontend Agent
+- Issue: #2
+- Cause: Review draft prose and graph canvas/entity seed values still lived directly in components and stores, even though API mode already hid those surfaces pending OpenAPI contracts.
+- Fix status: fixed
+- Frontend fix:
+  - Added typed review draft and graph canvas/entity seed structures.
+  - Moved hardcoded review draft text, citation markers, graph SVG nodes/edges, graph counts, and graph entity detail values into `web/src/mocks`.
+  - Kept the existing non-API mock experience while preserving API-mode pending-contract behavior.
+- Verification:
+  - `pnpm typecheck`: passed.
+  - `pnpm build`: passed.
+  - `rg -n "Recent advancements in GraphRAG|MOCK-ENTITY-001|8,491 entities|31,219 triples|Graph-augmented RAG|D\. Edge et al\.|MultiHop-RAG|Leiden algorithm|Community detection|Mock Author|Haiku 4\.5|14,328 tokens" src --glob "!src/mocks/**"`: passed with no matches.
+  - Playwright smoke at `http://127.0.0.1:5176/libraries/rag-agent/review` and `/libraries/rag-agent/kg` in mock mode: passed; review draft and graph/entity details still render through mock-backed store data.
+- Backend follow-up:
+  - No new backend requirement from this cleanup. Existing requested review and graph contracts remain blocked until OpenAPI defines those endpoints.
+
 ## 2026-05-27 12:52 - API mode hides mock graph workspace data
 
 - Time: 2026-05-27 12:52 +08:00

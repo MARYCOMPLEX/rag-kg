@@ -40,6 +40,8 @@ const {
       />
 
       <ReviewDraftStream
+        v-if="review.draftContent"
+        :draft="review.draftContent"
         :running="reviewRunning"
         :draft-tokens="draftTokens"
         @citation="review.activateCitation"

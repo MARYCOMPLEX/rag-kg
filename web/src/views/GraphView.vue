@@ -6,7 +6,7 @@ import GraphEntityDrawer from '../components/graph/GraphEntityDrawer.vue'
 import { useGraphStore } from '../stores/graph'
 
 const graph = useGraphStore()
-const { entityTypes, selectedNode, usesApiData } = storeToRefs(graph)
+const { canvas, entityTypes, usesApiData } = storeToRefs(graph)
 const { goToScreen } = useWorkspaceNavigation()
 
 async function citeNodeInChat() {
@@ -64,14 +64,14 @@ async function citeNodeInChat() {
       <footer>
         <button type="button">
           Apply filters
-          <span>6</span>
+          <span>{{ canvas?.filterCountLabel }}</span>
         </button>
       </footer>
     </aside>
 
     <main v-if="!usesApiData" class="kg-canvas-panel" role="application" aria-label="Knowledge graph">
-      <div class="kg-canvas-note top-note">Large graph layout waits for backend metadata</div>
-      <div class="kg-canvas-note bottom-note">Zoom label behavior waits for backend metadata</div>
+      <div class="kg-canvas-note top-note">{{ canvas?.topNote }}</div>
+      <div class="kg-canvas-note bottom-note">{{ canvas?.bottomNote }}</div>
 
       <div class="kg-toolbar" aria-label="Canvas toolbar">
         <button type="button" title="Fit to view">
@@ -86,7 +86,7 @@ async function citeNodeInChat() {
         <button type="button" title="Cypher Query">
           <AppIcon name="code" :size="18" />
         </button>
-        <span>100%</span>
+        <span>{{ canvas?.zoomLabel }}</span>
       </div>
 
       <div v-if="graph.contextMenuOpen" class="kg-context-menu" :style="{ left: `${graph.contextMenuX - 260}px`, top: `${graph.contextMenuY - 56}px` }">
@@ -105,40 +105,41 @@ async function citeNodeInChat() {
           </marker>
         </defs>
         <g class="kg-edges" marker-end="url(#arrowhead)">
-          <line x1="400" x2="250" y1="300" y2="150" />
-          <line x1="400" x2="600" y1="300" y2="200" />
-          <line x1="400" x2="200" y1="300" y2="400" />
-          <line class="muted" x1="400" x2="550" y1="300" y2="450" />
+          <line
+            v-for="edge in canvas?.edges"
+            :key="edge.id"
+            :class="{ muted: edge.muted }"
+            :x1="edge.x1"
+            :x2="edge.x2"
+            :y1="edge.y1"
+            :y2="edge.y2"
+          />
         </g>
 
-        <g class="kg-node selected" transform="translate(400, 300)" tabindex="0" @contextmenu.prevent="graph.openNodeContext" @click="selectedNode = 'GraphRAG'">
-          <circle class="outer" r="44" />
-          <circle class="inner" r="40" />
-          <text y="5">GraphRAG</text>
-        </g>
-        <g class="kg-node concept" transform="translate(250, 150)" @click="selectedNode = 'Leiden algorithm'">
-          <circle r="25" />
-          <text y="40">Leiden algorithm</text>
-        </g>
-        <g class="kg-node method" transform="translate(600, 200)" @click="selectedNode = 'Community detection'">
-          <circle class="outer" r="34" />
-          <circle r="30" />
-          <text y="45">Community detection</text>
-        </g>
-        <g class="kg-node dataset" transform="translate(200, 400)" @click="selectedNode = 'MultiHop-RAG'">
-          <circle r="25" />
-          <text y="40">MultiHop-RAG</text>
-        </g>
-        <g class="kg-node author faded" transform="translate(550, 450)" @click="selectedNode = 'D. Edge et al.'">
-          <circle r="20" />
-          <text y="35">D. Edge et al.</text>
+        <g
+          v-for="node in canvas?.nodes"
+          :key="node.id"
+          class="kg-node"
+          :class="[node.tone, { selected: node.selected, faded: node.faded }]"
+          :transform="`translate(${node.x}, ${node.y})`"
+          tabindex="0"
+          @contextmenu.prevent="graph.openNodeContext"
+          @click="graph.selectNode(node.label)"
+        >
+          <circle v-if="node.outerRadius" class="outer" :r="node.outerRadius" />
+          <circle :class="{ inner: node.selected }" :r="node.radius" />
+          <text :y="node.selected ? 5 : node.radius + 15">{{ node.label }}</text>
         </g>
       </svg>
 
       <footer class="kg-canvas-footer">
-        <span>8,491 entities | 31,219 triples</span>
-        <span class="kg-legend"><i class="concept" /> Concept <i class="method" /> Method</span>
-        <span>confidence &gt;= 0.65</span>
+        <span>{{ canvas?.summaryLabel }}</span>
+        <span class="kg-legend">
+          <template v-for="item in canvas?.legendItems" :key="item.label">
+            <i :class="item.tone" /> {{ item.label }}
+          </template>
+        </span>
+        <span>{{ canvas?.confidenceLabel }}</span>
       </footer>
     </main>
 

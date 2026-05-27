@@ -283,6 +283,12 @@ OpenAPI remains the single source of truth. Entries here are requests only; once
   - `ReviewView.vue` now shows a pending-contract empty state while `/api/libraries/{libraryId}/reviews/current`, `/api/libraries/{libraryId}/reviews`, regeneration/cancel endpoints, and stream events remain uncontracted.
   - `useReviewStore` now keeps review mutations inert in API mode and reports a traceable pending-contract toast instead of simulating regenerate/background/cancel behavior.
   - Mock review data remains available only outside API mode until OpenAPI defines the review lifecycle contract.
+- Frontend cleanup note:
+  - Time: 2026-05-27 13:22 +08:00
+  - Issue: #2
+  - Moved the remaining seeded review draft prose, metadata, and inline citation markers from `ReviewDraftStream.vue` into typed mock data in `web/src/mocks/review.ts`.
+  - `ReviewDraftStream.vue` now renders provided draft content from the store, so future API integration can replace the mock draft without editing the component body.
+  - API mode behavior is unchanged: the review page still shows the pending-contract empty state until OpenAPI defines the review lifecycle contract.
 
 ## API Request: Knowledge graph workspace and entity detail
 
@@ -328,6 +334,12 @@ OpenAPI remains the single source of truth. Entries here are requests only; once
   - `GraphView.vue` now shows a pending-contract empty state while `/api/libraries/{libraryId}/graph` and `/api/libraries/{libraryId}/graph/entities/{entityId}` remain uncontracted.
   - `useGraphStore` now keeps graph mocks and cite-in-chat mutation behavior behind non-API mode.
   - Mock graph data remains available only outside API mode until OpenAPI defines the graph workspace and entity detail contracts.
+- Frontend cleanup note:
+  - Time: 2026-05-27 13:22 +08:00
+  - Issue: #2
+  - Moved the remaining seeded graph SVG nodes, edges, counts, filter badge, canvas notes, entity stable ID, aliases, detail summary, and stats from `GraphView.vue`, `GraphEntityDrawer.vue`, and `useGraphStore` into typed mock data in `web/src/mocks/graph.ts`.
+  - `GraphView.vue` and `GraphEntityDrawer.vue` now render graph seed content through the store, so future API integration can replace the mock graph workspace/detail payloads without editing static component text.
+  - API mode behavior is unchanged: graph still shows the pending-contract empty state until OpenAPI defines the graph workspace and entity detail contracts.
 
 ## API Request: Evaluation dashboard data
 
