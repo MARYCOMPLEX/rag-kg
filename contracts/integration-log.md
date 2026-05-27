@@ -28,6 +28,24 @@ Use this log during local integration, E2E testing, and contract verification. E
 
 ## Logs
 
+## 2026-05-27 10:32 - Chat API request clarified
+
+- Time: 2026-05-27 10:32 +08:00
+- Agent: Frontend Agent
+- Issue: #2
+- Cause: `ChatView` and `chat.ts` still depend on seeded messages, evidence records, and timer-generated answer tokens from `web/src/mocks/chat.ts`; the existing API request did not give backend an exact session/question/stream contract to implement.
+- Fix status: open
+- Contract request:
+  - Requested current session endpoint: `GET /api/libraries/{libraryId}/chat/session`.
+  - Requested question creation endpoint: `POST /api/libraries/{libraryId}/chat/questions`.
+  - Requested question body: `question`, optional `sessionId`, optional `context` with selected `evidenceIds` and `entityIds`.
+  - Requested success response: `202 { taskId, streamUrl, userMessage, assistantMessage, evidence? }`.
+  - Requested stream behavior: SSE token, citations, evidence, status, done, and error events.
+- Verification:
+  - `pnpm typecheck`: passed.
+- Backend follow-up:
+  - Update OpenAPI for the chat session/question/SSE contract or reject with a concrete alternate before frontend removes `web/src/mocks/chat.ts` from the chat store.
+
 ## 2026-05-27 10:03 - Document queue footer no longer uses hardcoded counts
 
 - Time: 2026-05-27 10:03 +08:00

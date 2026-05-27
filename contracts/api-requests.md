@@ -169,24 +169,47 @@ OpenAPI remains the single source of truth. Entries here are requests only; once
 - Page: Chat workspace, citation popover, evidence panel.
 - Component: `web/src/views/ChatView.vue`, `web/src/stores/chat.ts`, `web/src/components/overlays/CitationPopover.vue`, `web/src/services/api/taskStreamClient.ts`.
 - Endpoint:
-  - Chat question creation endpoint is missing from OpenAPI.
-  - Existing frontend stream helper points to `/v1/tasks/{taskId}/events`.
+  - Requested current session endpoint: `/api/libraries/{libraryId}/chat/session`
+  - Requested question creation endpoint: `/api/libraries/{libraryId}/chat/questions`
+  - Existing frontend stream helper points to `/v1/tasks/{taskId}/events`; backend can either contract that path or provide a replacement `streamUrl` returned by the question creation endpoint.
 - Method:
-  - Question creation method is unclear.
+  - `GET` current session.
+  - `POST` question creation.
   - Existing stream helper uses `GET` SSE for `/v1/tasks/{taskId}/events`.
 - Params:
-  - Question creation must identify library/session context and prompt text.
+  - Current session path param: `libraryId`.
+  - Question creation path param: `libraryId`.
+  - Question creation body requested by frontend: `question`, optional `sessionId`, optional `context`.
+  - `context` may contain selected `evidenceIds` and `entityIds` when the user cites graph/evidence context from another screen.
   - Stream path param: `taskId`.
 - Required fields:
+  - Current session response: `sessionId`, `title`, `createdAtLabel`, `messages`, `evidence`.
+  - Question creation success response requested by frontend: `202` with `taskId`, `streamUrl`, `userMessage`, `assistantMessage`, and optional initial `evidence`.
   - Message fields required by UI: `id`, `role`, `text`, optional `status`, optional `citations`.
+  - Message `role` values required by UI: `user`, `assistant`.
+  - Message `status` values required by UI: `idle`, `streaming`, `done`, `interrupted`, `unsubstantiated`.
   - Evidence fields required by UI: `id`, `label`, `type`, `title`, `meta`, `score`, `snippet`.
-  - SSE event contract for token delivery, citation IDs, terminal status, interruption, unsubstantiated answer, and errors.
-  - Error contract for budget exceeded, no evidence, invalid session/library, stream interruption, and server failure.
+  - SSE events required by UI:
+    - `token`: plain text token or JSON `{ token }`.
+    - `citations`: JSON array of citation IDs matching `evidence[].id`.
+    - `evidence`: JSON array of evidence records if evidence arrives after question creation.
+    - `status`: JSON `{ status }` using the message status values above.
+    - `done`: terminal event after final text/citations are available.
+    - `error`: backend error envelope or JSON `{ code, message, request_id }`.
+  - Error contract for budget exceeded, no evidence, invalid session/library, stream interruption, task not found, unauthorized access, and server failure.
 - Acceptance criteria:
-  - OpenAPI defines the chat request endpoint and SSE event payloads.
-  - Backend exposes a task/event stream that the frontend can consume without seeded answer tokens.
+  - OpenAPI defines current session, question creation, and SSE event payloads.
+  - Backend exposes a task/event stream that the frontend can consume without seeded messages, evidence, or answer tokens.
+  - Empty sessions return `200` with an empty `messages` array and an empty `evidence` array.
+  - Question creation returns a pending assistant message immediately so the frontend can render loading/streaming state before the first token.
   - Frontend can replace `web/src/mocks/chat.ts` with repository/service-backed state.
 - Status: requested
+- Frontend clarification note:
+  - Time: 2026-05-27 10:32 +08:00
+  - Issue: #2
+  - Current frontend behavior: `web/src/stores/chat.ts` seeds `messages`, `evidence`, and `groundedAnswerTokens` from `web/src/mocks/chat.ts`, then simulates streaming with `window.setInterval`.
+  - Requested backend contract: provide a current session loader plus a question creation endpoint that returns a stream task and message placeholders; define the SSE event payloads before frontend removes mock answer tokens.
+  - Frontend follow-up after OpenAPI update: add a chat repository, load session state through the store, connect `sendQuestion()` to the real creation endpoint, and replace timer-based token generation with `taskStreamClient`.
 
 ## API Request: Review generation run lifecycle
 
