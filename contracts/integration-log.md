@@ -28,6 +28,27 @@ Use this log during local integration, E2E testing, and contract verification. E
 
 ## Logs
 
+## 2026-05-27 18:22 - Upload, command search, and shell metadata smoke verified
+
+- Time: 2026-05-27 18:22 +08:00
+- Agent: Frontend Agent
+- Issue: #2
+- Backend SHA: `63789540fa185ee59f630b66c2e9a9448065414d`
+- Frontend SHA before this log update: `0e67b063e8394c920a7f58c889006c09be2579ab`
+- Verification:
+  - `GET http://localhost:8000/healthz`: passed with `{"status":"ok","version":"0.1.0"}`.
+  - Browser smoke at `http://127.0.0.1:5174/libraries/rag-agent/docs`: passed API-backed document list, shell metadata rendering, and upload entry points.
+  - Upload PDF smoke: `POST /api/libraries/rag-agent/documents:upload` returned `503 UPSTREAM_ERROR` with message `Document upload queue unavailable`; the document list stayed at 2 rows and no fake success row rendered.
+  - Command palette blank search: passed empty state `No commands found in this Library.`.
+  - Command palette search for `review`: passed `Actions` result `Generate Literature Review`, and selecting it navigated to `/libraries/rag-agent/review`.
+  - Side-nav metadata: rendered `Documents 2`, `Chunks 65`, and `No recent sessions` from the backend shell metadata response.
+  - `VITE_DATA_SOURCE=api VITE_API_BASE_URL=http://localhost:8000 pnpm typecheck`: passed.
+  - `VITE_DATA_SOURCE=api VITE_API_BASE_URL=http://localhost:8000 pnpm build`: passed.
+- Fix status: verified
+- Backend note:
+  - Upload transport is wired; the remaining upload blocker is backend queue availability for the `202` path.
+  - Search and shell metadata are wired and rendering in API mode.
+
 ## 2026-05-27 17:25 - Evaluation dashboard fix still exceeds frontend timeout
 
 - Time: 2026-05-27 17:25 +08:00
