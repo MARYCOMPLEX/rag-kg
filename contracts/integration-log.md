@@ -28,6 +28,28 @@ Use this log during local integration, E2E testing, and contract verification. E
 
 ## Logs
 
+## 2026-05-27 18:58 - Evaluation dashboard API-mode retest verified
+
+- Time: 2026-05-27 18:58 +08:00
+- Agent: Frontend Agent
+- Issue: #2
+- Backend SHA: `63789540fa185ee59f630b66c2e9a9448065414d`
+- Frontend SHA before this log update: `bebc9c0fb20bc7a67dff8dc0b214e93ceec0e5bc`
+- Verification:
+  - Restarted the local backend listener because the existing Uvicorn process on port `8000` was started before the latest backend checkout; retest after restart reflects backend SHA `63789540fa185ee59f630b66c2e9a9448065414d`.
+  - `GET http://localhost:8000/healthz`: passed with `{"status":"ok","version":"0.1.0"}`.
+  - `GET /api/libraries/rag-agent/evaluation/dashboard`: passed with `200` in `1207ms`, returning the contracted empty dashboard with `budgetAlert: null`, empty KPI/trend/failure arrays, and populated `librarySettings`.
+  - `GET /api/libraries/rag-agent/evaluation/dashboard?dataset=smoke&timeRange=7d`: passed with `200` in `1059ms` and `timeRangeLabel: Last 7 days`.
+  - `GET /api/libraries/rag-agent/evaluation/dashboard?dataset=smoke&from=2026-05-01&to=2026-05-27`: passed with `200` in `1066ms` and the explicit date label.
+  - Invalid dataset `unknown`: passed with `400 VALIDATION_ERROR`.
+  - Invalid time range `14d`: passed with `400 VALIDATION_ERROR`.
+  - Missing library: passed with `404 LIBRARY_NOT_FOUND`.
+  - Playwright via system Chrome at `http://127.0.0.1:5174/libraries/rag-agent/eval`: passed empty dashboard rendering without timeout, no mock KPI/budget/trend/failure content, backend `librarySettings` rendering, browser-context filtered fetch, and traceable error/retry rendering.
+- Fix status: verified
+- Backend note:
+  - The evaluation dashboard blocker is cleared in a restarted backend process at the requested SHA.
+  - Empty dashboard responses expose no dataset/time-range filter options, so select-control filter changes are not available until backend returns filter choices; the filtered API requests themselves no longer hang.
+
 ## 2026-05-27 18:22 - Upload, command search, and shell metadata smoke verified
 
 - Time: 2026-05-27 18:22 +08:00

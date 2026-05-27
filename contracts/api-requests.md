@@ -400,7 +400,21 @@ OpenAPI remains the single source of truth. Entries here are requests only; once
   - Backend can return `budgetAlert: null` when there is no budget issue.
   - Frontend can remove hardcoded library selector options, budget warning, model labels, budget limit inputs, trend labels, and failure cases from `EvaluationView.vue` and `web/src/mocks/evaluation.ts`.
   - Frontend can replace `web/src/mocks/evaluation.ts` with service-backed state.
-- Status: blocked
+- Status: verified
+- Frontend verification note:
+  - Time: 2026-05-27 18:58 +08:00
+  - Backend SHA tested: `63789540fa185ee59f630b66c2e9a9448065414d`.
+  - Frontend SHA tested before log update: `bebc9c0fb20bc7a67dff8dc0b214e93ceec0e5bc`.
+  - Restarted the local Uvicorn process because the listener on port `8000` predated the backend checkout; after restart, `GET /healthz` returned `200`.
+  - Valid `GET /api/libraries/rag-agent/evaluation/dashboard`: verified `200` contracted empty dashboard in `1207ms`.
+  - Valid query `dataset=smoke&timeRange=7d`: verified `200` contracted empty dashboard in `1059ms`.
+  - Valid explicit date query `dataset=smoke&from=2026-05-01&to=2026-05-27`: verified `200` contracted empty dashboard in `1066ms`.
+  - Invalid dataset `unknown`: verified `400 VALIDATION_ERROR`.
+  - Invalid time range `14d`: verified `400 VALIDATION_ERROR`.
+  - Missing library: verified `404 LIBRARY_NOT_FOUND`.
+  - Browser smoke at `http://127.0.0.1:5174/libraries/rag-agent/eval` with API mode verified the empty dashboard loads without timeout, backend `librarySettings` renders, and no mock KPI grid, budget banner, trend, failure-case, `Budget Exceeded`, or `Mock evaluation run` content is rendered.
+  - Browser-context filtered fetch for `dataset=smoke&timeRange=7d` returned `200` and `Last 7 days` without hanging; the backend empty dashboard exposes no dataset/time-range filter options for a select-control change in this state.
+  - Synthetic API error routing verified `EvaluationView` error and retry UI still renders a traceable backend-style error envelope.
 - Frontend verification note:
   - Time: 2026-05-27 17:25 +08:00
   - Backend SHA tested: `c6ab292e2d5c71ecabbf96e7b83338e3c061feb2`.
