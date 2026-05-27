@@ -14,9 +14,9 @@ const emit = defineEmits<{
 <template>
   <article class="review-draft-panel" aria-label="Review draft stream" aria-live="polite">
     <header class="draft-document-header">
-      <h1>GraphRAG advances<br>2024&ndash;2025</h1>
+      <h1>Seeded review draft<br>2024&ndash;2025</h1>
       <div class="draft-metadata">
-        <span>Yue Lin</span>
+        <span>Mock Author</span>
         <span>May 16 2025</span>
         <span class="draft-badge">Draft</span>
         <span>14,328 tokens</span>

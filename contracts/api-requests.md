@@ -321,6 +321,13 @@ OpenAPI remains the single source of truth. Entries here are requests only; once
   - Current frontend behavior: `web/src/stores/graph.ts` imports entity type filters, mention trend points, and co-occurring entities from `web/src/mocks/graph.ts`; `GraphView.vue` hardcodes SVG nodes, edges, total entity/triple counts, confidence labels, and graph performance notes; `GraphEntityDrawer.vue` hardcodes entity kind, stable ID, aliases, summary, network stats, tab counts, and mention trend date labels.
   - Requested backend contract: provide a graph workspace endpoint for filters/canvas/summary and an entity detail endpoint for the drawer before frontend removes the graph mock and hardcoded graph values.
   - Frontend follow-up after OpenAPI update: add graph domain types and a graph repository, load workspace state through `useGraphStore`, render contracted nodes/edges instead of static SVG groups, load drawer details by selected entity ID, and add loading/empty/error/retry states for workspace and drawer.
+- Frontend cleanup note:
+  - Time: 2026-05-27 12:52 +08:00
+  - Issue: #2
+  - API mode no longer renders mock entity filters, static SVG graph nodes/edges/counts, hardcoded graph notes, fake entity detail fields, mention trend, co-occurring entities, or cite-in-chat behavior.
+  - `GraphView.vue` now shows a pending-contract empty state while `/api/libraries/{libraryId}/graph` and `/api/libraries/{libraryId}/graph/entities/{entityId}` remain uncontracted.
+  - `useGraphStore` now keeps graph mocks and cite-in-chat mutation behavior behind non-API mode.
+  - Mock graph data remains available only outside API mode until OpenAPI defines the graph workspace and entity detail contracts.
 
 ## API Request: Evaluation dashboard data
 

@@ -66,7 +66,7 @@ async function askInChat() {
         <AppIcon name="star" :size="17" />
       </h2>
       <p>
-        ID: C-000123
+        ID: MOCK-ENTITY-001
         <AppIcon name="copy" :size="13" />
       </p>
     </header>
@@ -85,7 +85,7 @@ async function askInChat() {
       <section>
         <h3>Aliases</h3>
         <div class="alias-list">
-          <span>Graph RAG</span>
+          <span>Graph-augmented RAG</span>
           <span>G-RAG</span>
           <span>KG-RAG</span>
           <span class="muted">+2</span>

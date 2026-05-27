@@ -6,7 +6,7 @@ import GraphEntityDrawer from '../components/graph/GraphEntityDrawer.vue'
 import { useGraphStore } from '../stores/graph'
 
 const graph = useGraphStore()
-const { entityTypes, selectedNode } = storeToRefs(graph)
+const { entityTypes, selectedNode, usesApiData } = storeToRefs(graph)
 const { goToScreen } = useWorkspaceNavigation()
 
 async function citeNodeInChat() {
@@ -17,7 +17,18 @@ async function citeNodeInChat() {
 
 <template>
   <section class="kg-workspace">
-    <aside class="kg-filter-panel" aria-label="Filters">
+    <div v-if="usesApiData" class="kg-pending-state" role="status">
+      <AppIcon name="graph" :size="28" />
+      <h1>Graph contract pending</h1>
+      <p>
+        API mode hides mock entity filters, static nodes and edges, graph counts, entity details, mention trends,
+        co-occurring entities, and cite-in-chat behavior until
+        <code>/api/libraries/{libraryId}/graph</code> and
+        <code>/api/libraries/{libraryId}/graph/entities/{entityId}</code> are defined.
+      </p>
+    </div>
+
+    <aside v-else class="kg-filter-panel" aria-label="Filters">
       <header>
         <h2>Filters</h2>
         <div>
@@ -58,9 +69,9 @@ async function citeNodeInChat() {
       </footer>
     </aside>
 
-    <main class="kg-canvas-panel" role="application" aria-label="Knowledge graph">
-      <div class="kg-canvas-note top-note">Spec: Switch to WebGL when nodes &gt; 3000</div>
-      <div class="kg-canvas-note bottom-note">Spec: Zoom &lt; 0.5 hides labels to declutter</div>
+    <main v-if="!usesApiData" class="kg-canvas-panel" role="application" aria-label="Knowledge graph">
+      <div class="kg-canvas-note top-note">Large graph layout waits for backend metadata</div>
+      <div class="kg-canvas-note bottom-note">Zoom label behavior waits for backend metadata</div>
 
       <div class="kg-toolbar" aria-label="Canvas toolbar">
         <button type="button" title="Fit to view">
@@ -131,7 +142,7 @@ async function citeNodeInChat() {
       </footer>
     </main>
 
-    <GraphEntityDrawer />
+    <GraphEntityDrawer v-if="!usesApiData" />
   </section>
 </template>
 
@@ -145,6 +156,43 @@ async function citeNodeInChat() {
   min-height: 0;
   overflow: hidden;
   background: var(--color-surface);
+}
+
+.kg-pending-state {
+  display: grid;
+  grid-column: 1 / -1;
+  place-items: center;
+  align-content: center;
+  gap: 12px;
+  margin: 24px;
+  border: 1px dashed var(--color-outline-variant);
+  border-radius: var(--radius-card);
+  background: var(--color-surface-container-lowest);
+  padding: 32px;
+  color: var(--color-on-surface-variant);
+  text-align: center;
+}
+
+.kg-pending-state :deep(.app-icon) {
+  color: var(--color-primary);
+}
+
+.kg-pending-state h1 {
+  margin: 0;
+  color: var(--color-on-surface);
+  font-size: 20px;
+  line-height: 28px;
+}
+
+.kg-pending-state p {
+  max-width: 760px;
+  margin: 0;
+  line-height: 22px;
+}
+
+.kg-pending-state code {
+  color: var(--color-on-surface);
+  font-size: .92em;
 }
 
 .kg-filter-panel {

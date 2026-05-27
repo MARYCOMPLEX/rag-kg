@@ -79,7 +79,7 @@ export const useReviewStore = defineStore('review', () => {
     }
 
     reviewBackgrounded.value = true
-    ui.pushToast('info', 'Review running in background', 'taskStore keeps the SSE connection alive.', 'Open', 10000)
+    ui.pushToast('info', 'Review running in background', 'Mock runtime keeps local progress active.', 'Open', 10000)
   }
 
   function cancelReview() {

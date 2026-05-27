@@ -28,6 +28,24 @@ Use this log during local integration, E2E testing, and contract verification. E
 
 ## Logs
 
+## 2026-05-27 12:52 - API mode hides mock graph workspace data
+
+- Time: 2026-05-27 12:52 +08:00
+- Agent: Frontend Agent
+- Issue: #2
+- Cause: `GraphView.vue`, `GraphEntityDrawer.vue`, and `useGraphStore` still rendered seeded graph filters, static SVG nodes and edges, graph counts, entity detail values, mention trends, co-occurring entities, and cite-in-chat mutation behavior in API mode even though OpenAPI does not define graph workspace or entity detail contracts.
+- Fix status: fixed
+- Frontend fix:
+  - Gated graph filters, mention trends, co-occurring entities, selected node state, context menu, and cite-in-chat behavior behind non-API data source mode.
+  - Added an API-mode pending-contract empty state for the graph workspace.
+  - Hid the static graph canvas and entity drawer in API mode.
+  - Removed targeted fake review/graph strings from non-mock source surfaces.
+- Verification:
+  - `VITE_DATA_SOURCE=api VITE_API_BASE_URL=http://localhost:8000 pnpm typecheck`: passed.
+  - `VITE_DATA_SOURCE=api VITE_API_BASE_URL=http://localhost:8000 pnpm build`: passed.
+  - `rg -n "GraphRAG advances|Yue Lin|Live Citations \(37\)|Spec: Switch to WebGL|C-000123|Graph RAG|taskStore keeps|POST /v1/tasks/rev_2405" src --glob "!src/mocks/**"`: passed with no matches.
+  - Playwright smoke at `http://127.0.0.1:5175/libraries/rag-agent/review` and `/libraries/rag-agent/kg`: passed; both pending-contract states rendered and seeded review/graph content stayed hidden.
+
 ## 2026-05-27 12:47 - API mode hides mock review run data
 
 - Time: 2026-05-27 12:47 +08:00
