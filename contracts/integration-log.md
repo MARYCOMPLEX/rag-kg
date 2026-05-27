@@ -28,6 +28,27 @@ Use this log during local integration, E2E testing, and contract verification. E
 
 ## Logs
 
+## 2026-05-27 14:41 - Frontend evaluation dashboard API
+
+- Time: 2026-05-27 14:41 +08:00
+- Agent: Backend Agent
+- Issue: #3
+- Cause: Frontend requested a real API-mode evaluation dashboard endpoint to replace mock KPI, trend, budget alert, failure-case, and settings data.
+- Fix status: fixed
+- Fix:
+  - Added OpenAPI contract for `GET /api/libraries/{libraryId}/evaluation/dashboard`.
+  - Added the frontend `/api` evaluation adapter backed by existing eval snapshot and alert adapters when data is available.
+  - Empty or unavailable evaluation stores return `200` with empty filter/KPI/trend/failure-case arrays and `budgetAlert: null`; `librarySettings` reports real library/global backend settings.
+  - Missing library returns `404 LIBRARY_NOT_FOUND`; invalid dataset, invalid time range, and invalid explicit date range return `400 VALIDATION_ERROR`; invalid query parameter types return `422 VALIDATION_ERROR`.
+- Verification:
+  - `uv run --group test pytest tests\integration\api\test_frontend_evaluation_routes.py -q`: passed, 7 tests.
+  - `uv run --group test pytest tests\integration\api\test_frontend_evaluation_routes.py tests\integration\api\test_frontend_graph_routes.py tests\integration\api\test_frontend_shell_routes.py tests\integration\api\test_frontend_documents_routes.py tests\integration\api\test_frontend_libraries_routes.py -q`: passed, 47 tests, 1 existing Starlette deprecation warning.
+  - `uv run --group dev ruff check apps\api\routes\frontend_evaluation.py apps\api\routes\__init__.py tests\integration\api\test_frontend_evaluation_routes.py`: passed.
+  - `uv run --group dev ruff format --check apps\api\routes\frontend_evaluation.py apps\api\routes\__init__.py tests\integration\api\test_frontend_evaluation_routes.py`: passed.
+  - `make typecheck`: passed, 0 errors with 20 existing warnings outside this change.
+  - `uv run python -c "import yaml; yaml.safe_load(open('..\\contracts\\openapi.yaml', encoding='utf-8')); print('openapi yaml parsed')"`: passed.
+  - `make lint`: failed on pre-existing unrelated Ruff issues in `apps/api/_activity_reader.py`, `apps/api/_notification_reader.py`, and `scripts/generate_ui_images.py`.
+
 ## 2026-05-27 14:34 - Frontend knowledge graph API
 
 - Time: 2026-05-27 14:34 +08:00

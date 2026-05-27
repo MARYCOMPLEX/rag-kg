@@ -203,3 +203,34 @@ OpenAPI remains the single source of truth. Entries here are requests only; once
   - Added `/api/libraries/{libraryId}/graph` backed by KG triples/entities when available. Empty or unavailable graph reads return a contracted empty workspace with real zero labels.
   - Added `/api/libraries/{libraryId}/graph/entities/{entityId}` for entity drawer details derived from stored entity metadata and incident triples.
   - Missing library returns `404 LIBRARY_NOT_FOUND`; missing entity returns `404 NOT_FOUND`; invalid entity type filter or unsupported layout returns `400 VALIDATION_ERROR`; invalid numeric query bounds return `422 VALIDATION_ERROR`.
+
+## API Request: Evaluation dashboard data
+
+- Page: Evaluation dashboard.
+- Component: `web/src/views/EvaluationView.vue`, `web/src/components/evaluation/*`, `web/src/stores/evaluation.ts`.
+- Endpoint: `/api/libraries/{libraryId}/evaluation/dashboard`
+- Method: `GET`
+- Params:
+  - Path param: `libraryId`.
+  - Query params: optional `dataset` using `smoke`, `multihop`, or `review`; optional `timeRange` using `7d`, `30d`, or `90d`; optional `from` and `to` ISO dates for explicit calendar ranges.
+- Required fields:
+  - Dashboard response: `summary`, `filters`, `budgetAlert`, `kpis`, `trend`, `failureCases`, and `librarySettings`.
+  - `summary`: `libraryId`, `libraryName`, `datasetSummaryLabel`, `timeRangeLabel`, optional `lastRunLabel`.
+  - `filters.datasets`: `key`, `label`, `count`, optional `active`.
+  - `filters.timeRanges`: `key`, `label`, optional `active`.
+  - `budgetAlert`: nullable object with `tone`, `title`, `detail`, optional `action`, optional `dismissible`.
+  - `kpis`: `title`, `value`, `threshold`, `tone`, `points`, optional `icon`.
+  - `trend`: `days`, `em`, `faithfulness`, `citation`, `latency`, and `legend`.
+  - `failureCases`: `id`, `dataset`, `question`, `failure`, `tone`, `em`, `faithfulness`, `citation`, `latency`, optional `replayContext`.
+  - `librarySettings`: `libraryLabel`, `models`, `budgetLimits`, and optional `dataActions`.
+- Acceptance criteria:
+  - OpenAPI defines the evaluation dashboard request and response schemas.
+  - Backend supports empty KPI/trend/failure-case states with `200` and empty arrays, not fake seeded metrics.
+  - Backend returns `budgetAlert: null` when there is no budget issue.
+  - Frontend can replace `web/src/mocks/evaluation.ts` with service-backed state after API-mode verification.
+- Status: implemented
+- Backend implementation note:
+  - Time: 2026-05-27 14:41 +08:00
+  - Added `/api/libraries/{libraryId}/evaluation/dashboard` backed by existing eval snapshot and alert adapters when data is available.
+  - Empty or unavailable evaluation stores return a contracted empty dashboard: empty filter arrays, empty KPI array, empty trend arrays, empty failure-case array, and `budgetAlert: null`; `librarySettings` still reports real library/global backend settings.
+  - Missing library returns `404 LIBRARY_NOT_FOUND`; invalid dataset, invalid time range, and invalid explicit date range return `400 VALIDATION_ERROR`; invalid query parameter types return `422 VALIDATION_ERROR`.

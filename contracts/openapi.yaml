@@ -277,6 +277,118 @@ paths:
           $ref: "#/components/responses/LibraryNotFoundError"
         "500":
           $ref: "#/components/responses/InternalError"
+  /api/libraries/{libraryId}/evaluation/dashboard:
+    get:
+      tags:
+        - libraries
+      summary: Get evaluation dashboard data for one library
+      operationId: getFrontendEvaluationDashboard
+      parameters:
+        - name: libraryId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: graphrag-survey
+        - name: dataset
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - smoke
+              - multihop
+              - review
+          description: Optional evaluation dataset or task-family key.
+          example: smoke
+        - name: timeRange
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - 7d
+              - 30d
+              - 90d
+            default: 30d
+          description: Relative evaluation dashboard window.
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          description: Inclusive ISO start date for an explicit dashboard window.
+          example: "2026-05-01"
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          description: Inclusive ISO end date for an explicit dashboard window.
+          example: "2026-05-27"
+      responses:
+        "200":
+          description: Evaluation dashboard summary, filters, metrics, and settings.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EvaluationDashboard"
+              examples:
+                emptyDashboard:
+                  value:
+                    summary:
+                      libraryId: rag-agent
+                      libraryName: RAG Agent
+                      datasetSummaryLabel: No evaluation data
+                      timeRangeLabel: Last 30 days
+                      lastRunLabel: null
+                    filters:
+                      datasets: []
+                      timeRanges: []
+                    budgetAlert: null
+                    kpis: []
+                    trend:
+                      days: []
+                      em: []
+                      faithfulness: []
+                      citation: []
+                      latency: []
+                      legend: []
+                    failureCases: []
+                    librarySettings:
+                      libraryLabel: RAG Agent
+                      models:
+                        routerLabel: "Router: routed"
+                        embeddingLabel: text-embedding-3-small (1536d)
+                        warning: null
+                      budgetLimits:
+                        - key: maxInputTokens
+                          label: LLM input tokens
+                          value: "32,000"
+                        - key: maxOutputTokens
+                          label: LLM output tokens
+                          value: "4,000"
+                        - key: maxLlmCalls
+                          label: Max LLM calls
+                          value: "20"
+                        - key: maxSteps
+                          label: Max retrieval steps
+                          value: "8"
+                      dataActions:
+                        canExport: true
+                        canPurge: true
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/AuthError"
+        "404":
+          $ref: "#/components/responses/LibraryNotFoundError"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "500":
+          $ref: "#/components/responses/InternalError"
   /api/libraries/{libraryId}/graph:
     get:
       tags:
@@ -916,6 +1028,362 @@ components:
         profile:
           nullable: true
           $ref: "#/components/schemas/ShellProfile"
+    EvaluationSummary:
+      type: object
+      additionalProperties: false
+      required:
+        - libraryId
+        - libraryName
+        - datasetSummaryLabel
+        - timeRangeLabel
+      properties:
+        libraryId:
+          type: string
+          example: rag-agent
+        libraryName:
+          type: string
+          example: RAG Agent
+        datasetSummaryLabel:
+          type: string
+          example: smoke (12)
+        timeRangeLabel:
+          type: string
+          example: Last 30 days
+        lastRunLabel:
+          type: string
+          nullable: true
+          example: Updated 2026-05-27
+    EvaluationDatasetFilter:
+      type: object
+      additionalProperties: false
+      required:
+        - key
+        - label
+        - count
+      properties:
+        key:
+          type: string
+          enum:
+            - smoke
+            - multihop
+            - review
+        label:
+          type: string
+          example: Smoke
+        count:
+          type: integer
+          minimum: 0
+          example: 12
+        active:
+          type: boolean
+    EvaluationTimeRangeFilter:
+      type: object
+      additionalProperties: false
+      required:
+        - key
+        - label
+      properties:
+        key:
+          type: string
+          enum:
+            - 7d
+            - 30d
+            - 90d
+        label:
+          type: string
+          example: Last 30 days
+        active:
+          type: boolean
+    EvaluationFilters:
+      type: object
+      additionalProperties: false
+      required:
+        - datasets
+        - timeRanges
+      properties:
+        datasets:
+          type: array
+          items:
+            $ref: "#/components/schemas/EvaluationDatasetFilter"
+        timeRanges:
+          type: array
+          items:
+            $ref: "#/components/schemas/EvaluationTimeRangeFilter"
+    EvaluationBudgetAlert:
+      type: object
+      additionalProperties: false
+      required:
+        - tone
+        - title
+        - detail
+      properties:
+        tone:
+          type: string
+          enum:
+            - success
+            - info
+            - warning
+            - danger
+        title:
+          type: string
+          example: "Evaluation alert: var drop 5pp"
+        detail:
+          type: string
+          example: var changed by -6.5pp.
+        action:
+          type: string
+          nullable: true
+          example: Review evaluation settings
+        dismissible:
+          type: boolean
+          nullable: true
+    EvaluationKpi:
+      type: object
+      additionalProperties: false
+      required:
+        - title
+        - value
+        - threshold
+        - tone
+        - points
+      properties:
+        title:
+          type: string
+          example: Answer relevancy EM@1
+        value:
+          type: string
+          example: "0.842"
+        threshold:
+          type: string
+          example: (>= 0.80)
+        tone:
+          type: string
+          enum:
+            - success
+            - secondary
+            - danger
+        points:
+          type: array
+          items:
+            type: number
+            format: float
+        icon:
+          type: string
+          nullable: true
+          example: timer
+    EvaluationTrendLegendItem:
+      type: object
+      additionalProperties: false
+      required:
+        - label
+        - tone
+      properties:
+        label:
+          type: string
+          example: EM@1
+        tone:
+          type: string
+          enum:
+            - success
+            - secondary
+            - citation
+            - danger
+    EvaluationTrend:
+      type: object
+      additionalProperties: false
+      required:
+        - days
+        - em
+        - faithfulness
+        - citation
+        - latency
+        - legend
+      properties:
+        days:
+          type: array
+          items:
+            type: string
+          example:
+            - May 26
+            - May 27
+        em:
+          type: array
+          items:
+            type: number
+            format: float
+        faithfulness:
+          type: array
+          items:
+            type: number
+            format: float
+        citation:
+          type: array
+          items:
+            type: number
+            format: float
+        latency:
+          type: array
+          items:
+            type: number
+            format: float
+          description: Normalized p95 latency values for the frontend chart.
+        legend:
+          type: array
+          items:
+            $ref: "#/components/schemas/EvaluationTrendLegendItem"
+    EvaluationFailureReplayContext:
+      type: object
+      additionalProperties: false
+      required:
+        - libraryId
+        - query
+      properties:
+        libraryId:
+          type: string
+          example: rag-agent
+        query:
+          type: string
+          example: Replay failed evaluation sample
+    EvaluationFailureCase:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - dataset
+        - question
+        - failure
+        - tone
+        - em
+        - faithfulness
+        - citation
+        - latency
+      properties:
+        id:
+          type: string
+          example: Q-0021
+        dataset:
+          type: string
+          example: smoke
+        question:
+          type: string
+        failure:
+          type: string
+          example: Missing evidence
+        tone:
+          type: string
+          enum:
+            - danger
+            - warning
+            - neutral
+        em:
+          type: string
+          example: "0.31"
+        faithfulness:
+          type: string
+          example: "0.52"
+        citation:
+          type: string
+          example: "0.48"
+        latency:
+          type: string
+          example: 2.90s
+        replayContext:
+          nullable: true
+          $ref: "#/components/schemas/EvaluationFailureReplayContext"
+    EvaluationModels:
+      type: object
+      additionalProperties: false
+      required:
+        - routerLabel
+        - embeddingLabel
+      properties:
+        routerLabel:
+          type: string
+          example: "Router: routed"
+        embeddingLabel:
+          type: string
+          example: text-embedding-3-small (1536d)
+        warning:
+          type: string
+          nullable: true
+    EvaluationBudgetLimit:
+      type: object
+      additionalProperties: false
+      required:
+        - key
+        - label
+        - value
+      properties:
+        key:
+          type: string
+          example: maxInputTokens
+        label:
+          type: string
+          example: LLM input tokens
+        value:
+          type: string
+          example: "32,000"
+    EvaluationDataActions:
+      type: object
+      additionalProperties: false
+      properties:
+        canExport:
+          type: boolean
+          nullable: true
+        canPurge:
+          type: boolean
+          nullable: true
+    EvaluationLibrarySettings:
+      type: object
+      additionalProperties: false
+      required:
+        - libraryLabel
+        - models
+        - budgetLimits
+      properties:
+        libraryLabel:
+          type: string
+          example: RAG Agent
+        models:
+          $ref: "#/components/schemas/EvaluationModels"
+        budgetLimits:
+          type: array
+          items:
+            $ref: "#/components/schemas/EvaluationBudgetLimit"
+        dataActions:
+          nullable: true
+          $ref: "#/components/schemas/EvaluationDataActions"
+    EvaluationDashboard:
+      type: object
+      additionalProperties: false
+      required:
+        - summary
+        - filters
+        - budgetAlert
+        - kpis
+        - trend
+        - failureCases
+        - librarySettings
+      properties:
+        summary:
+          $ref: "#/components/schemas/EvaluationSummary"
+        filters:
+          $ref: "#/components/schemas/EvaluationFilters"
+        budgetAlert:
+          nullable: true
+          $ref: "#/components/schemas/EvaluationBudgetAlert"
+        kpis:
+          type: array
+          items:
+            $ref: "#/components/schemas/EvaluationKpi"
+        trend:
+          $ref: "#/components/schemas/EvaluationTrend"
+        failureCases:
+          type: array
+          items:
+            $ref: "#/components/schemas/EvaluationFailureCase"
+        librarySettings:
+          $ref: "#/components/schemas/EvaluationLibrarySettings"
     GraphEntityTypeFilter:
       type: object
       additionalProperties: false
