@@ -234,3 +234,8 @@ OpenAPI remains the single source of truth. Entries here are requests only; once
   - Added `/api/libraries/{libraryId}/evaluation/dashboard` backed by existing eval snapshot and alert adapters when data is available.
   - Empty or unavailable evaluation stores return a contracted empty dashboard: empty filter arrays, empty KPI array, empty trend arrays, empty failure-case array, and `budgetAlert: null`; `librarySettings` still reports real library/global backend settings.
   - Missing library returns `404 LIBRARY_NOT_FOUND`; invalid dataset, invalid time range, and invalid explicit date range return `400 VALIDATION_ERROR`; invalid query parameter types return `422 VALIDATION_ERROR`.
+- Backend fix note:
+  - Time: 2026-05-27 17:00 +08:00
+  - Frontend verification reported that valid evaluation dashboard reads timed out when the local eval stores were slow or unavailable, while validation and missing-library errors returned promptly.
+  - The frontend `/api` evaluation adapter now bounds eval snapshot and alert reads and runs those reads concurrently. Slow or unavailable eval stores degrade to the already-contracted empty dashboard instead of blocking the request.
+  - OpenAPI was unchanged because the response schema and error contract did not change.

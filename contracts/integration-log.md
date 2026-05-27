@@ -28,6 +28,27 @@ Use this log during local integration, E2E testing, and contract verification. E
 
 ## Logs
 
+## 2026-05-27 17:00 - Evaluation dashboard slow-store timeout fix
+
+- Time: 2026-05-27 17:00 +08:00
+- Agent: Backend Agent
+- Issue: #3
+- Cause: Frontend API-mode verification found valid `GET /api/libraries/{libraryId}/evaluation/dashboard` requests timed out when local eval snapshot/alert stores were slow or unavailable, while invalid dataset/time-range and missing-library requests returned promptly.
+- Fix status: fixed
+- Fix:
+  - Added bounded eval-store reads in the frontend `/api` evaluation adapter.
+  - Loaded dataset KPIs, trend rows, and active alerts concurrently so unavailable stores degrade to the contracted empty dashboard instead of blocking the response.
+  - Kept OpenAPI unchanged because the endpoint still returns the existing `EvaluationDashboard` schema and uses the existing error envelope.
+- Verification:
+  - `uv run --group test pytest tests\integration\api\test_frontend_evaluation_routes.py -q`: passed, 8 tests.
+  - `uv run --group test pytest tests\integration\api\test_frontend_evaluation_routes.py tests\integration\api\test_frontend_graph_routes.py tests\integration\api\test_frontend_shell_routes.py tests\integration\api\test_frontend_documents_routes.py tests\integration\api\test_frontend_libraries_routes.py -q`: passed, 48 tests, 1 existing Starlette deprecation warning.
+  - `uv run --group dev ruff check apps\api\routes\frontend_evaluation.py tests\integration\api\test_frontend_evaluation_routes.py`: passed.
+  - `uv run --group dev ruff format --check apps\api\routes\frontend_evaluation.py tests\integration\api\test_frontend_evaluation_routes.py`: passed.
+  - `make typecheck`: passed, 0 errors with 20 existing warnings outside this change.
+  - `uv run python -c "import yaml; yaml.safe_load(open('..\\contracts\\openapi.yaml', encoding='utf-8')); print('openapi yaml parsed')"`: passed.
+  - ASGI smoke against local app: `GET /api/libraries/rag-agent/evaluation/dashboard` returned `200` in 1.19s with the contracted empty dashboard while local eval stores had no data.
+  - `make lint`: failed on pre-existing unrelated Ruff issues in `apps/api/_activity_reader.py`, `apps/api/_notification_reader.py`, and `scripts/generate_ui_images.py`.
+
 ## 2026-05-27 14:41 - Frontend evaluation dashboard API
 
 - Time: 2026-05-27 14:41 +08:00

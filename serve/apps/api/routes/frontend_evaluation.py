@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+import asyncio
+from collections.abc import Awaitable, Mapping
 from dataclasses import dataclass
 from datetime import date as Date
 from datetime import datetime
@@ -33,6 +34,7 @@ type FrontendEvaluationFailureTone = Literal["danger", "warning", "neutral"]
 _DATASETS: tuple[FrontendEvaluationDataset, ...] = ("smoke", "multihop", "review")
 _TIME_RANGES: dict[FrontendEvaluationTimeRange, int] = {"7d": 7, "30d": 30, "90d": 90}
 _TREND_METRICS: tuple[Metric, ...] = ("var", "var_judge", "citation_f1", "p95_latency_s")
+_EVAL_STORE_TIMEOUT_SECONDS = 1.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -301,14 +303,19 @@ async def _load_dashboard_inputs(
     snapshots: PostgresEvalSnapshotter,
     alerts: PostgresAlertEngine,
 ) -> _DashboardInputs:
-    kpis_by_dataset = await _safe_load_dataset_kpis(snapshots, library.library_id)
-    trends = await _safe_load_trends(
+    kpis_task = _safe_load_dataset_kpis(snapshots, library.library_id)
+    trends_task = _safe_load_trends(
         snapshots,
         library.library_id,
         eval_set=dataset,
         window=window,
     )
-    active_alerts = await _safe_list_alerts(alerts, library.library_id)
+    alerts_task = _safe_list_alerts(alerts, library.library_id)
+    kpis_by_dataset, trends, active_alerts = await asyncio.gather(
+        kpis_task,
+        trends_task,
+        alerts_task,
+    )
     return _DashboardInputs(
         library=library,
         dataset=dataset,
@@ -320,19 +327,25 @@ async def _load_dashboard_inputs(
     )
 
 
+async def _safe_eval_call[T](awaitable: Awaitable[T]) -> T | None:
+    try:
+        return await asyncio.wait_for(awaitable, timeout=_EVAL_STORE_TIMEOUT_SECONDS)
+    except Exception:
+        return None
+
+
 async def _safe_load_dataset_kpis(
     snapshots: PostgresEvalSnapshotter,
     library_id: str,
 ) -> dict[FrontendEvaluationDataset, EvalKPIs]:
-    loaded: dict[FrontendEvaluationDataset, EvalKPIs] = {}
-    for dataset in _DATASETS:
-        try:
-            kpis = await snapshots.get_kpis(library_id, eval_set=dataset)
-        except Exception:
-            continue
-        if kpis is not None:
-            loaded[dataset] = kpis
-    return loaded
+    async def _load_one(
+        dataset: FrontendEvaluationDataset,
+    ) -> tuple[FrontendEvaluationDataset, EvalKPIs | None]:
+        kpis = await _safe_eval_call(snapshots.get_kpis(library_id, eval_set=dataset))
+        return dataset, kpis
+
+    results = await asyncio.gather(*(_load_one(dataset) for dataset in _DATASETS))
+    return {dataset: kpis for dataset, kpis in results if kpis is not None}
 
 
 async def _safe_load_trends(
@@ -342,19 +355,18 @@ async def _safe_load_trends(
     eval_set: FrontendEvaluationDataset,
     window: _TimeWindow,
 ) -> dict[Metric, tuple[EvalSnapshot, ...]]:
-    loaded: dict[Metric, tuple[EvalSnapshot, ...]] = {}
-    for metric in _TREND_METRICS:
-        try:
-            rows = await snapshots.get_trend(
+    async def _load_one(metric: Metric) -> tuple[Metric, tuple[EvalSnapshot, ...]]:
+        rows = await _safe_eval_call(
+            snapshots.get_trend(
                 library_id,
                 metric=metric,
                 eval_set=eval_set,
                 days=window.days,
             )
-        except Exception:
-            rows = ()
-        loaded[metric] = _filter_rows_for_window(tuple(rows), window)
-    return loaded
+        )
+        return metric, _filter_rows_for_window(tuple(rows or ()), window)
+
+    return dict(await asyncio.gather(*(_load_one(metric) for metric in _TREND_METRICS)))
 
 
 def _filter_rows_for_window(
@@ -370,10 +382,7 @@ async def _safe_list_alerts(
     alerts: PostgresAlertEngine,
     library_id: str,
 ) -> tuple[EvalAlert, ...]:
-    try:
-        return tuple(await alerts.list_active(library_id))
-    except Exception:
-        return ()
+    return tuple((await _safe_eval_call(alerts.list_active(library_id))) or ())
 
 
 def _dashboard_from_inputs(

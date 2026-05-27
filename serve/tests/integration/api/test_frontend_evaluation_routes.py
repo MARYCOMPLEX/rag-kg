@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import AsyncIterator
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
@@ -16,6 +17,7 @@ from apps._shared.persistence.library_fs import FilesystemLibraryRepository, mak
 from apps.api._eval_deps import reset_eval_bundle, set_eval_bundle_for_testing
 from apps.api.deps import get_container
 from apps.api.main import app
+from apps.api.routes import frontend_evaluation
 from packages.context.budget import CharCountTokenCounter
 from packages.context.compactor import TurnCompactor
 from packages.context.conversation_repo import SqliteConversationRepo
@@ -132,6 +134,32 @@ class _FakeAlertEngine:
         )
 
 
+class _HangingSnapshotter:
+    async def get_kpis(self, library_id: str, *, eval_set: str) -> EvalKPIs | None:
+        _ = library_id, eval_set
+        await asyncio.sleep(60)
+        return None
+
+    async def get_trend(
+        self,
+        library_id: str,
+        *,
+        metric: str,
+        eval_set: str,
+        days: int = 30,
+    ) -> tuple[EvalSnapshot, ...]:
+        _ = library_id, metric, eval_set, days
+        await asyncio.sleep(60)
+        return ()
+
+
+class _HangingAlertEngine:
+    async def list_active(self, library_id: str) -> tuple[EvalAlert, ...]:
+        _ = library_id
+        await asyncio.sleep(60)
+        return ()
+
+
 def _build_container(tmp_path: Path) -> AppContainer:
     settings = Settings(
         data_dir=str(tmp_path / "data"),
@@ -203,8 +231,8 @@ async def container(tmp_path: Path) -> AppContainer:
 async def _client(
     container: AppContainer,
     *,
-    snapshotter: _FakeSnapshotter,
-    alert_engine: _FakeAlertEngine,
+    snapshotter: object,
+    alert_engine: object,
 ) -> AsyncIterator[AsyncClient]:
     set_eval_bundle_for_testing(
         snapshots=snapshotter,  # type: ignore[arg-type]
@@ -326,6 +354,34 @@ async def test_evaluation_dashboard_store_failures_degrade_to_empty_dashboard(
     assert body["summary"]["datasetSummaryLabel"] == "No evaluation data"
     assert body["budgetAlert"] is None
     assert body["kpis"] == []
+
+
+async def test_evaluation_dashboard_slow_stores_degrade_to_empty_dashboard(
+    container: AppContainer,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(frontend_evaluation, "_EVAL_STORE_TIMEOUT_SECONDS", 0.01)
+    async for client in _client(
+        container,
+        snapshotter=_HangingSnapshotter(),
+        alert_engine=_HangingAlertEngine(),
+    ):
+        res = await client.get("/api/libraries/rag-lib/evaluation/dashboard")
+
+    assert res.status_code == 200
+    body = res.json()
+    assert body["summary"]["datasetSummaryLabel"] == "No evaluation data"
+    assert body["filters"] == {"datasets": [], "timeRanges": []}
+    assert body["budgetAlert"] is None
+    assert body["kpis"] == []
+    assert body["trend"] == {
+        "days": [],
+        "em": [],
+        "faithfulness": [],
+        "citation": [],
+        "latency": [],
+        "legend": [],
+    }
 
 
 async def test_evaluation_dashboard_rejects_invalid_dataset(client: AsyncClient) -> None:
