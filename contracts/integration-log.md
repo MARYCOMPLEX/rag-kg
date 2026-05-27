@@ -28,6 +28,20 @@ Use this log during local integration, E2E testing, and contract verification. E
 
 ## Logs
 
+## 2026-05-27 12:01 - Evaluation library selector fake options removed
+
+- Time: 2026-05-27 12:01 +08:00
+- Agent: Frontend Agent
+- Issue: #2
+- Cause: The evaluation dashboard still displayed hardcoded fake library selector options and a stale `graphrag-survey` settings label after the evaluation API request was clarified.
+- Fix status: fixed
+- Frontend fix:
+  - Updated `web/src/views/EvaluationView.vue` to source the evaluation library selector from `useLibraryStore`.
+  - Kept evaluation library selection aligned with workspace routing through `goToScreen('eval')`.
+  - Updated `web/src/components/evaluation/LibrarySettingsPanel.vue` to receive the selected library label as a prop instead of rendering a fixture label.
+- Verification:
+  - `pnpm typecheck`: passed.
+
 ## 2026-05-27 11:34 - Static navigation moved out of mocks
 
 - Time: 2026-05-27 11:34 +08:00

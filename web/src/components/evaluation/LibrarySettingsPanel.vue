@@ -1,12 +1,16 @@
 <script setup lang="ts">
 import AppIcon from '../base/AppIcon.vue'
+
+defineProps<{
+  libraryLabel: string
+}>()
 </script>
 
 <template>
   <aside class="library-settings-panel" aria-label="Library settings">
     <header>
       <h2>Library settings</h2>
-      <p>graphrag-survey · <i>per-Library overrides</i></p>
+      <p>{{ libraryLabel }} · <i>per-library overrides</i></p>
     </header>
 
     <div class="settings-body">

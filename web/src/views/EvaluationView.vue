@@ -1,14 +1,35 @@
 <script setup lang="ts">
+import { computed, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import AppIcon from '../components/base/AppIcon.vue'
 import EvalKpiCard from '../components/evaluation/EvalKpiCard.vue'
 import EvalTrendChart from '../components/evaluation/EvalTrendChart.vue'
 import FailureCaseTable from '../components/evaluation/FailureCaseTable.vue'
 import LibrarySettingsPanel from '../components/evaluation/LibrarySettingsPanel.vue'
+import { useWorkspaceNavigation } from '../app/useWorkspaceNavigation'
 import { useEvaluationStore } from '../stores/evaluation'
+import { useLibraryStore } from '../stores/library'
 
 const evaluation = useEvaluationStore()
+const library = useLibraryStore()
+const { goToScreen } = useWorkspaceNavigation()
 const { kpis } = storeToRefs(evaluation)
+const { activeLibrary, libraries, loading: librariesLoading } = storeToRefs(library)
+
+const activeEvaluationLibraryName = computed(() => {
+  const selected = libraries.value.find(item => item.id === activeLibrary.value)
+  return selected?.name || activeLibrary.value || 'No library selected'
+})
+
+async function selectEvaluationLibrary(event: Event) {
+  const target = event.target as HTMLSelectElement
+  library.selectLibrary(target.value)
+  await goToScreen('eval')
+}
+
+onMounted(() => {
+  void library.loadLibraries()
+})
 </script>
 
 <template>
@@ -21,10 +42,17 @@ const { kpis } = storeToRefs(evaluation)
         </div>
         <div class="evaluation-filters">
           <label class="library-filter">
-            <select>
-              <option>graphrag-survey</option>
-              <option>quantum-computing</option>
-              <option>ethics-ai</option>
+            <select
+              :value="activeLibrary"
+              :disabled="librariesLoading && !libraries.length"
+              @change="selectEvaluationLibrary"
+            >
+              <option v-if="!libraries.length" value="">
+                {{ librariesLoading ? 'Loading libraries...' : 'No libraries available' }}
+              </option>
+              <option v-for="item in libraries" :key="item.id" :value="item.id">
+                {{ item.name }}
+              </option>
             </select>
             <AppIcon name="chevron" :size="14" />
           </label>
@@ -61,7 +89,7 @@ const { kpis } = storeToRefs(evaluation)
 
       <div class="evaluation-main-row">
         <EvalTrendChart />
-        <LibrarySettingsPanel />
+        <LibrarySettingsPanel :library-label="activeEvaluationLibraryName" />
       </div>
 
       <FailureCaseTable />

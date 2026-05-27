@@ -352,6 +352,13 @@ OpenAPI remains the single source of truth. Entries here are requests only; once
   - Current frontend behavior: `web/src/stores/evaluation.ts` exposes static computed values from `web/src/mocks/evaluation.ts`; `EvaluationView.vue` hardcodes dataset/time range copy, library selector options, and the budget warning; `LibrarySettingsPanel.vue` hardcodes the selected library label, model labels, embedding rebuild warning, budget limit values, and data actions.
   - Requested backend contract: provide a single dashboard endpoint scoped by library and filters before frontend removes the evaluation mock and hardcoded dashboard/settings text.
   - Frontend follow-up after OpenAPI update: add evaluation domain types and a repository, load dashboard state through `useEvaluationStore`, wire filter changes to query params, render loading/empty/error/retry states, and keep replay actions routed through the chat workspace with optional `replayContext`.
+- Frontend cleanup note:
+  - Time: 2026-05-27 12:01 +08:00
+  - Issue: #2
+  - Removed the remaining hardcoded fake evaluation library options from `web/src/views/EvaluationView.vue`.
+  - `EvaluationView.vue` now reads the active library list from `useLibraryStore` and keeps library selection routed through the current library workspace.
+  - `LibrarySettingsPanel.vue` now receives the selected library label from the page instead of displaying the stale `graphrag-survey` fixture.
+  - Evaluation metrics, filters, budget alert, model labels, budget limits, and failure cases remain mock-backed until OpenAPI defines `/api/libraries/{libraryId}/evaluation/dashboard`.
 
 ## API Request: Command palette search and navigation metadata
 
