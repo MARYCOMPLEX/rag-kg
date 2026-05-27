@@ -356,26 +356,47 @@ OpenAPI remains the single source of truth. Entries here are requests only; once
 ## API Request: Command palette search and navigation metadata
 
 - Page: Global command palette and application shell.
-- Component: `web/src/components/overlays/CommandPalette.vue`, `web/src/stores/search.ts`, `web/src/stores/ui.ts`.
+- Component: `web/src/components/overlays/CommandPalette.vue`, `web/src/components/layout/SideNav.vue`, `web/src/components/layout/TopBar.vue`, `web/src/stores/search.ts`, `web/src/stores/ui.ts`.
 - Endpoint:
-  - Command/search endpoint is missing from OpenAPI.
-  - Navigation/library stat/session metadata endpoint is missing from OpenAPI.
-- Method: `GET`
+  - Requested command search endpoint: `/api/libraries/{libraryId}/search`
+  - Requested shell metadata endpoint: `/api/libraries/{libraryId}/shell/metadata`
+- Method:
+  - `GET` search.
+  - `GET` shell metadata.
 - Params:
-  - Search query.
-  - Library ID or active workspace context.
-  - Optional result type scope for commands, documents, entities, libraries, and actions.
+  - Search path param: `libraryId`.
+  - Search query params:
+    - `q`: user-entered command palette query.
+    - optional `scope`: comma-separated result scopes using `documents`, `entities`, `libraries`, and `actions`.
+    - optional `limit`: max total returned results.
+  - Shell metadata path param: `libraryId`.
 - Required fields:
-  - Command/search result fields: `label`, `meta`, `screen`, optional `icon`, optional `shortcut`, optional `tone`.
-  - Navigation item fields: `key`, `id`, `label`, `icon`, `activeOn`.
-  - Recent session fields: `title`, `time`, optional `active`.
-  - Library stat fields: `label`, `value`.
-  - Error contract for invalid query/scope and server failure.
+  - Search response: `query`, `results`.
+  - `results`: array with `id`, `type`, `label`, `meta`, `screen`, optional `icon`, optional `shortcut`, optional `tone`, optional `target`.
+  - `results[].type` values required by UI: `document`, `entity`, `library`, `action`.
+  - `results[].screen` values required by UI: `dashboard`, `chat`, `graph`, `docs`, `review`, `eval`.
+  - `results[].target`: optional object for follow-up navigation context, with optional `libraryId`, `documentId`, `entityId`, `sessionId`, `reviewRunId`, and `query`.
+  - Shell metadata response: `recentSessions`, `libraryStats`, optional `notifications`, optional `profile`.
+  - `recentSessions`: array with `id`, `title`, `time`, `screen`, optional `active`, optional `target`.
+  - `recentSessions[].screen` uses the same screen values as search results.
+  - `libraryStats`: array with `label`, `value`.
+  - `notifications`: optional object with `activeBackgroundStreams`, optional `label`.
+  - `profile`: optional object with `initials`, `displayName`, optional `planLabel`.
+  - Error contract for missing library, invalid query, invalid scope, unsupported limit, unauthorized access, and server failure.
 - Acceptance criteria:
-  - OpenAPI defines search and shell metadata contracts or explicitly marks shell metadata as frontend-static.
+  - OpenAPI defines search and dynamic shell metadata contracts.
   - Backend supports empty search results without errors.
-  - Frontend can replace `web/src/mocks/search.ts` and clarify which `web/src/mocks/navigation.ts` data should remain static.
+  - Backend supports empty recent session and library stat arrays without seeded/fake values.
+  - Frontend can replace `web/src/mocks/search.ts` and the dynamic `recentSessions`/`libraryStats` exports from `web/src/mocks/navigation.ts`.
+  - Frontend-static decision: route/navigation structure remains frontend-owned. `screenNavigation`, `mainNavigation`, TopBar `sectionLabels`, keyboard shortcut labels, command palette footer hints, and icon names should stay static in frontend code because they describe local routes and UI chrome, not backend data.
 - Status: requested
+- Frontend clarification note:
+  - Time: 2026-05-27 11:19 +08:00
+  - Issue: #2
+  - Current frontend behavior: `web/src/stores/search.ts` exposes document/entity results from `web/src/mocks/search.ts`; `CommandPalette.vue` filters those arrays client-side and derives action results from `ui.commandItems`; `web/src/stores/ui.ts` imports `commandItems`, `recentSessions`, and `libraryStats` from `web/src/mocks/navigation.ts`; `SideNav.vue` also hardcodes storage/profile shell values outside the store.
+  - Requested backend contract: provide library-scoped search results plus per-library shell metadata for recent sessions, library statistics, notification summary, and optional profile display before frontend removes the dynamic mock data.
+  - Frontend-owned static data: app route navigation remains local because it maps Vue route names, icons, and keyboard hints; after backend support, frontend should move static navigation constants out of `web/src/mocks/navigation.ts` or rename them so they are not mistaken for backend fixtures.
+  - Frontend follow-up after OpenAPI update: add search/shell repositories, load metadata through `useUiStore`, debounce command search through `useSearchStore`, render loading/empty/error states in the command palette, and route selected results using `target` context.
 
 ## Frontend Audit Note: OpenAPI still blocks real API integration
 

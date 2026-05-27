@@ -28,6 +28,22 @@ Use this log during local integration, E2E testing, and contract verification. E
 
 ## Logs
 
+## 2026-05-27 11:19 - Command search and shell metadata API request clarified
+
+- Time: 2026-05-27 11:19 +08:00
+- Agent: Frontend Agent
+- Issue: #2
+- Cause: `CommandPalette.vue`, `search.ts`, `ui.ts`, `web/src/mocks/search.ts`, and `web/src/mocks/navigation.ts` still mix backend-owned search/session/stat data with frontend-owned route/navigation constants; the existing API request did not define which shell data should come from backend and which should stay static.
+- Fix status: open
+- Contract request:
+  - Requested command search endpoint: `GET /api/libraries/{libraryId}/search`.
+  - Requested shell metadata endpoint: `GET /api/libraries/{libraryId}/shell/metadata`.
+  - Requested search scopes: `documents`, `entities`, `libraries`, and `actions`.
+  - Requested dynamic shell fields: `recentSessions`, `libraryStats`, optional `notifications`, and optional `profile`.
+  - Frontend-static decision: `screenNavigation`, `mainNavigation`, TopBar section labels, keyboard shortcuts, footer hints, route names, and icon names remain frontend-owned UI chrome.
+- Verification:
+  - `pnpm typecheck`: passed.
+
 ## 2026-05-27 11:17 - Evaluation API request clarified
 
 - Time: 2026-05-27 11:17 +08:00
