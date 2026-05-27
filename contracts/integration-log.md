@@ -28,6 +28,20 @@ Use this log during local integration, E2E testing, and contract verification. E
 
 ## Logs
 
+## 2026-05-27 12:17 - API mode hides mock evaluation dashboard
+
+- Time: 2026-05-27 12:17 +08:00
+- Agent: Frontend Agent
+- Issue: #2
+- Cause: `EvaluationView.vue` still rendered seeded KPI cards, trend data, failure cases, budget warning, model labels, budget limits, and data actions in API mode even though OpenAPI does not define `/api/libraries/{libraryId}/evaluation/dashboard`.
+- Fix status: fixed
+- Frontend fix:
+  - Gated `useEvaluationStore` mock dashboard data behind non-API data source mode.
+  - Updated `EvaluationView.vue` to hide mock dashboard/settings sections in API mode and render a pending-contract empty state while preserving the real library selector.
+- Verification:
+  - `pnpm typecheck`: passed.
+  - `pnpm build`: passed.
+
 ## 2026-05-27 12:04 - API mode hides mock search and shell metadata
 
 - Time: 2026-05-27 12:04 +08:00

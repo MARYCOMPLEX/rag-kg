@@ -13,7 +13,7 @@ import { useLibraryStore } from '../stores/library'
 const evaluation = useEvaluationStore()
 const library = useLibraryStore()
 const { goToScreen } = useWorkspaceNavigation()
-const { kpis } = storeToRefs(evaluation)
+const { kpis, usesApiData } = storeToRefs(evaluation)
 const { activeLibrary, libraries, loading: librariesLoading } = storeToRefs(library)
 
 const activeEvaluationLibraryName = computed(() => {
@@ -38,7 +38,10 @@ onMounted(() => {
       <header class="evaluation-header">
         <div>
           <h1>Evaluation dashboard</h1>
-          <p>smoke (10) · multihop (32) · review (5) · <strong>last 30 days</strong></p>
+          <p v-if="usesApiData">
+            Waiting for <strong>/api/libraries/{libraryId}/evaluation/dashboard</strong>
+          </p>
+          <p v-else>smoke (10) · multihop (32) · review (5) · <strong>last 30 days</strong></p>
         </div>
         <div class="evaluation-filters">
           <label class="library-filter">
@@ -63,7 +66,18 @@ onMounted(() => {
         </div>
       </header>
 
-      <div class="budget-banner" role="status">
+      <div v-if="usesApiData" class="evaluation-empty-state" role="status">
+        <AppIcon name="info" :size="18" />
+        <div>
+          <h2>No evaluation API contract yet</h2>
+          <p>
+            API mode hides mock KPIs, trend data, failure cases, budget warnings, and model settings until
+            OpenAPI defines the evaluation dashboard response.
+          </p>
+        </div>
+      </div>
+
+      <div v-else class="budget-banner" role="status">
         <span>
           <AppIcon name="warning" :size="16" />
           <strong>Budget Exceeded</strong>
@@ -74,7 +88,7 @@ onMounted(() => {
         </button>
       </div>
 
-      <div class="eval-kpi-grid">
+      <div v-if="!usesApiData" class="eval-kpi-grid">
         <EvalKpiCard
           v-for="item in kpis"
           :key="item.title"
@@ -87,12 +101,12 @@ onMounted(() => {
         />
       </div>
 
-      <div class="evaluation-main-row">
+      <div v-if="!usesApiData" class="evaluation-main-row">
         <EvalTrendChart />
         <LibrarySettingsPanel :library-label="activeEvaluationLibraryName" />
       </div>
 
-      <FailureCaseTable />
+      <FailureCaseTable v-if="!usesApiData" />
     </div>
   </section>
 </template>
@@ -226,6 +240,37 @@ onMounted(() => {
 
 .budget-banner button:hover {
   background: var(--color-alpha-danger-container-28);
+}
+
+.evaluation-empty-state {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 12px;
+  border: 1px solid var(--color-outline-variant);
+  border-radius: var(--radius-card);
+  background: var(--color-surface-container-lowest);
+  padding: 20px;
+  color: var(--color-on-surface-variant);
+}
+
+.evaluation-empty-state :deep(.app-icon) {
+  margin-top: 2px;
+  color: var(--color-primary);
+}
+
+.evaluation-empty-state h2 {
+  margin: 0;
+  color: var(--color-on-surface);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 22px;
+}
+
+.evaluation-empty-state p {
+  max-width: 720px;
+  margin: 4px 0 0;
+  font-size: 13px;
+  line-height: 20px;
 }
 
 .eval-kpi-grid {

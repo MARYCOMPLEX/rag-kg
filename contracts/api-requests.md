@@ -358,7 +358,13 @@ OpenAPI remains the single source of truth. Entries here are requests only; once
   - Removed the remaining hardcoded fake evaluation library options from `web/src/views/EvaluationView.vue`.
   - `EvaluationView.vue` now reads the active library list from `useLibraryStore` and keeps library selection routed through the current library workspace.
   - `LibrarySettingsPanel.vue` now receives the selected library label from the page instead of displaying the stale `graphrag-survey` fixture.
-  - Evaluation metrics, filters, budget alert, model labels, budget limits, and failure cases remain mock-backed until OpenAPI defines `/api/libraries/{libraryId}/evaluation/dashboard`.
+  - Evaluation metrics, filters, budget alert, model labels, budget limits, and failure cases still needed API-mode gating until OpenAPI defines `/api/libraries/{libraryId}/evaluation/dashboard`.
+- Frontend cleanup note:
+  - Time: 2026-05-27 12:17 +08:00
+  - Issue: #2
+  - API mode no longer renders mock evaluation KPIs, trend data, failure cases, budget warning, model labels, budget limits, or data actions from `web/src/mocks/evaluation.ts` and `LibrarySettingsPanel.vue`.
+  - `EvaluationView.vue` now shows a pending-contract empty state while preserving the real library selector and route context.
+  - Mock evaluation dashboard data remains available only outside API mode until OpenAPI defines `/api/libraries/{libraryId}/evaluation/dashboard`.
 
 ## API Request: Command palette search and navigation metadata
 
