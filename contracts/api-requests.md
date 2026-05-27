@@ -169,3 +169,37 @@ OpenAPI remains the single source of truth. Entries here are requests only; once
   - Added `/api/libraries/{libraryId}/search` backed by the existing cross-resource search service and mapped backend hits into frontend command result fields.
   - Added `/api/libraries/{libraryId}/shell/metadata` with recent chat sessions from the context store and document/chunk stats from ingest state.
   - Missing library returns `404 LIBRARY_NOT_FOUND`; invalid search scope returns `400 VALIDATION_ERROR`; invalid limit returns `422 VALIDATION_ERROR`.
+
+## API Request: Knowledge graph workspace and entity detail
+
+- Page: Knowledge Graph workspace and entity drawer.
+- Component: `web/src/views/GraphView.vue`, `web/src/components/graph/GraphEntityDrawer.vue`, `web/src/stores/graph.ts`.
+- Endpoint:
+  - `/api/libraries/{libraryId}/graph`
+  - `/api/libraries/{libraryId}/graph/entities/{entityId}`
+- Method: `GET`
+- Params:
+  - Workspace path param: `libraryId`.
+  - Workspace query params: optional `entityTypes` comma-separated entity type keys, optional `minConfidence` from `0` to `1`, optional `limit`, optional `layout` using `static`, `force`, or `webgl`.
+  - Entity detail path params: `libraryId`, `entityId`.
+- Required fields:
+  - Workspace response: `filters`, `canvas`, and `summary`.
+  - `filters.entityTypes`: `key`, `label`, `count`, `checked`, `tone`.
+  - `filters.minConfidence`: current numeric confidence threshold.
+  - `canvas.nodes`: `id`, `label`, `type`, `tone`, `x`, `y`, `radius`, optional `selected`, `faded`, `confidence`, `degree`, `evidenceCount`.
+  - `canvas.edges`: `id`, `source`, `target`, optional `label`, `weight`, `confidence`, `muted`, `directed`.
+  - `canvas.layout`: `static`, `force`, or `webgl`.
+  - `canvas.largeGraph`: boolean indicating whether the frontend should simplify rendering.
+  - `summary`: `entityCountLabel`, `tripleCountLabel`, `confidenceLabel`, optional `warningLabel`.
+  - Entity detail response: `id`, `label`, `kind`, `stableId`, `aliases`, `summary`, `degree`, `confidence`, `incoming`, `mentions`, `evidenceCount`, `mentionsTrend`, `coOccurring`.
+- Acceptance criteria:
+  - OpenAPI defines graph workspace and entity detail schemas with all nested node, edge, filter, summary, trend, and co-occurrence fields.
+  - Backend supports empty graphs with `200` and empty `canvas.nodes` / `canvas.edges` arrays.
+  - Backend uses real KG triples/entities when available and does not seed fake graph content for the UI.
+  - Frontend can replace graph mocks after API-mode verification.
+- Status: implemented
+- Backend implementation note:
+  - Time: 2026-05-27 14:34 +08:00
+  - Added `/api/libraries/{libraryId}/graph` backed by KG triples/entities when available. Empty or unavailable graph reads return a contracted empty workspace with real zero labels.
+  - Added `/api/libraries/{libraryId}/graph/entities/{entityId}` for entity drawer details derived from stored entity metadata and incident triples.
+  - Missing library returns `404 LIBRARY_NOT_FOUND`; missing entity returns `404 NOT_FOUND`; invalid entity type filter or unsupported layout returns `400 VALIDATION_ERROR`; invalid numeric query bounds return `422 VALIDATION_ERROR`.

@@ -277,6 +277,104 @@ paths:
           $ref: "#/components/responses/LibraryNotFoundError"
         "500":
           $ref: "#/components/responses/InternalError"
+  /api/libraries/{libraryId}/graph:
+    get:
+      tags:
+        - libraries
+      summary: Get knowledge graph workspace data for one library
+      operationId: getFrontendGraphWorkspace
+      parameters:
+        - name: libraryId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: graphrag-survey
+        - name: entityTypes
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Optional comma-separated entity type keys to render.
+          example: method,dataset
+        - name: minConfidence
+          in: query
+          required: false
+          schema:
+            type: number
+            format: float
+            minimum: 0
+            maximum: 1
+            default: 0
+          description: Minimum triple confidence threshold.
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 500
+            default: 100
+          description: Maximum nodes returned in the canvas.
+        - name: layout
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - static
+              - force
+              - webgl
+            default: static
+      responses:
+        "200":
+          description: Graph filters, canvas data, and summary labels.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GraphWorkspace"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/AuthError"
+        "404":
+          $ref: "#/components/responses/LibraryNotFoundError"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/libraries/{libraryId}/graph/entities/{entityId}:
+    get:
+      tags:
+        - libraries
+      summary: Get knowledge graph entity detail drawer data
+      operationId: getFrontendGraphEntityDetail
+      parameters:
+        - name: libraryId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: graphrag-survey
+        - name: entityId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: method:graphrag
+      responses:
+        "200":
+          description: Entity detail data for the frontend drawer.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GraphEntityDetail"
+        "401":
+          $ref: "#/components/responses/AuthError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "500":
+          $ref: "#/components/responses/InternalError"
 components:
   schemas:
     LibrarySummary:
@@ -818,6 +916,296 @@ components:
         profile:
           nullable: true
           $ref: "#/components/schemas/ShellProfile"
+    GraphEntityTypeFilter:
+      type: object
+      additionalProperties: false
+      required:
+        - key
+        - label
+        - count
+        - checked
+        - tone
+      properties:
+        key:
+          type: string
+          example: method
+        label:
+          type: string
+          example: Method
+        count:
+          type: integer
+          minimum: 0
+          example: 12
+        checked:
+          type: boolean
+        tone:
+          type: string
+          example: method
+    GraphFilters:
+      type: object
+      additionalProperties: false
+      required:
+        - entityTypes
+        - minConfidence
+      properties:
+        entityTypes:
+          type: array
+          items:
+            $ref: "#/components/schemas/GraphEntityTypeFilter"
+        minConfidence:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          example: 0.75
+    GraphNode:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - label
+        - type
+        - tone
+        - x
+        - y
+        - radius
+      properties:
+        id:
+          type: string
+          example: method:graphrag
+        label:
+          type: string
+          example: GraphRAG
+        type:
+          type: string
+          example: method
+        tone:
+          type: string
+          example: method
+        x:
+          type: number
+          format: float
+          example: 50
+        y:
+          type: number
+          format: float
+          example: 50
+        radius:
+          type: number
+          format: float
+          example: 16
+        selected:
+          type: boolean
+        faded:
+          type: boolean
+        confidence:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+        degree:
+          type: integer
+          minimum: 0
+        evidenceCount:
+          type: integer
+          minimum: 0
+    GraphEdge:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - source
+        - target
+      properties:
+        id:
+          type: string
+          example: edge-1
+        source:
+          type: string
+          example: method:graphrag
+        target:
+          type: string
+          example: dataset:hotpotqa
+        label:
+          type: string
+          example: evaluated_on
+        weight:
+          type: number
+          format: float
+          minimum: 0
+        confidence:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+        muted:
+          type: boolean
+        directed:
+          type: boolean
+    GraphCanvas:
+      type: object
+      additionalProperties: false
+      required:
+        - nodes
+        - edges
+        - layout
+        - largeGraph
+      properties:
+        nodes:
+          type: array
+          items:
+            $ref: "#/components/schemas/GraphNode"
+        edges:
+          type: array
+          items:
+            $ref: "#/components/schemas/GraphEdge"
+        layout:
+          type: string
+          enum:
+            - static
+            - force
+            - webgl
+        largeGraph:
+          type: boolean
+          description: Indicates that the graph was truncated by the requested limit.
+    GraphSummary:
+      type: object
+      additionalProperties: false
+      required:
+        - entityCountLabel
+        - tripleCountLabel
+        - confidenceLabel
+      properties:
+        entityCountLabel:
+          type: string
+          example: 128 entities
+        tripleCountLabel:
+          type: string
+          example: 342 triples
+        confidenceLabel:
+          type: string
+          example: Avg confidence 86%
+        warningLabel:
+          type: string
+          example: Showing 100 of 480 entities
+    GraphWorkspace:
+      type: object
+      additionalProperties: false
+      required:
+        - filters
+        - canvas
+        - summary
+      properties:
+        filters:
+          $ref: "#/components/schemas/GraphFilters"
+        canvas:
+          $ref: "#/components/schemas/GraphCanvas"
+        summary:
+          $ref: "#/components/schemas/GraphSummary"
+    GraphMentionsTrend:
+      type: object
+      additionalProperties: false
+      required:
+        - points
+        - startLabel
+        - endLabel
+      properties:
+        points:
+          type: array
+          items:
+            type: integer
+            minimum: 0
+        startLabel:
+          type: string
+          example: Current
+        endLabel:
+          type: string
+          example: Current
+    GraphCoOccurringEntity:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - name
+        - type
+        - count
+      properties:
+        id:
+          type: string
+          example: dataset:hotpotqa
+        name:
+          type: string
+          example: HotpotQA
+        type:
+          type: string
+          example: dataset
+        count:
+          type: integer
+          minimum: 0
+          example: 3
+    GraphEntityDetail:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - label
+        - kind
+        - stableId
+        - aliases
+        - summary
+        - degree
+        - confidence
+        - incoming
+        - mentions
+        - evidenceCount
+        - mentionsTrend
+        - coOccurring
+      properties:
+        id:
+          type: string
+          example: method:graphrag
+        label:
+          type: string
+          example: GraphRAG
+        kind:
+          type: string
+          example: Method
+        stableId:
+          type: string
+          example: method:graphrag
+        aliases:
+          type: array
+          items:
+            type: string
+          example:
+            - Graph RAG
+        summary:
+          type: string
+          description: Empty string when no entity description is available.
+          example: Graph-augmented retrieval method.
+        degree:
+          type: integer
+          minimum: 0
+        confidence:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+        incoming:
+          type: integer
+          minimum: 0
+        mentions:
+          type: integer
+          minimum: 0
+        evidenceCount:
+          type: integer
+          minimum: 0
+        mentionsTrend:
+          $ref: "#/components/schemas/GraphMentionsTrend"
+        coOccurring:
+          type: array
+          items:
+            $ref: "#/components/schemas/GraphCoOccurringEntity"
     ErrorEnvelope:
       type: object
       additionalProperties: false

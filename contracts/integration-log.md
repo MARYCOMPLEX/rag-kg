@@ -28,6 +28,27 @@ Use this log during local integration, E2E testing, and contract verification. E
 
 ## Logs
 
+## 2026-05-27 14:34 - Frontend knowledge graph API
+
+- Time: 2026-05-27 14:34 +08:00
+- Agent: Backend Agent
+- Issue: #3
+- Cause: Frontend requested real API-mode graph workspace and entity detail endpoints to replace graph mock data and hardcoded entity drawer values.
+- Fix status: fixed
+- Fix:
+  - Added OpenAPI contract for `GET /api/libraries/{libraryId}/graph` and `GET /api/libraries/{libraryId}/graph/entities/{entityId}`.
+  - Added the frontend `/api` graph adapter backed by KG entity metadata and triples when available.
+  - Empty or unavailable graph reads return `200` with empty node/edge arrays and zero summary labels rather than seeded graph content.
+  - Missing library returns `404 LIBRARY_NOT_FOUND`; missing entity returns `404 NOT_FOUND`; invalid entity type filter or unsupported layout returns `400 VALIDATION_ERROR`; invalid numeric query bounds return `422 VALIDATION_ERROR`.
+- Verification:
+  - `uv run --group test pytest tests/integration/api/test_frontend_graph_routes.py -q`: passed, 8 tests.
+  - `uv run --group test pytest tests/integration/api/test_frontend_graph_routes.py tests/integration/api/test_frontend_shell_routes.py tests/integration/api/test_frontend_documents_routes.py tests/integration/api/test_frontend_libraries_routes.py -q`: passed, 40 tests, 1 existing Starlette deprecation warning.
+  - `uv run --group dev ruff check apps/api/routes/frontend_graph.py apps/api/routes/__init__.py packages/indexing/adapters/neo4j_graph.py tests/integration/api/test_frontend_graph_routes.py`: passed.
+  - `uv run --group dev ruff format --check apps/api/routes/frontend_graph.py apps/api/routes/__init__.py packages/indexing/adapters/neo4j_graph.py tests/integration/api/test_frontend_graph_routes.py`: passed.
+  - `make typecheck`: passed, 0 errors with 20 existing warnings outside this change.
+  - `uv run python -c "import yaml; yaml.safe_load(open('..\\contracts\\openapi.yaml', encoding='utf-8')); print('openapi yaml parsed')"`: passed.
+  - `make lint`: failed on pre-existing unrelated Ruff issues in `apps/api/_activity_reader.py`, `apps/api/_notification_reader.py`, and `scripts/generate_ui_images.py`.
+
 ## 2026-05-27 13:52 - Frontend command search and shell metadata API
 
 - Time: 2026-05-27 13:52 +08:00
