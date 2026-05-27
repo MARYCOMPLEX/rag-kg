@@ -22,6 +22,7 @@ M0_M6_ROUTES: tuple[str, ...] = (
 M7_ROUTES: tuple[str, ...] = (
     "frontend_libraries",  # frontend /api adapter for integration
     "frontend_documents",  # frontend /api document read adapter
+    "frontend_shell",  # frontend /api command search and shell metadata adapter
     "tasks",  # ADR-0009
     "notifications",  # ADR-0011
     "activity",  # ADR-0014

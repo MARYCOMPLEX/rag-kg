@@ -28,6 +28,28 @@ Use this log during local integration, E2E testing, and contract verification. E
 
 ## Logs
 
+## 2026-05-27 13:52 - Frontend command search and shell metadata API
+
+- Time: 2026-05-27 13:52 +08:00
+- Agent: Backend Agent
+- Issue: #3
+- Cause: Frontend requested real API-mode command palette search and dynamic shell metadata to replace mock search, recent sessions, and library stats.
+- Fix status: fixed
+- Fix:
+  - Added OpenAPI contract for `GET /api/libraries/{libraryId}/search` and `GET /api/libraries/{libraryId}/shell/metadata`.
+  - Added the frontend `/api` shell adapter while preserving existing `/v1/search` behavior.
+  - Search is backed by the existing cross-resource search service and maps document/entity/library/action hits into frontend `id`, `type`, `label`, `meta`, `screen`, and `target` fields.
+  - Shell metadata returns recent chat sessions from the context store and document/chunk stats from ingest state, with optional metadata omitted when unavailable.
+- Verification:
+  - `uv run --group test pytest tests\integration\api\test_frontend_shell_routes.py -q`: passed, 6 tests.
+  - `uv run --group test pytest tests\integration\api\test_frontend_libraries_routes.py tests\integration\api\test_frontend_documents_routes.py tests\integration\api\test_frontend_shell_routes.py -q`: passed, 32 tests, 1 existing Starlette deprecation warning.
+  - `uv run --group dev ruff check apps\api\routes\frontend_shell.py apps\api\routes\__init__.py tests\integration\api\test_frontend_shell_routes.py`: passed.
+  - `uv run --group dev ruff format --check apps\api\routes\frontend_shell.py apps\api\routes\__init__.py tests\integration\api\test_frontend_shell_routes.py`: passed after formatting the touched route registry file.
+  - `make typecheck`: passed, 0 errors with 20 existing warnings outside this change.
+  - `uv run python -c "import yaml; yaml.safe_load(open('..\\contracts\\openapi.yaml', encoding='utf-8')); print('openapi yaml parsed')"`: passed.
+  - ASGI smoke against local app: search actions returned `200` with `generate_review`; shell metadata for `rag-agent` returned `200` with document/chunk stats; invalid scope returned `400 VALIDATION_ERROR`; missing library returned `404 LIBRARY_NOT_FOUND`.
+  - `make lint`: failed on unrelated pre-existing Ruff issues in `apps\api\_activity_reader.py`, `apps\api\_notification_reader.py`, and `scripts\generate_ui_images.py`.
+
 ## 2026-05-27 13:16 - Frontend multipart document upload API
 
 - Time: 2026-05-27 13:16 +08:00

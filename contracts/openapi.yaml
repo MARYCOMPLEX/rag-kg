@@ -197,6 +197,86 @@ paths:
           $ref: "#/components/responses/UpstreamError"
         "500":
           $ref: "#/components/responses/InternalError"
+  /api/libraries/{libraryId}/search:
+    get:
+      tags:
+        - libraries
+      summary: Search command palette results for one library context
+      operationId: searchFrontendLibraryCommands
+      parameters:
+        - name: libraryId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: graphrag-survey
+        - name: q
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 200
+            default: ""
+          description: User-entered command palette query. Blank or one-character queries return empty results.
+          example: graph
+        - name: scope
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Comma-separated scopes using documents, entities, libraries, and actions.
+          example: documents,entities,actions
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 12
+      responses:
+        "200":
+          description: Command palette search results.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommandSearchResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/AuthError"
+        "404":
+          $ref: "#/components/responses/LibraryNotFoundError"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/libraries/{libraryId}/shell/metadata:
+    get:
+      tags:
+        - libraries
+      summary: Get dynamic shell metadata for one library context
+      operationId: getFrontendShellMetadata
+      parameters:
+        - name: libraryId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: graphrag-survey
+      responses:
+        "200":
+          description: Recent sessions, library stats, and optional shell metadata.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShellMetadata"
+        "401":
+          $ref: "#/components/responses/AuthError"
+        "404":
+          $ref: "#/components/responses/LibraryNotFoundError"
+        "500":
+          $ref: "#/components/responses/InternalError"
 components:
   schemas:
     LibrarySummary:
@@ -562,6 +642,182 @@ components:
           items:
             type: string
             format: binary
+    CommandSearchTarget:
+      type: object
+      additionalProperties: false
+      properties:
+        libraryId:
+          type: string
+          example: graphrag-survey
+        documentId:
+          type: string
+          example: doc-001
+        entityId:
+          type: string
+          example: entity-001
+        sessionId:
+          type: string
+          example: chat-001
+        reviewRunId:
+          type: string
+          example: review-001
+        query:
+          type: string
+          example: graph
+    CommandSearchResult:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - type
+        - label
+        - meta
+        - screen
+      properties:
+        id:
+          type: string
+          example: doc-001
+        type:
+          type: string
+          enum:
+            - document
+            - entity
+            - library
+            - action
+        label:
+          type: string
+          example: GraphRAG Survey Notes
+        meta:
+          type: string
+          example: paper.pdf
+        screen:
+          type: string
+          enum:
+            - dashboard
+            - chat
+            - graph
+            - docs
+            - review
+            - eval
+        icon:
+          type: string
+          example: FileText
+        shortcut:
+          type: string
+          example: Ctrl+D
+        tone:
+          type: string
+          example: citation
+        target:
+          $ref: "#/components/schemas/CommandSearchTarget"
+    CommandSearchResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - query
+        - results
+      properties:
+        query:
+          type: string
+          example: graph
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/CommandSearchResult"
+    RecentSession:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - title
+        - time
+        - screen
+      properties:
+        id:
+          type: string
+          example: chat-001
+        title:
+          type: string
+          example: Recent GraphRAG chat
+        time:
+          type: string
+          example: 2026-05-27
+        screen:
+          type: string
+          enum:
+            - dashboard
+            - chat
+            - graph
+            - docs
+            - review
+            - eval
+        active:
+          type: boolean
+        target:
+          $ref: "#/components/schemas/CommandSearchTarget"
+    LibraryStat:
+      type: object
+      additionalProperties: false
+      required:
+        - label
+        - value
+      properties:
+        label:
+          type: string
+          example: Documents
+        value:
+          type: string
+          example: "2"
+    ShellNotifications:
+      type: object
+      additionalProperties: false
+      required:
+        - activeBackgroundStreams
+      properties:
+        activeBackgroundStreams:
+          type: integer
+          minimum: 0
+          example: 1
+        label:
+          type: string
+          example: 1 active stream
+    ShellProfile:
+      type: object
+      additionalProperties: false
+      required:
+        - initials
+        - displayName
+      properties:
+        initials:
+          type: string
+          example: AF
+        displayName:
+          type: string
+          example: AnyFast User
+        planLabel:
+          type: string
+          example: Local
+    ShellMetadata:
+      type: object
+      additionalProperties: false
+      required:
+        - recentSessions
+        - libraryStats
+      properties:
+        recentSessions:
+          type: array
+          items:
+            $ref: "#/components/schemas/RecentSession"
+        libraryStats:
+          type: array
+          items:
+            $ref: "#/components/schemas/LibraryStat"
+        notifications:
+          nullable: true
+          $ref: "#/components/schemas/ShellNotifications"
+        profile:
+          nullable: true
+          $ref: "#/components/schemas/ShellProfile"
     ErrorEnvelope:
       type: object
       additionalProperties: false

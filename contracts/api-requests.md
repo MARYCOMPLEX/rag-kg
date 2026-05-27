@@ -134,3 +134,38 @@ OpenAPI remains the single source of truth. Entries here are requests only; once
   - Accepted the frontend-requested multipart upload contract.
   - `POST /api/libraries/{libraryId}/documents:upload` now accepts repeated `files` PDF fields, stages uploaded PDFs under backend `data/uploads/{libraryId}/`, enqueues `ingest_document` tasks, and writes pending ingest-state rows visible in the document list endpoint.
   - Missing files return `400 VALIDATION_ERROR`; missing library returns `404 LIBRARY_NOT_FOUND`; duplicate or already-pending uploads return `409 CONFLICT`; oversized PDFs return `413 PAYLOAD_TOO_LARGE`; non-PDF uploads return `415 UNSUPPORTED_MEDIA_TYPE`; queue dependency failures return `503 UPSTREAM_ERROR`.
+
+## API Request: Command palette search and navigation metadata
+
+- Page: Global command palette and application shell.
+- Component: `web/src/components/overlays/CommandPalette.vue`, `web/src/components/layout/SideNav.vue`, `web/src/components/layout/TopBar.vue`, `web/src/stores/search.ts`, `web/src/stores/ui.ts`.
+- Endpoint:
+  - `/api/libraries/{libraryId}/search`
+  - `/api/libraries/{libraryId}/shell/metadata`
+- Method: `GET`
+- Params:
+  - Search path param: `libraryId`.
+  - Search query params: `q`, optional `scope` as comma-separated `documents`, `entities`, `libraries`, `actions`, optional `limit`.
+  - Shell metadata path param: `libraryId`.
+- Required fields:
+  - Search response: `query`, `results`.
+  - Search result fields: `id`, `type`, `label`, `meta`, `screen`, optional `icon`, optional `shortcut`, optional `tone`, optional `target`.
+  - `type` values: `document`, `entity`, `library`, `action`.
+  - `screen` values: `dashboard`, `chat`, `graph`, `docs`, `review`, `eval`.
+  - `target` optional fields: `libraryId`, `documentId`, `entityId`, `sessionId`, `reviewRunId`, `query`.
+  - Shell metadata response: `recentSessions`, `libraryStats`, optional `notifications`, optional `profile`.
+  - Recent session fields: `id`, `title`, `time`, `screen`, optional `active`, optional `target`.
+  - Library stat fields: `label`, `value`.
+  - Notifications fields: `activeBackgroundStreams`, optional `label`.
+  - Profile fields: `initials`, `displayName`, optional `planLabel`.
+- Acceptance criteria:
+  - OpenAPI defines search and dynamic shell metadata contracts.
+  - Backend supports blank or one-character search queries with `200 { query, results: [] }`.
+  - Backend supports empty recent session arrays and real library statistics without seeded/fake values.
+  - Frontend can replace `web/src/mocks/search.ts` and dynamic `recentSessions`/`libraryStats` placeholders.
+- Status: implemented
+- Backend implementation note:
+  - Time: 2026-05-27 13:52 +08:00
+  - Added `/api/libraries/{libraryId}/search` backed by the existing cross-resource search service and mapped backend hits into frontend command result fields.
+  - Added `/api/libraries/{libraryId}/shell/metadata` with recent chat sessions from the context store and document/chunk stats from ingest state.
+  - Missing library returns `404 LIBRARY_NOT_FOUND`; invalid search scope returns `400 VALIDATION_ERROR`; invalid limit returns `422 VALIDATION_ERROR`.
