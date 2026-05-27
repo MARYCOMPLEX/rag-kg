@@ -1,4 +1,4 @@
-import type { LibraryStat, RecentSession } from '../types/application'
+import type { LibraryStat, RecentSession, ShellProfile } from '../types/application'
 
 export const recentSessions: RecentSession[] = [
   { title: 'GraphRAG local vs global', time: 'now', active: true },
@@ -14,3 +14,11 @@ export const libraryStats: LibraryStat[] = [
   { label: 'Relations', value: '532,104' },
   { label: 'Chunks', value: '3.2M' },
 ]
+
+export const storageStat: LibraryStat = { label: 'Storage', value: '482 GB' }
+
+export const shellProfile: ShellProfile = {
+  initials: 'RL',
+  displayName: 'RL Research Lab Admin',
+  planLabel: 'Premium Plan',
+}

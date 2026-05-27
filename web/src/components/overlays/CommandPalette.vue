@@ -25,23 +25,22 @@ const actionResults = computed<CommandSearchResult[]>(() => commandItems.value.m
 const sections = computed(() => {
   const query = commandQuery.value.trim()
   const allSections = [
-    { title: 'Entities in efficient-ml', items: entityResults.value },
+    { title: 'Entities', items: entityResults.value },
     { title: 'Documents', items: documentResults.value },
     { title: query ? `Actions matching "${query}"` : 'Suggested actions', items: actionResults.value },
   ]
-
-  if (!query)
-    return allSections
 
   const normalized = query.toLowerCase()
   return allSections
     .map(section => ({
       ...section,
-      items: section.items.filter(item =>
-        item.label.toLowerCase().includes(normalized)
-        || item.meta.toLowerCase().includes(normalized)
-        || section.title.toLowerCase().includes(normalized),
-      ),
+      items: query
+        ? section.items.filter(item =>
+            item.label.toLowerCase().includes(normalized)
+            || item.meta.toLowerCase().includes(normalized)
+            || section.title.toLowerCase().includes(normalized),
+          )
+        : section.items,
     }))
     .filter(section => section.items.length)
 })

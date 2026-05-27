@@ -70,6 +70,12 @@ export interface LibraryStat {
   value: string
 }
 
+export interface ShellProfile {
+  initials: string
+  displayName: string
+  planLabel?: string
+}
+
 export type ReviewStepStatus = 'done' | 'active' | 'pending'
 
 export interface ReviewPipelineDetail {

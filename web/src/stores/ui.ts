@@ -8,12 +8,15 @@ import {
 import {
   libraryStats,
   recentSessions,
+  shellProfile,
+  storageStat,
 } from '../mocks/navigation'
 import { useLibraryStore } from './library'
 import type { CommandItem, ScreenId, ToastItem, ToastTone } from '../types/application'
 
 export const useUiStore = defineStore('ui', () => {
   const library = useLibraryStore()
+  const usesApiData = import.meta.env.VITE_DATA_SOURCE === 'api'
   const screens = screenNavigation
   const activeScreen = ref<ScreenId>('chat')
   const costExceeded = ref(false)
@@ -29,8 +32,10 @@ export const useUiStore = defineStore('ui', () => {
 
   const currentScreenTitle = computed(() => screens.find(item => item.id === activeScreen.value)?.label ?? 'Chat')
   const mainNavigationItems = computed(() => mainNavigation)
-  const recentSessionItems = computed(() => recentSessions)
-  const libraryStatItems = computed(() => libraryStats)
+  const recentSessionItems = computed(() => usesApiData ? [] : recentSessions)
+  const libraryStatItems = computed(() => usesApiData ? [] : libraryStats)
+  const storageStatItem = computed(() => usesApiData ? null : storageStat)
+  const shellProfileItem = computed(() => usesApiData ? null : shellProfile)
   const visibleToasts = computed(() => toasts.value.slice(0, 3))
   const commandItems = computed(() => {
     const query = commandQuery.value.trim().toLowerCase()
@@ -105,6 +110,8 @@ export const useUiStore = defineStore('ui', () => {
     mainNavigationItems,
     recentSessionItems,
     libraryStatItems,
+    storageStatItem,
+    shellProfileItem,
     visibleToasts,
     setActiveScreen,
     pushToast,

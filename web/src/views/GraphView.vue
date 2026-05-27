@@ -58,7 +58,7 @@ async function citeNodeInChat() {
       </footer>
     </aside>
 
-    <main class="kg-canvas-panel" role="application" aria-label="Knowledge graph for efficient-ml">
+    <main class="kg-canvas-panel" role="application" aria-label="Knowledge graph">
       <div class="kg-canvas-note top-note">Spec: Switch to WebGL when nodes &gt; 3000</div>
       <div class="kg-canvas-note bottom-note">Spec: Zoom &lt; 0.5 hides labels to declutter</div>
 

@@ -28,6 +28,21 @@ Use this log during local integration, E2E testing, and contract verification. E
 
 ## Logs
 
+## 2026-05-27 12:04 - API mode hides mock search and shell metadata
+
+- Time: 2026-05-27 12:04 +08:00
+- Agent: Frontend Agent
+- Issue: #2
+- Cause: `useSearchStore`, `useUiStore`, `CommandPalette.vue`, and `SideNav.vue` still rendered mock document/entity search results, recent sessions, library stats, storage, and profile metadata when the app was running in API mode without a contracted search/shell metadata backend.
+- Fix status: fixed
+- Frontend fix:
+  - Gated mock command search records behind non-API data source mode.
+  - Gated mock recent sessions, library stats, storage, and profile metadata behind non-API data source mode.
+  - Added shell empty states for API mode and removed fixture-specific command palette section copy.
+  - Removed a fixture-specific graph canvas accessibility label from `web/src/views/GraphView.vue`.
+- Verification:
+  - `pnpm typecheck`: passed.
+
 ## 2026-05-27 12:01 - Evaluation library selector fake options removed
 
 - Time: 2026-05-27 12:01 +08:00

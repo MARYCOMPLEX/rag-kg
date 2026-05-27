@@ -410,6 +410,14 @@ OpenAPI remains the single source of truth. Entries here are requests only; once
   - `screenNavigation`, `mainNavigation`, and suggested route actions now live in `web/src/app/staticNavigation.ts` because they are frontend-owned route/UI chrome, not backend fixtures.
   - Suggested command action paths now derive from the active library instead of the removed hardcoded `graphrag-survey` slug.
   - `web/src/mocks/navigation.ts` now only contains dynamic shell metadata placeholders (`recentSessions`, `libraryStats`) pending the requested `/api/libraries/{libraryId}/shell/metadata` contract.
+- Frontend cleanup note:
+  - Time: 2026-05-27 12:04 +08:00
+  - Issue: #2
+  - API mode no longer renders mock command search records from `web/src/mocks/search.ts`.
+  - API mode no longer renders mock shell metadata from `web/src/mocks/navigation.ts`; recent sessions, library stats, storage, and profile are hidden or shown as empty until `/api/libraries/{libraryId}/shell/metadata` exists.
+  - `CommandPalette.vue` now filters out empty dynamic sections and uses a generic `Entities` section title instead of a fixture-specific entity group.
+  - Removed a fixture-specific `efficient-ml` graph canvas ARIA label from `web/src/views/GraphView.vue`.
+  - Mock data remains available only when `VITE_DATA_SOURCE` is not `api`.
 
 ## Frontend Audit Note: OpenAPI still blocks real API integration
 
