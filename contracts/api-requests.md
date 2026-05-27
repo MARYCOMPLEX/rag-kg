@@ -275,24 +275,38 @@ OpenAPI remains the single source of truth. Entries here are requests only; once
 - Page: Knowledge Graph workspace and entity drawer.
 - Component: `web/src/views/GraphView.vue`, `web/src/components/graph/GraphEntityDrawer.vue`, `web/src/stores/graph.ts`.
 - Endpoint:
-  - Graph workspace endpoint is missing from OpenAPI.
-  - Entity detail endpoint is missing from OpenAPI.
-  - Entity filter metadata endpoint is missing from OpenAPI.
+  - Requested graph workspace endpoint: `/api/libraries/{libraryId}/graph`
+  - Requested entity detail endpoint: `/api/libraries/{libraryId}/graph/entities/{entityId}`
 - Method: `GET`
 - Params:
-  - Needs library ID.
-  - Graph filters required by UI: entity type selection and minimum confidence.
-  - Entity detail requires entity ID or stable entity key.
+  - Workspace path param: `libraryId`.
+  - Workspace query params requested by frontend: optional `entityTypes` as a comma-separated list of entity type keys, optional `minConfidence` number from `0` to `1`, optional `limit` number for max rendered nodes, optional `layout` using `static`, `force`, or `webgl`.
+  - Entity detail path params: `libraryId`, `entityId`.
 - Required fields:
-  - Entity type filters: `label`, `count`, `checked`, `tone`.
-  - Graph canvas data needs contracted nodes and edges before frontend can replace hardcoded SVG nodes.
-  - Entity detail fields currently displayed: entity label/name, kind, stable ID, aliases, summary, degree, confidence, incoming, mentions, mention trend, co-occurring entities, evidence count.
-  - Error contract for missing library, missing entity, invalid filter, and large graph fallback behavior.
+  - Workspace response: `filters`, `canvas`, and `summary`.
+  - `filters.entityTypes`: array with `key`, `label`, `count`, `checked`, `tone`.
+  - `filters.minConfidence`: current numeric confidence threshold.
+  - `canvas.nodes`: array with `id`, `label`, `type`, `tone`, `x`, `y`, `radius`, optional `selected`, optional `faded`, optional `confidence`, optional `degree`, optional `evidenceCount`.
+  - `canvas.edges`: array with `id`, `source`, `target`, optional `label`, optional `weight`, optional `confidence`, optional `muted`, optional `directed`.
+  - `canvas.layout`: `static`, `force`, or `webgl`.
+  - `canvas.largeGraph`: boolean indicating whether the frontend should switch to simplified/WebGL rendering.
+  - `summary`: `entityCountLabel`, `tripleCountLabel`, `confidenceLabel`, optional `warningLabel`.
+  - Entity detail response: `id`, `label`, `kind`, `stableId`, `aliases`, `summary`, `degree`, `confidence`, `incoming`, `mentions`, `evidenceCount`, `mentionsTrend`, `coOccurring`.
+  - `mentionsTrend`: `points`, `startLabel`, `endLabel`.
+  - `coOccurring`: array with `id`, `name`, `type`, `count`.
+  - Error contract for missing library, missing entity, invalid filters, unsupported layout, no graph data, graph too large for requested layout, unauthorized access, and server failure.
 - Acceptance criteria:
-  - OpenAPI defines graph summary, filters, canvas data, and entity detail schemas.
-  - Backend supports empty graphs and large graphs predictably.
-  - Frontend can replace `web/src/mocks/graph.ts` and hardcoded entity drawer values without guessing shape.
+  - OpenAPI defines graph workspace and entity detail schemas with all nested node, edge, filter, summary, trend, and co-occurrence fields.
+  - Backend supports empty graphs with `200` and empty `canvas.nodes`/`canvas.edges` arrays.
+  - Backend supports large graphs predictably through `canvas.largeGraph`, `canvas.layout`, and a warning/error contract instead of relying on frontend hardcoded thresholds.
+  - Frontend can replace `web/src/mocks/graph.ts`, hardcoded SVG nodes/edges/counts in `GraphView.vue`, and hardcoded entity detail values in `GraphEntityDrawer.vue`.
 - Status: requested
+- Frontend clarification note:
+  - Time: 2026-05-27 11:02 +08:00
+  - Issue: #2
+  - Current frontend behavior: `web/src/stores/graph.ts` imports entity type filters, mention trend points, and co-occurring entities from `web/src/mocks/graph.ts`; `GraphView.vue` hardcodes SVG nodes, edges, total entity/triple counts, confidence labels, and graph performance notes; `GraphEntityDrawer.vue` hardcodes entity kind, stable ID, aliases, summary, network stats, tab counts, and mention trend date labels.
+  - Requested backend contract: provide a graph workspace endpoint for filters/canvas/summary and an entity detail endpoint for the drawer before frontend removes the graph mock and hardcoded graph values.
+  - Frontend follow-up after OpenAPI update: add graph domain types and a graph repository, load workspace state through `useGraphStore`, render contracted nodes/edges instead of static SVG groups, load drawer details by selected entity ID, and add loading/empty/error/retry states for workspace and drawer.
 
 ## API Request: Evaluation dashboard data
 

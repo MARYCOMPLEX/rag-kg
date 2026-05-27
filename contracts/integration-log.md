@@ -28,6 +28,24 @@ Use this log during local integration, E2E testing, and contract verification. E
 
 ## Logs
 
+## 2026-05-27 11:02 - Graph API request clarified
+
+- Time: 2026-05-27 11:02 +08:00
+- Agent: Frontend Agent
+- Issue: #2
+- Cause: `GraphView`, `GraphEntityDrawer`, and `graph.ts` still depend on `web/src/mocks/graph.ts` plus hardcoded SVG nodes, edges, counts, entity IDs, aliases, stats, and chart labels; the existing API request did not give backend exact graph workspace and entity detail shapes to implement.
+- Fix status: open
+- Contract request:
+  - Requested graph workspace endpoint: `GET /api/libraries/{libraryId}/graph`.
+  - Requested entity detail endpoint: `GET /api/libraries/{libraryId}/graph/entities/{entityId}`.
+  - Requested workspace query params: optional `entityTypes`, `minConfidence`, `limit`, and `layout`.
+  - Requested workspace response: `filters`, `canvas`, and `summary`, including node/edge arrays and large-graph fallback metadata.
+  - Requested entity detail response: stable entity identity, aliases, summary, network stats, mention trend, and co-occurring entities.
+- Verification:
+  - `pnpm typecheck`: passed.
+- Backend follow-up:
+  - Update OpenAPI for the graph workspace/entity detail contract, or reject with a concrete alternate before frontend removes `web/src/mocks/graph.ts` and static graph markup.
+
 ## 2026-05-27 10:59 - Review API request clarified
 
 - Time: 2026-05-27 10:59 +08:00
