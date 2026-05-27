@@ -14,6 +14,7 @@ const {
   evidenceList,
   messages,
   streamState,
+  usesApiData,
 } = storeToRefs(chat)
 const { costExceeded } = storeToRefs(ui)
 const reasoningOpen = ref(false)
@@ -49,11 +50,20 @@ onMounted(() => {
   <section class="screen chat-screen">
     <section class="conversation">
       <div class="chat-head">
-        <span>Session / 2026-05-05 / 14:32</span>
-        <h1>How does GraphRAG combine community summarization and vector retrieval?</h1>
+        <span>{{ usesApiData ? 'Session unavailable' : 'Session / 2026-05-05 / 14:32' }}</span>
+        <h1>{{ usesApiData ? 'Chat contract pending' : 'How does GraphRAG combine community summarization and vector retrieval?' }}</h1>
       </div>
 
       <div class="messages" @scroll="autoScrollPaused = true">
+        <div v-if="usesApiData" class="chat-pending-state" role="status">
+          <AppIcon name="chat" :size="24" />
+          <h2>Chat is waiting for backend contract</h2>
+          <p>
+            API mode hides seeded messages, citation evidence, and simulated token streaming until
+            <code>/api/libraries/{libraryId}/chat/session</code>,
+            <code>/api/libraries/{libraryId}/chat/questions</code>, and the stream events are defined.
+          </p>
+        </div>
         <article v-for="message in messages" :key="message.id" class="message" :class="message.role">
           <div class="bubble-avatar">
             {{ message.role === 'user' ? 'YU' : 'AI' }}
@@ -114,7 +124,8 @@ onMounted(() => {
           :ref="setComposerRef"
           v-model="composerText"
           aria-label="Ask anything"
-          placeholder="Ask anything in this Library... type / for commands"
+          :disabled="usesApiData"
+          :placeholder="usesApiData ? 'Chat API contract pending' : 'Ask anything in this Library... type / for commands'"
           @input="resizeComposer"
           @keydown="chat.handleComposerKey"
         />
@@ -132,10 +143,10 @@ onMounted(() => {
               Tools
             </button>
           </div>
-          <span class="composer-hint">Cmd + Enter to send</span>
+          <span class="composer-hint">{{ usesApiData ? 'Waiting for OpenAPI chat contract' : 'Cmd + Enter to send' }}</span>
           <button
             class="send-btn"
-            :disabled="costExceeded"
+            :disabled="usesApiData || costExceeded"
             type="button"
             @click="streamState === 'streaming' ? chat.stopStream() : chat.sendQuestion()"
           >
@@ -149,11 +160,16 @@ onMounted(() => {
       <div class="panel-title">
         <div>
           <strong>Evidence</strong>
-          <small>3 sources cited / click [n] in answer to jump</small>
+          <small>{{ usesApiData ? 'No backend evidence loaded' : '3 sources cited / click [n] in answer to jump' }}</small>
         </div>
         <button type="button">Collapse</button>
       </div>
       <div class="evidence-list">
+        <div v-if="usesApiData" class="chat-pending-state compact" role="status">
+          <AppIcon name="info" :size="20" />
+          <h2>Evidence unavailable</h2>
+          <p>Grounded evidence remains hidden in API mode until the chat session endpoint returns real records.</p>
+        </div>
         <article
           v-for="item in evidenceList"
           :key="item.id"
@@ -173,7 +189,7 @@ onMounted(() => {
           <p>{{ item.snippet }}</p>
           <small>{{ item.meta }} / cited 14 times / score {{ item.score }}</small>
         </article>
-        <div class="evidence-notes">
+        <div v-if="!usesApiData" class="evidence-notes">
           <div>
             <strong>Edge case</strong>
             <span>0-hit retrieval on specific vector sub-query.</span>
@@ -187,3 +203,41 @@ onMounted(() => {
     </aside>
   </section>
 </template>
+
+<style scoped>
+.chat-pending-state {
+  display: grid;
+  gap: 12px;
+  place-items: center;
+  align-content: center;
+  min-height: 280px;
+  padding: 28px;
+  color: var(--color-text-muted);
+  text-align: center;
+  border: 1px dashed var(--color-border-muted);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-muted);
+}
+
+.chat-pending-state h2 {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: 1rem;
+}
+
+.chat-pending-state p {
+  max-width: 620px;
+  margin: 0;
+  line-height: 1.6;
+}
+
+.chat-pending-state code {
+  color: var(--color-text-primary);
+  font-size: 0.86em;
+}
+
+.chat-pending-state.compact {
+  min-height: 220px;
+  padding: 22px;
+}
+</style>

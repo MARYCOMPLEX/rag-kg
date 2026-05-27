@@ -210,6 +210,13 @@ OpenAPI remains the single source of truth. Entries here are requests only; once
   - Current frontend behavior: `web/src/stores/chat.ts` seeds `messages`, `evidence`, and `groundedAnswerTokens` from `web/src/mocks/chat.ts`, then simulates streaming with `window.setInterval`.
   - Requested backend contract: provide a current session loader plus a question creation endpoint that returns a stream task and message placeholders; define the SSE event payloads before frontend removes mock answer tokens.
   - Frontend follow-up after OpenAPI update: add a chat repository, load session state through the store, connect `sendQuestion()` to the real creation endpoint, and replace timer-based token generation with `taskStreamClient`.
+- Frontend cleanup note:
+  - Time: 2026-05-27 12:34 +08:00
+  - Issue: #2
+  - API mode no longer renders seeded chat messages, seeded evidence cards, static session title, or timer-driven grounded answer tokens from `web/src/mocks/chat.ts`.
+  - `ChatView.vue` now shows pending-contract empty states for the conversation and evidence panel while `/api/libraries/{libraryId}/chat/session`, `/api/libraries/{libraryId}/chat/questions`, and stream events remain uncontracted.
+  - `useChatStore.sendQuestion()` is disabled in API mode and reports a traceable pending-contract toast instead of simulating a response.
+  - Mock chat data remains available only when `VITE_DATA_SOURCE` is not `api`.
 
 ## API Request: Review generation run lifecycle
 

@@ -5,16 +5,18 @@ import type { ChatMessage, Evidence, StreamState } from '../types/application'
 import { useUiStore } from './ui'
 
 export const useChatStore = defineStore('chat', () => {
-  const evidenceList = ref<Evidence[]>(evidence)
-  const messages = ref<ChatMessage[]>(initialMessages.map(message => ({ ...message })))
-  const activeCitation = ref('1')
+  const usesApiData = computed(() => import.meta.env.VITE_DATA_SOURCE === 'api')
+  const apiMode = usesApiData.value
+  const evidenceList = ref<Evidence[]>(apiMode ? [] : evidence)
+  const messages = ref<ChatMessage[]>(apiMode ? [] : initialMessages.map(message => ({ ...message })))
+  const activeCitation = ref(apiMode ? '' : '1')
   const composerText = ref('')
-  const streamState = ref<StreamState>('done')
+  const streamState = ref<StreamState>(apiMode ? 'idle' : 'done')
   const autoScrollPaused = ref(false)
   const composerRef = ref<HTMLTextAreaElement | null>(null)
 
-  const activeEvidence = computed<Evidence>(() => {
-    return evidenceList.value.find(item => item.id === activeCitation.value) ?? evidenceList.value[0]!
+  const activeEvidence = computed<Evidence | null>(() => {
+    return evidenceList.value.find(item => item.id === activeCitation.value) ?? evidenceList.value[0] ?? null
   })
 
   let streamTimer: number | null = null
@@ -27,6 +29,11 @@ export const useChatStore = defineStore('chat', () => {
 
   function sendQuestion(text?: string) {
     const ui = useUiStore()
+    if (usesApiData.value) {
+      ui.pushToast('info', 'Chat API pending', 'OpenAPI must define chat session and stream endpoints before questions can run.')
+      return
+    }
+
     if (ui.costExceeded) {
       ui.pushToast('danger', 'Budget exceeded', 'Daily cap reached. Adjust budget or wait until reset.', 'Settings', 0)
       return
@@ -91,6 +98,9 @@ export const useChatStore = defineStore('chat', () => {
   }
 
   function activateCitation(id: string) {
+    if (!evidenceList.value.some(item => item.id === id))
+      return
+
     const ui = useUiStore()
     activeCitation.value = id
     ui.citationPreview = null
@@ -111,6 +121,7 @@ export const useChatStore = defineStore('chat', () => {
   }
 
   return {
+    usesApiData,
     evidenceList,
     messages,
     activeCitation,

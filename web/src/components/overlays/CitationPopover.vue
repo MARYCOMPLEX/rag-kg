@@ -10,7 +10,7 @@ const { activeEvidence } = storeToRefs(chat)
 </script>
 
 <template>
-  <div v-if="citationPreview" class="citation-popover">
+  <div v-if="citationPreview && activeEvidence" class="citation-popover">
     <strong>{{ activeEvidence.title }}</strong>
     <p>{{ activeEvidence.snippet }}</p>
     <small>score {{ activeEvidence.score }} / safePolygon bridge / 240ms open</small>

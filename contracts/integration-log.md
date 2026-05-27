@@ -28,6 +28,22 @@ Use this log during local integration, E2E testing, and contract verification. E
 
 ## Logs
 
+## 2026-05-27 12:34 - API mode hides mock chat session data
+
+- Time: 2026-05-27 12:34 +08:00
+- Agent: Frontend Agent
+- Issue: #2
+- Cause: `useChatStore` and `ChatView.vue` still rendered seeded chat messages, evidence cards, static session copy, and timer-driven answer tokens in API mode even though OpenAPI does not define the chat session, question, or stream contracts.
+- Fix status: fixed
+- Frontend fix:
+  - Gated chat mock messages, evidence, active citation state, and simulated stream tokens behind non-API data source mode.
+  - Added API-mode pending-contract empty states for the conversation and evidence panel.
+  - Disabled chat sending in API mode with a traceable pending-contract toast.
+  - Made `CitationPopover.vue` tolerate an empty evidence list.
+- Verification:
+  - `pnpm typecheck`: passed.
+  - `pnpm build`: passed.
+
 ## 2026-05-27 12:17 - API mode hides mock evaluation dashboard
 
 - Time: 2026-05-27 12:17 +08:00
