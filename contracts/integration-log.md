@@ -28,6 +28,21 @@ Use this log during local integration, E2E testing, and contract verification. E
 
 ## Logs
 
+## 2026-05-27 11:17 - Evaluation API request clarified
+
+- Time: 2026-05-27 11:17 +08:00
+- Agent: Frontend Agent
+- Issue: #2
+- Cause: `EvaluationView.vue`, `LibrarySettingsPanel.vue`, `evaluation.ts`, and `web/src/mocks/evaluation.ts` still depend on mock KPI/trend/failure rows plus hardcoded library selector, budget alert, model labels, budget limits, and filter copy; the existing API request did not give backend exact dashboard, filter, alert, settings, and empty-state shapes to implement.
+- Fix status: open
+- Contract request:
+  - Requested dashboard endpoint: `GET /api/libraries/{libraryId}/evaluation/dashboard`.
+  - Requested query params: optional `dataset`, optional `timeRange`, optional ISO `from`/`to`.
+  - Requested response groups: `summary`, `filters`, `budgetAlert`, `kpis`, `trend`, `failureCases`, and `librarySettings`.
+  - Requested empty behavior: return `200` with empty metric arrays and `budgetAlert: null` where applicable, rather than seeded/fake evaluation data.
+- Verification:
+  - `pnpm typecheck`: passed.
+
 ## 2026-05-27 11:02 - Graph API request clarified
 
 - Time: 2026-05-27 11:02 +08:00

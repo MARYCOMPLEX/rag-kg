@@ -312,22 +312,46 @@ OpenAPI remains the single source of truth. Entries here are requests only; once
 
 - Page: Evaluation dashboard.
 - Component: `web/src/views/EvaluationView.vue`, `web/src/components/evaluation/*`, `web/src/stores/evaluation.ts`.
-- Endpoint: Evaluation dashboard endpoint is missing from OpenAPI.
+- Endpoint: Requested dashboard endpoint: `/api/libraries/{libraryId}/evaluation/dashboard`
 - Method: `GET`
 - Params:
-  - Needs library ID.
-  - UI filter dimensions currently shown: dataset/task family and time range.
+  - Path param: `libraryId`.
+  - Query params requested by frontend:
+    - optional `dataset` as a dataset/task-family key, for example `smoke`, `multihop`, or `review`.
+    - optional `timeRange` using `7d`, `30d`, or `90d`.
+    - optional `from` and `to` ISO dates for explicit calendar ranges.
 - Required fields:
-  - KPI fields: `title`, `value`, `threshold`, `tone`, `points`, optional `icon`.
-  - Trend fields: day labels plus metric arrays for EM@1, faithfulness, citation, and latency p95.
-  - Trend legend fields used by UI.
-  - Failure case fields: `id`, `dataset`, `question`, `failure`, `tone`, `em`, `faithfulness`, `citation`, `latency`.
-  - Error contract for missing library, invalid date range/filter, no evaluation runs, and server failure.
+  - Dashboard response: `summary`, `filters`, `budgetAlert`, `kpis`, `trend`, `failureCases`, and `librarySettings`.
+  - `summary`: `libraryId`, `libraryName`, `datasetSummaryLabel`, `timeRangeLabel`, optional `lastRunLabel`.
+  - `filters.datasets`: array with `key`, `label`, `count`, optional `active`.
+  - `filters.timeRanges`: array with `key`, `label`, optional `active`.
+  - `budgetAlert`: nullable object with `tone`, `title`, `detail`, optional `action`, optional `dismissible`.
+  - `budgetAlert.tone` values required by UI: `success`, `info`, `warning`, `danger`.
+  - `kpis`: array with `title`, `value`, `threshold`, `tone`, `points`, optional `icon`.
+  - `kpis[].tone` values required by UI: `success`, `secondary`, `danger`.
+  - `trend.days`: array of x-axis labels.
+  - `trend.em`, `trend.faithfulness`, `trend.citation`, and `trend.latency`: numeric arrays aligned to `trend.days`.
+  - `trend.legend`: array with `label`, `tone`; legend tone values required by UI: `success`, `secondary`, `citation`, `danger`.
+  - `failureCases`: array with `id`, `dataset`, `question`, `failure`, `tone`, `em`, `faithfulness`, `citation`, `latency`, optional `replayContext`.
+  - `failureCases[].tone` values required by UI: `danger`, `warning`, `neutral`.
+  - `librarySettings`: `libraryLabel`, `models`, `budgetLimits`, and `dataActions`.
+  - `librarySettings.models`: `routerLabel`, `embeddingLabel`, optional `warning`.
+  - `librarySettings.budgetLimits`: array with `key`, `label`, `value`.
+  - `librarySettings.dataActions`: optional booleans `canExport` and `canPurge`.
+  - Error contract for missing library, invalid dataset filter, invalid time range/date range, no evaluation runs, unauthorized access, and server failure.
 - Acceptance criteria:
   - OpenAPI defines the evaluation dashboard request and response schemas.
-  - Backend supports empty KPI/trend/failure-case states.
+  - Backend supports empty KPI/trend/failure-case states with `200` and empty arrays, not fake seeded metrics.
+  - Backend can return `budgetAlert: null` when there is no budget issue.
+  - Frontend can remove hardcoded library selector options, budget warning, model labels, budget limit inputs, trend labels, and failure cases from `EvaluationView.vue` and `web/src/mocks/evaluation.ts`.
   - Frontend can replace `web/src/mocks/evaluation.ts` with service-backed state.
 - Status: requested
+- Frontend clarification note:
+  - Time: 2026-05-27 11:17 +08:00
+  - Issue: #2
+  - Current frontend behavior: `web/src/stores/evaluation.ts` exposes static computed values from `web/src/mocks/evaluation.ts`; `EvaluationView.vue` hardcodes dataset/time range copy, library selector options, and the budget warning; `LibrarySettingsPanel.vue` hardcodes the selected library label, model labels, embedding rebuild warning, budget limit values, and data actions.
+  - Requested backend contract: provide a single dashboard endpoint scoped by library and filters before frontend removes the evaluation mock and hardcoded dashboard/settings text.
+  - Frontend follow-up after OpenAPI update: add evaluation domain types and a repository, load dashboard state through `useEvaluationStore`, wire filter changes to query params, render loading/empty/error/retry states, and keep replay actions routed through the chat workspace with optional `replayContext`.
 
 ## API Request: Command palette search and navigation metadata
 
