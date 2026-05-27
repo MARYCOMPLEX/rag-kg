@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import time
 from collections.abc import AsyncIterator
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
@@ -157,6 +158,40 @@ class _HangingAlertEngine:
     async def list_active(self, library_id: str) -> tuple[EvalAlert, ...]:
         _ = library_id
         await asyncio.sleep(60)
+        return ()
+
+
+async def _slow_cancel() -> None:
+    try:
+        await asyncio.sleep(60)
+    except asyncio.CancelledError:
+        await asyncio.sleep(1)
+        raise
+
+
+class _SlowCancelSnapshotter:
+    async def get_kpis(self, library_id: str, *, eval_set: str) -> EvalKPIs | None:
+        _ = library_id, eval_set
+        await _slow_cancel()
+        return None
+
+    async def get_trend(
+        self,
+        library_id: str,
+        *,
+        metric: str,
+        eval_set: str,
+        days: int = 30,
+    ) -> tuple[EvalSnapshot, ...]:
+        _ = library_id, metric, eval_set, days
+        await _slow_cancel()
+        return ()
+
+
+class _SlowCancelAlertEngine:
+    async def list_active(self, library_id: str) -> tuple[EvalAlert, ...]:
+        _ = library_id
+        await _slow_cancel()
         return ()
 
 
@@ -382,6 +417,27 @@ async def test_evaluation_dashboard_slow_stores_degrade_to_empty_dashboard(
         "latency": [],
         "legend": [],
     }
+
+
+async def test_evaluation_dashboard_does_not_wait_for_slow_cancellation_cleanup(
+    container: AppContainer,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(frontend_evaluation, "_EVAL_STORE_TIMEOUT_SECONDS", 0.01)
+    started = time.perf_counter()
+    async for client in _client(
+        container,
+        snapshotter=_SlowCancelSnapshotter(),
+        alert_engine=_SlowCancelAlertEngine(),
+    ):
+        res = await client.get("/api/libraries/rag-lib/evaluation/dashboard")
+    elapsed = time.perf_counter() - started
+
+    assert res.status_code == 200
+    assert elapsed < 0.5
+    body = res.json()
+    assert body["summary"]["datasetSummaryLabel"] == "No evaluation data"
+    await asyncio.sleep(1.1)
 
 
 async def test_evaluation_dashboard_rejects_invalid_dataset(client: AsyncClient) -> None:

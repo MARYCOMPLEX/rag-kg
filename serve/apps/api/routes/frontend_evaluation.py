@@ -7,7 +7,7 @@ from collections.abc import Awaitable, Mapping
 from dataclasses import dataclass
 from datetime import date as Date
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict, Field
@@ -328,10 +328,34 @@ async def _load_dashboard_inputs(
 
 
 async def _safe_eval_call[T](awaitable: Awaitable[T]) -> T | None:
+    task = asyncio.ensure_future(awaitable)
     try:
-        return await asyncio.wait_for(awaitable, timeout=_EVAL_STORE_TIMEOUT_SECONDS)
+        _, pending = await asyncio.wait({task}, timeout=_EVAL_STORE_TIMEOUT_SECONDS)
+    except asyncio.CancelledError:
+        task.cancel()
+        task.add_done_callback(_discard_eval_task_result)
+        raise
     except Exception:
         return None
+    if pending:
+        task.cancel()
+        task.add_done_callback(_discard_eval_task_result)
+        return None
+    try:
+        return task.result()
+    except asyncio.CancelledError:
+        return None
+    except Exception:
+        return None
+
+
+def _discard_eval_task_result(task: asyncio.Future[Any]) -> None:
+    if task.cancelled():
+        return
+    try:
+        task.exception()
+    except asyncio.CancelledError:
+        return
 
 
 async def _safe_load_dataset_kpis(
