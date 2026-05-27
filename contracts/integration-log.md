@@ -28,6 +28,24 @@ Use this log during local integration, E2E testing, and contract verification. E
 
 ## Logs
 
+## 2026-05-27 10:59 - Review API request clarified
+
+- Time: 2026-05-27 10:59 +08:00
+- Agent: Frontend Agent
+- Issue: #2
+- Cause: `ReviewView`, `review.ts`, and review components still depend on `web/src/mocks/review.ts`, hardcoded draft prose/citation markers, and timer-generated progress/token counts; the existing API request did not give backend exact current-run/create/regenerate/cancel/SSE contracts to implement.
+- Fix status: open
+- Contract request:
+  - Requested current run endpoint: `GET /api/libraries/{libraryId}/reviews/current`.
+  - Requested run creation endpoint: `POST /api/libraries/{libraryId}/reviews`.
+  - Requested section regeneration endpoint: `POST /api/libraries/{libraryId}/reviews/{reviewRunId}/sections/{sectionId}:regenerate`.
+  - Requested cancel endpoint: `POST /api/libraries/{libraryId}/reviews/{reviewRunId}:cancel`.
+  - Requested stream behavior: SSE `draft_delta`, `pipeline`, `citations`, `stats`, `status`, `done`, and `error` events.
+- Verification:
+  - `pnpm typecheck`: passed.
+- Backend follow-up:
+  - Update OpenAPI for the review run lifecycle and SSE contract, or reject with a concrete alternate before frontend removes `web/src/mocks/review.ts` and hardcoded draft content.
+
 ## 2026-05-27 10:32 - Chat API request clarified
 
 - Time: 2026-05-27 10:32 +08:00

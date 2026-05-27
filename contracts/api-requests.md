@@ -214,30 +214,61 @@ OpenAPI remains the single source of truth. Entries here are requests only; once
 ## API Request: Review generation run lifecycle
 
 - Page: Review workspace.
-- Component: `web/src/views/ReviewView.vue`, `web/src/stores/review.ts`, `web/src/components/review/*`.
+- Component: `web/src/views/ReviewView.vue`, `web/src/stores/review.ts`, `web/src/components/review/ReviewPipelinePanel.vue`, `web/src/components/review/ReviewTimelineStepper.vue`, `web/src/components/review/ReviewDraftStream.vue`, `web/src/components/review/ReviewCitationsPanel.vue`, `web/src/components/overlays/BackgroundTaskPill.vue`, `web/src/services/api/taskStreamClient.ts`.
 - Endpoint:
-  - Review run creation/current run endpoint is missing from OpenAPI.
-  - Review section regeneration endpoint is missing from OpenAPI.
-  - Existing UI copy references task cancellation through `/v1/tasks/{taskId}/cancel`.
-  - Existing stream helper points to `/v1/tasks/{taskId}/events`.
+  - Requested current run endpoint: `/api/libraries/{libraryId}/reviews/current`
+  - Requested run creation endpoint: `/api/libraries/{libraryId}/reviews`
+  - Requested section regeneration endpoint: `/api/libraries/{libraryId}/reviews/{reviewRunId}/sections/{sectionId}:regenerate`
+  - Requested cancel endpoint: `/api/libraries/{libraryId}/reviews/{reviewRunId}:cancel`
+  - Existing stream helper points to `/v1/tasks/{taskId}/events`; backend can either contract that path or return a replacement `streamUrl` from create/regenerate/current run responses.
 - Method:
-  - Start/current run and regenerate methods are unclear.
-  - Cancellation is expected to be `POST` if `/v1/tasks/{taskId}/cancel` is accepted.
-  - Existing stream helper uses `GET` SSE for `/v1/tasks/{taskId}/events`.
+  - `GET` current run.
+  - `POST` create/start run.
+  - `POST` regenerate section.
+  - `POST` cancel run.
+  - Existing stream helper uses `GET` SSE for task events.
 - Params:
-  - Needs library ID, review task/run ID, section ID or label for regeneration, and task ID for cancellation/streaming.
+  - Path params: `libraryId`, `reviewRunId`, `sectionId`.
+  - Create body requested by frontend: optional `topic`, optional `instructions`, optional `documentIds`, optional `mode`.
+  - Regenerate body requested by frontend: optional `instructions`, optional `keepCompletedSections`.
+  - Cancel body requested by frontend: optional `keepGeneratedSections`.
 - Required fields:
-  - Pipeline step fields: `id`, `label`, `status`, optional `details`.
-  - Pipeline detail fields: `label`, `status`.
-  - Citation fields: `id`, `type`, `author`, optional `isNew`.
-  - Run stat fields: `label`, `value`, optional `accent`.
-  - Draft stream fields and event ordering need contract definition.
-  - Error contract for missing run, stale task, cancellation conflict, regeneration validation failure, and server failure.
+  - Current run response should support an empty state: `200 { run: null }` when no review run exists for the library.
+  - Non-empty current/create/regenerate response should include `run`, `pipelineSteps`, `runStats`, `citations`, `draft`, and optional `streamUrl`.
+  - `run`: `id`, `libraryId`, `status`, `progress`, optional `taskId`, optional `streamUrl`, optional `backgrounded`.
+  - `run.status` values required by UI: `idle`, `queued`, `running`, `backgrounded`, `cancelled`, `failed`, `done`.
+  - `pipelineSteps`: array with `id`, `label`, `status`, optional `details`.
+  - `pipelineSteps[].status` values required by UI: `done`, `active`, `pending`.
+  - `details`: array with `label`, `status`; detail `status` values required by UI: `done`, `active`.
+  - `runStats`: array with `label`, `value`, optional `accent`.
+  - `citations`: array with `id`, `type`, `author`, optional `isNew`; `id` must match citation markers emitted in `draft.sections[].citations`.
+  - `draft`: `title`, `authors`, `generatedAtLabel`, `badgeLabel`, `totalTokensLabel`, `draftTokens`, `draftTokenLimit`, `modelLabel`, `statusLabel`, and `sections`.
+  - `draft.sections`: array with `id`, `heading`, `markdown`, `citations`, optional `unsubstantiated`.
+  - `draft.sections[].citations`: array of citation IDs used by inline citation buttons.
+  - Create/regenerate success response requested by frontend: `202` with `run`, `taskId`, `streamUrl`, and initial `draft`/`pipelineSteps` state.
+  - Cancel success response requested by frontend: `202 { tone, title, detail, action? }` mutation feedback, plus optional updated `run`.
+  - SSE events required by UI:
+    - `draft_delta`: JSON `{ sectionId, markdownDelta, citations?, draftTokens? }`.
+    - `pipeline`: JSON pipeline step array or patch with the same `pipelineSteps` shape above.
+    - `citations`: JSON citation array with the same citation shape above.
+    - `stats`: JSON run stat array with the same `runStats` shape above.
+    - `status`: JSON `{ status, progress?, statusLabel?, draftTokens? }`.
+    - `done`: terminal event after the final run/draft state is available.
+    - `error`: backend error envelope or JSON `{ code, message, request_id }`.
+  - Error contract for missing library, missing run, stale task, cancellation conflict, regeneration validation failure, budget exceeded, no matching chunks/evidence, task not found, unauthorized access, and server failure.
 - Acceptance criteria:
-  - OpenAPI defines review run, regenerate, cancel, and SSE contracts.
-  - Backend provides current run state so the review page can load without mock timers.
-  - Frontend can replace `web/src/mocks/review.ts` with service-backed state and preserve cancel/regenerate feedback.
+  - OpenAPI defines review current-run, create, regenerate, cancel, and SSE contracts.
+  - Backend provides current run state so the review page can load without `web/src/mocks/review.ts` or timer-driven progress.
+  - Empty review state renders without fake citations, fake draft text, or fake stats.
+  - Backend streams or returns draft section content with citation IDs so frontend can render inline citation buttons without hardcoded prose.
+  - Frontend can replace `web/src/mocks/review.ts` with a repository-backed store and preserve background, cancel, regenerate, loading, empty, error, and retry feedback.
 - Status: requested
+- Frontend clarification note:
+  - Time: 2026-05-27 10:59 +08:00
+  - Issue: #2
+  - Current frontend behavior: `web/src/stores/review.ts` seeds pipeline, citations, and stats from `web/src/mocks/review.ts`; `ReviewDraftStream.vue` hardcodes the draft document body and citation markers; `startTaskRuntime()` increments progress and token counts with `window.setInterval`; cancel/regenerate only push local toasts.
+  - Requested backend contract: provide a current run loader, create/start endpoint, section regenerate endpoint, cancel endpoint, and SSE event payloads before frontend removes the mock review data and timer-based progress.
+  - Frontend follow-up after OpenAPI update: add a review repository, move review state loading/mutations into the store, connect create/regenerate/cancel to real endpoints, replace hardcoded draft prose with `draft.sections`, and connect stream updates through `taskStreamClient`.
 
 ## API Request: Knowledge graph workspace and entity detail
 
