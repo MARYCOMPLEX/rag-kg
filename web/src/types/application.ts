@@ -42,6 +42,7 @@ export interface CommandItem {
   label: string
   meta: string
   screen: ScreenId
+  shortcut?: string
 }
 
 export interface CommandSearchResult extends CommandItem {

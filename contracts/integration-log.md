@@ -28,6 +28,20 @@ Use this log during local integration, E2E testing, and contract verification. E
 
 ## Logs
 
+## 2026-05-27 11:34 - Static navigation moved out of mocks
+
+- Time: 2026-05-27 11:34 +08:00
+- Agent: Frontend Agent
+- Issue: #2
+- Cause: Frontend-owned route navigation and suggested command actions were exported from `web/src/mocks/navigation.ts`, and the suggested command actions still contained the removed hardcoded `graphrag-survey` library slug.
+- Fix status: fixed
+- Frontend fix:
+  - Moved `screenNavigation`, `mainNavigation`, and suggested command action templates into `web/src/app/staticNavigation.ts`.
+  - Updated `useUiStore` to build suggested command actions from the active library instead of a mock library slug.
+  - Left only dynamic shell metadata placeholders (`recentSessions`, `libraryStats`) in `web/src/mocks/navigation.ts` until OpenAPI defines `/api/libraries/{libraryId}/shell/metadata`.
+- Verification:
+  - `pnpm typecheck`: passed.
+
 ## 2026-05-27 11:19 - Command search and shell metadata API request clarified
 
 - Time: 2026-05-27 11:19 +08:00

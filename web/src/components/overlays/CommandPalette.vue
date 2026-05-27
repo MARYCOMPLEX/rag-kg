@@ -19,7 +19,7 @@ const actionResults = computed<CommandSearchResult[]>(() => commandItems.value.m
   meta: item.meta,
   icon: item.screen === 'graph' ? 'graph' : item.screen === 'docs' ? 'file' : item.screen === 'review' ? 'review' : 'search',
   screen: item.screen,
-  shortcut: item.screen === 'review' ? 'Cmd N' : undefined,
+  shortcut: item.shortcut,
 })))
 
 const sections = computed(() => {

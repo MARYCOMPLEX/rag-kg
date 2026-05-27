@@ -1,15 +1,19 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import {
-  commandItems as commandSeedItems,
-  libraryStats,
   mainNavigation,
-  recentSessions,
   screenNavigation,
+  commandActionTemplates,
+} from '../app/staticNavigation'
+import {
+  libraryStats,
+  recentSessions,
 } from '../mocks/navigation'
-import type { ScreenId, ToastItem, ToastTone } from '../types/application'
+import { useLibraryStore } from './library'
+import type { CommandItem, ScreenId, ToastItem, ToastTone } from '../types/application'
 
 export const useUiStore = defineStore('ui', () => {
+  const library = useLibraryStore()
   const screens = screenNavigation
   const activeScreen = ref<ScreenId>('chat')
   const costExceeded = ref(false)
@@ -30,7 +34,15 @@ export const useUiStore = defineStore('ui', () => {
   const visibleToasts = computed(() => toasts.value.slice(0, 3))
   const commandItems = computed(() => {
     const query = commandQuery.value.trim().toLowerCase()
-    return commandSeedItems.filter((item) => {
+    const activeLibrary = library.activeLibrary
+    const actions: CommandItem[] = commandActionTemplates.map(item => ({
+      label: item.label,
+      meta: item.buildMeta(activeLibrary),
+      screen: item.screen,
+      shortcut: item.shortcut,
+    }))
+
+    return actions.filter((item) => {
       return !query || item.label.toLowerCase().includes(query) || item.meta.toLowerCase().includes(query)
     })
   })

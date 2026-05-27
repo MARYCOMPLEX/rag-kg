@@ -397,6 +397,12 @@ OpenAPI remains the single source of truth. Entries here are requests only; once
   - Requested backend contract: provide library-scoped search results plus per-library shell metadata for recent sessions, library statistics, notification summary, and optional profile display before frontend removes the dynamic mock data.
   - Frontend-owned static data: app route navigation remains local because it maps Vue route names, icons, and keyboard hints; after backend support, frontend should move static navigation constants out of `web/src/mocks/navigation.ts` or rename them so they are not mistaken for backend fixtures.
   - Frontend follow-up after OpenAPI update: add search/shell repositories, load metadata through `useUiStore`, debounce command search through `useSearchStore`, render loading/empty/error states in the command palette, and route selected results using `target` context.
+- Frontend cleanup note:
+  - Time: 2026-05-27 11:34 +08:00
+  - Issue: #2
+  - `screenNavigation`, `mainNavigation`, and suggested route actions now live in `web/src/app/staticNavigation.ts` because they are frontend-owned route/UI chrome, not backend fixtures.
+  - Suggested command action paths now derive from the active library instead of the removed hardcoded `graphrag-survey` slug.
+  - `web/src/mocks/navigation.ts` now only contains dynamic shell metadata placeholders (`recentSessions`, `libraryStats`) pending the requested `/api/libraries/{libraryId}/shell/metadata` contract.
 
 ## Frontend Audit Note: OpenAPI still blocks real API integration
 
