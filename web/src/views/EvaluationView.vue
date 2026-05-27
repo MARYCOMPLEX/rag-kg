@@ -162,9 +162,10 @@ onMounted(() => {
         />
       </div>
 
-      <div v-if="state === 'success' && !isEmpty" class="evaluation-main-row">
-        <EvalTrendChart />
+      <div v-if="state === 'success' && (!isEmpty || librarySettings)" class="evaluation-main-row">
+        <EvalTrendChart v-if="!isEmpty" />
         <LibrarySettingsPanel
+          v-if="librarySettings"
           :library-label="librarySettings?.libraryLabel ?? activeEvaluationLibraryName"
           :settings="librarySettings"
         />

@@ -402,6 +402,18 @@ OpenAPI remains the single source of truth. Entries here are requests only; once
   - Frontend can replace `web/src/mocks/evaluation.ts` with service-backed state.
 - Status: blocked
 - Frontend verification note:
+  - Time: 2026-05-27 17:25 +08:00
+  - Backend SHA tested: `c6ab292e2d5c71ecabbf96e7b83338e3c061feb2`.
+  - Frontend route and components: `/libraries/rag-agent/eval`, `web/src/views/EvaluationView.vue`, `web/src/stores/evaluation.ts`, `web/src/services/evaluation/evaluationRepository.ts`, `web/src/components/evaluation/*`.
+  - Valid `GET /api/libraries/rag-agent/evaluation/dashboard`: returned `200` with the contracted empty dashboard shape, but only after `32.684444s`.
+  - Valid query `dataset=smoke&timeRange=7d`: returned `200` with the contracted empty dashboard shape, but only after `32.679893s`.
+  - Valid explicit date query `dataset=smoke&from=2026-05-01&to=2026-05-27`: returned `200` with the contracted empty dashboard shape, but only after `32.758821s`.
+  - Invalid dataset `unknown`: verified `400 VALIDATION_ERROR`.
+  - Invalid time range `14d`: verified `400 VALIDATION_ERROR`.
+  - Missing library: verified `404 LIBRARY_NOT_FOUND`.
+  - Browser smoke at `http://127.0.0.1:5174/libraries/rag-agent/eval`: still reaches the frontend `20s` API timeout before the valid dashboard response returns, so the empty dashboard cannot be verified in the browser yet.
+  - Frontend now keeps backend-provided `librarySettings` renderable for an empty successful dashboard without rendering empty/mock KPI, trend, or failure-case panels, but that success UI remains blocked by the slow valid response.
+- Frontend verification note:
   - Time: 2026-05-27 16:27 +08:00
   - Backend SHA tested: `3535ca6c978c9a89c65db6be65f75cc1ce6d6b46`.
   - Frontend route and components: `/libraries/rag-agent/eval`, `web/src/views/EvaluationView.vue`, `web/src/stores/evaluation.ts`, `web/src/components/evaluation/*`.

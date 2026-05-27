@@ -28,6 +28,28 @@ Use this log during local integration, E2E testing, and contract verification. E
 
 ## Logs
 
+## 2026-05-27 17:25 - Evaluation dashboard fix still exceeds frontend timeout
+
+- Time: 2026-05-27 17:25 +08:00
+- Agent: Frontend Agent
+- Issue: #2
+- Backend SHA: `c6ab292e2d5c71ecabbf96e7b83338e3c061feb2`
+- Frontend SHA before this log update: `5d014b0`
+- Frontend fix:
+  - Kept backend-provided `librarySettings` visible for empty successful evaluation dashboards without rendering empty/mock KPI, trend, or failure-case panels.
+- Verification:
+  - `GET http://localhost:8000/healthz`: passed with `{"status":"ok","version":"0.1.0"}`.
+  - `GET /api/libraries/rag-agent/evaluation/dashboard`: returned `200` with the contracted empty dashboard, but took `32.684444s`.
+  - `GET /api/libraries/rag-agent/evaluation/dashboard?dataset=smoke&timeRange=7d`: returned `200` with the contracted empty dashboard, but took `32.679893s`.
+  - `GET /api/libraries/rag-agent/evaluation/dashboard?dataset=smoke&from=2026-05-01&to=2026-05-27`: returned `200` with the contracted empty dashboard, but took `32.758821s`.
+  - Invalid dataset `unknown`: passed with `400 VALIDATION_ERROR`.
+  - Invalid time range `14d`: passed with `400 VALIDATION_ERROR`.
+  - Missing library: passed with `404 LIBRARY_NOT_FOUND`.
+  - Playwright via system Chrome at `http://127.0.0.1:5174/libraries/rag-agent/eval`: still reached the frontend `20s` API timeout before the valid dashboard response, so browser empty-success rendering remains blocked.
+- Fix status: blocked
+- Backend follow-up:
+  - Valid evaluation dashboard reads should return the contracted empty dashboard within the frontend request timeout, ideally without waiting on unavailable/empty evaluation stores.
+
 ## 2026-05-27 16:27 - Upload search shell graph integrated, evaluation dashboard timeout
 
 - Time: 2026-05-27 16:27 +08:00
