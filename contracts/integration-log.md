@@ -28,6 +28,23 @@ Use this log during local integration, E2E testing, and contract verification. E
 
 ## Logs
 
+## 2026-05-27 12:47 - API mode hides mock review run data
+
+- Time: 2026-05-27 12:47 +08:00
+- Agent: Frontend Agent
+- Issue: #2
+- Cause: `ReviewView.vue`, `useReviewStore`, and review components still rendered seeded pipeline steps, run stats, citation rows, hardcoded draft prose, notice-bar prototype notes, and timer-driven progress in API mode even though OpenAPI does not define the review run lifecycle or stream contracts.
+- Fix status: fixed
+- Frontend fix:
+  - Gated review pipeline, citations, stats, runtime progress, and mutation simulation behind non-API data source mode.
+  - Added an API-mode pending-contract empty state for the review workspace.
+  - Made citation count/footer rendering derive from the provided citation array instead of fixed mock counts.
+  - Removed a fake review run ID from the background task pill.
+- Verification:
+  - `VITE_DATA_SOURCE=api VITE_API_BASE_URL=http://localhost:8000 pnpm typecheck`: passed.
+  - `VITE_DATA_SOURCE=api VITE_API_BASE_URL=http://localhost:8000 pnpm build`: passed.
+  - Playwright smoke at `http://127.0.0.1:5175/libraries/rag-agent/review`: passed; review pending-contract state rendered and seeded draft/citation count content stayed hidden.
+
 ## 2026-05-27 12:34 - API mode hides mock chat session data
 
 - Time: 2026-05-27 12:34 +08:00

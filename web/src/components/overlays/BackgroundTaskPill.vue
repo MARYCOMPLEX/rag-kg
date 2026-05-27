@@ -10,6 +10,6 @@ const { goToScreen } = useWorkspaceNavigation()
 
 <template>
   <button v-if="reviewBackgrounded" class="mini-pill" type="button" @click="goToScreen('review')">
-    Review rev_2405 / {{ reviewProgress }}%
+    Review generation / {{ reviewProgress }}%
   </button>
 </template>

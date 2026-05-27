@@ -4,22 +4,27 @@ import { reviewCitations, reviewPipelineSteps, reviewRunStats } from '../mocks/r
 import { useUiStore } from './ui'
 
 export const useReviewStore = defineStore('review', () => {
-  const reviewRunning = ref(true)
+  const usesApiData = computed(() => import.meta.env.VITE_DATA_SOURCE === 'api')
+  const apiMode = usesApiData.value
+  const reviewRunning = ref(!apiMode)
   const reviewBackgrounded = ref(false)
-  const reviewProgress = ref(47)
+  const reviewProgress = ref(apiMode ? 0 : 47)
   const taskTick = ref(0)
-  const draftTokens = ref(324)
-  const selectedCitation = ref('5')
-  const highlightedCitation = ref('5')
+  const draftTokens = ref(apiMode ? 0 : 324)
+  const selectedCitation = ref(apiMode ? '' : '5')
+  const highlightedCitation = ref(apiMode ? '' : '5')
 
-  const pipelineSteps = computed(() => reviewPipelineSteps)
-  const liveCitations = computed(() => reviewCitations)
-  const runStats = computed(() => reviewRunStats)
+  const pipelineSteps = computed(() => usesApiData.value ? [] : reviewPipelineSteps)
+  const liveCitations = computed(() => usesApiData.value ? [] : reviewCitations)
+  const runStats = computed(() => usesApiData.value ? [] : reviewRunStats)
 
   let taskTimer: number | null = null
   let citationHighlightTimer: number | null = null
 
   function startTaskRuntime() {
+    if (usesApiData.value)
+      return
+
     if (taskTimer)
       return
 
@@ -42,6 +47,9 @@ export const useReviewStore = defineStore('review', () => {
   }
 
   function activateCitation(id: string) {
+    if (!liveCitations.value.some(citation => citation.id === id))
+      return
+
     selectedCitation.value = id
     highlightedCitation.value = id
 
@@ -55,22 +63,38 @@ export const useReviewStore = defineStore('review', () => {
 
   function regenerateSection(label: string) {
     const ui = useUiStore()
+    if (usesApiData.value) {
+      ui.pushToast('info', 'Review API pending', 'OpenAPI must define review run and regeneration endpoints before sections can be regenerated.')
+      return
+    }
+
     ui.pushToast('info', 'Section queued for regeneration', `${label} will restart after the active draft chunk completes.`)
   }
 
   function runReviewBackground() {
     const ui = useUiStore()
+    if (usesApiData.value) {
+      ui.pushToast('info', 'Review API pending', 'OpenAPI must define review run streaming before background execution can start.')
+      return
+    }
+
     reviewBackgrounded.value = true
     ui.pushToast('info', 'Review running in background', 'taskStore keeps the SSE connection alive.', 'Open', 10000)
   }
 
   function cancelReview() {
     const ui = useUiStore()
+    if (usesApiData.value) {
+      ui.pushToast('info', 'Review API pending', 'OpenAPI must define review cancellation before a run can be cancelled.')
+      return
+    }
+
     reviewRunning.value = false
-    ui.pushToast('warning', 'Review cancelled', 'POST /v1/tasks/rev_2405/cancel returned 202.', 'Resume', 6000)
+    ui.pushToast('warning', 'Review cancelled', 'Mock review generation paused.', 'Resume', 6000)
   }
 
   return {
+    usesApiData,
     reviewRunning,
     reviewBackgrounded,
     reviewProgress,

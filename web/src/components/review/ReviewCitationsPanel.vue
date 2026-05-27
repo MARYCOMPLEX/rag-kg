@@ -28,10 +28,14 @@ watch(() => props.selectedId, async (id) => {
 <template>
   <aside class="review-citations-panel" aria-label="Live citations">
     <header class="citations-heading">
-      <h2>Live Citations (37)</h2>
+      <h2>Live Citations ({{ citations.length }})</h2>
     </header>
 
     <div class="citation-list">
+      <p v-if="!citations.length" class="citation-empty">
+        No citations loaded.
+      </p>
+
       <button
         v-for="citation in citations"
         :key="citation.id"
@@ -57,9 +61,9 @@ watch(() => props.selectedId, async (id) => {
       </button>
     </div>
 
-    <footer class="citation-footer">
+    <footer v-if="citations.length" class="citation-footer">
       <button class="view-all-citations" type="button">
-        See all 37 citations
+        See all {{ citations.length }} citations
         <AppIcon name="arrow-right" :size="15" />
       </button>
     </footer>
@@ -100,6 +104,15 @@ watch(() => props.selectedId, async (id) => {
   gap: 8px;
   overflow-y: auto;
   padding: 16px;
+}
+
+.citation-empty {
+  align-self: center;
+  margin: 0;
+  color: var(--color-on-surface-variant);
+  font-size: 13px;
+  line-height: 20px;
+  text-align: center;
 }
 
 .citation-row {

@@ -276,6 +276,13 @@ OpenAPI remains the single source of truth. Entries here are requests only; once
   - Current frontend behavior: `web/src/stores/review.ts` seeds pipeline, citations, and stats from `web/src/mocks/review.ts`; `ReviewDraftStream.vue` hardcodes the draft document body and citation markers; `startTaskRuntime()` increments progress and token counts with `window.setInterval`; cancel/regenerate only push local toasts.
   - Requested backend contract: provide a current run loader, create/start endpoint, section regenerate endpoint, cancel endpoint, and SSE event payloads before frontend removes the mock review data and timer-based progress.
   - Frontend follow-up after OpenAPI update: add a review repository, move review state loading/mutations into the store, connect create/regenerate/cancel to real endpoints, replace hardcoded draft prose with `draft.sections`, and connect stream updates through `taskStreamClient`.
+- Frontend cleanup note:
+  - Time: 2026-05-27 12:47 +08:00
+  - Issue: #2
+  - API mode no longer renders seeded review pipeline steps, run stats, draft prose, citation rows, notice-bar prototype notes, or timer-driven progress from `web/src/mocks/review.ts` and review components.
+  - `ReviewView.vue` now shows a pending-contract empty state while `/api/libraries/{libraryId}/reviews/current`, `/api/libraries/{libraryId}/reviews`, regeneration/cancel endpoints, and stream events remain uncontracted.
+  - `useReviewStore` now keeps review mutations inert in API mode and reports a traceable pending-contract toast instead of simulating regenerate/background/cancel behavior.
+  - Mock review data remains available only outside API mode until OpenAPI defines the review lifecycle contract.
 
 ## API Request: Knowledge graph workspace and entity detail
 
