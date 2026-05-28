@@ -283,5 +283,46 @@ class Neo4jGraphIndex:
                     continue
         return triples
 
+    async def list_entities(self, library_id: str) -> list[Entity]:
+        """Return every entity in the library namespace."""
+        lib_label = _lib_label(library_id)
+        cypher = (
+            f"MATCH (n:{lib_label}) "
+            f"RETURN coalesce(n.entity_id, '') AS entity_id, "
+            f"       coalesce(n.name, n.entity_id, '') AS name, "
+            f"       coalesce(n.aliases, []) AS aliases, "
+            f"       coalesce(n.type, 'Entity') AS type, "
+            f"       coalesce(n.description, '') AS description"
+        )
+
+        entities: list[Entity] = []
+        async with self._driver.session() as session:
+            result = await session.run(_cy(cypher))
+            async for record in result:
+                entity_id = str(record["entity_id"])
+                name = str(record["name"])
+                if not entity_id or not name:
+                    continue
+                aliases_field: object = record["aliases"]
+                aliases: list[str] = []
+                if isinstance(aliases_field, list):
+                    for item in cast("list[object]", aliases_field):
+                        aliases.append(str(item))
+                description = str(record["description"] or "")
+                try:
+                    entities.append(
+                        Entity(
+                            library_id=library_id,
+                            entity_id=entity_id,
+                            name=name,
+                            aliases=tuple(aliases),
+                            type=str(record["type"] or "Entity"),
+                            description=description or None,
+                        )
+                    )
+                except (ValueError, TypeError):
+                    continue
+        return entities
+
     async def close(self) -> None:
         await self._driver.close()

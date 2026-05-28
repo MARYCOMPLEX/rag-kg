@@ -2,7 +2,7 @@
 
 Models and Protocols for the long-task system that powers ingest,
 KG extraction, community rebuild, review, reason, hypothesize, eval
-snapshot, and library status checks.
+snapshot, chat, and library status checks.
 
 Implementations live in `packages/orchestration/_internal/queue/` and
 `packages/orchestration/adapters/arq_queue.py` (per CODING_STANDARDS §2.3).
@@ -30,6 +30,7 @@ type TaskType = Literal[
     "extract_kg",
     "rebuild_community",
     "run_review",
+    "run_chat",
     "run_reason",
     "run_hypothesize",
     "library_status_check",

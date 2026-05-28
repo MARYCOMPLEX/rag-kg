@@ -105,6 +105,14 @@ class Settings(BaseSettings):
     rate_limit_enabled: bool = False
     rate_limit_rpm: int = Field(default=60, ge=1)
     rate_limit_burst: int = Field(default=20, ge=1)
+    cors_origins: list[str] = Field(
+        default_factory=lambda: [
+            "http://localhost:5173",
+            "http://127.0.0.1:5173",
+            "http://localhost:5174",
+            "http://127.0.0.1:5174",
+        ]
+    )
 
     # --- Ingestion idempotency (M7) ---
     ingest_state_dir: str = "data/state"

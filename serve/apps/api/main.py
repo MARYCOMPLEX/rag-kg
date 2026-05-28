@@ -9,6 +9,7 @@ M7: unified error envelope, request-id middleware, optional rate-limit and
 from __future__ import annotations
 
 from fastapi import FastAPI, Response
+from fastapi.middleware.cors import CORSMiddleware
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 from pydantic import BaseModel, ConfigDict
 
@@ -39,6 +40,14 @@ def create_app() -> FastAPI:
         version="0.1.0",
         docs_url="/docs",
     )
+    if settings.cors_origins:
+        application.add_middleware(
+            CORSMiddleware,
+            allow_origins=settings.cors_origins,
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
     application.add_middleware(
         RateLimitMiddleware,
         enabled=settings.rate_limit_enabled,

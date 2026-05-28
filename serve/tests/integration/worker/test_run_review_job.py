@@ -129,6 +129,20 @@ async def test_run_review_emits_stages_and_persists_result_pointer(
     assert len(cost_events) == 1
     assert cost_events[0].payload["cost_usd"] > 0.0
 
+    draft_events = [
+        e
+        for e in fake_event_bus.events
+        if e.type.value == "stage_completed" and e.stage_name == "draft_delta"
+    ]
+    assert len(draft_events) == 2
+    assert draft_events[0].payload["sectionId"] == "topic-a"
+    assert "Section A" in draft_events[0].payload["markdownDelta"]
+    citation_events = [e for e in fake_event_bus.events if e.type.value == "citation_added"]
+    assert len(citation_events) == 1
+    assert citation_events[0].payload["citations"] == [
+        {"id": "doc::p1::0", "type": "chunk", "author": "doc", "isNew": True}
+    ]
+
     # Status row updated to "running" with the result pointer + cost.
     row = fake_task_store.rows[(LIBRARY_ID, "review-task-1")]
     assert row["status"] in {"running", "completed"}

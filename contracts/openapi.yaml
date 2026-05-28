@@ -7,6 +7,8 @@ servers:
   - url: http://localhost:8000
     description: Local backend development server
 tags:
+  - name: libraries
+    description: Frontend library dashboard APIs.
   - name: auth
     description: Authentication and authorization APIs.
   - name: research
@@ -15,10 +17,2699 @@ tags:
     description: Project management APIs.
   - name: tasks
     description: Task planning and execution APIs.
-paths: {}
+paths:
+  /api/libraries:
+    get:
+      tags:
+        - libraries
+      summary: List libraries for the frontend dashboard
+      operationId: listFrontendLibraries
+      responses:
+        "200":
+          description: Frontend library summaries.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LibrarySummary"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    post:
+      tags:
+        - libraries
+      summary: Create a library from the frontend create modal
+      operationId: createFrontendLibrary
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateLibraryRequest"
+      responses:
+        "201":
+          description: Created library and frontend redirect target.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateLibraryResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "409":
+          $ref: "#/components/responses/LibraryAlreadyExistsError"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "503":
+          $ref: "#/components/responses/UpstreamError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/libraries/{libraryId}/documents:
+    get:
+      tags:
+        - libraries
+      summary: List frontend document workspace data for one library
+      operationId: listFrontendLibraryDocuments
+      parameters:
+        - name: libraryId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: graphrag-survey
+      responses:
+        "200":
+          description: Document workspace summary and rows.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentsWorkspace"
+        "401":
+          $ref: "#/components/responses/AuthError"
+        "404":
+          $ref: "#/components/responses/LibraryNotFoundError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/libraries/{libraryId}/documents/{documentId}:
+    get:
+      tags:
+        - libraries
+      summary: Get frontend document detail drawer data
+      operationId: getFrontendLibraryDocument
+      parameters:
+        - name: libraryId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: graphrag-survey
+        - name: documentId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: doc-001
+      responses:
+        "200":
+          description: Document detail data for the frontend drawer.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentDetail"
+        "401":
+          $ref: "#/components/responses/AuthError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/libraries/{libraryId}/documents/{documentId}:retry:
+    post:
+      tags:
+        - libraries
+      summary: Queue a frontend document ingestion retry
+      operationId: retryFrontendLibraryDocumentIngestion
+      parameters:
+        - name: libraryId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: graphrag-survey
+        - name: documentId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: doc-001
+      responses:
+        "202":
+          description: Retry was accepted and queued.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentMutationFeedback"
+        "401":
+          $ref: "#/components/responses/AuthError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+        "503":
+          $ref: "#/components/responses/UpstreamError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/libraries/{libraryId}/documents:upload:
+    post:
+      tags:
+        - libraries
+      summary: Upload one or more PDF documents for frontend ingestion
+      operationId: uploadFrontendLibraryDocuments
+      parameters:
+        - name: libraryId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: graphrag-survey
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/DocumentUploadRequest"
+      responses:
+        "202":
+          description: Upload was accepted and queued for ingestion.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentMutationFeedback"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/AuthError"
+        "404":
+          $ref: "#/components/responses/LibraryNotFoundError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+        "413":
+          $ref: "#/components/responses/PayloadTooLargeError"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaTypeError"
+        "503":
+          $ref: "#/components/responses/UpstreamError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/libraries/{libraryId}/search:
+    get:
+      tags:
+        - libraries
+      summary: Search command palette results for one library context
+      operationId: searchFrontendLibraryCommands
+      parameters:
+        - name: libraryId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: graphrag-survey
+        - name: q
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 200
+            default: ""
+          description: User-entered command palette query. Blank or one-character queries return empty results.
+          example: graph
+        - name: scope
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Comma-separated scopes using documents, entities, libraries, and actions.
+          example: documents,entities,actions
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 12
+      responses:
+        "200":
+          description: Command palette search results.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommandSearchResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/AuthError"
+        "404":
+          $ref: "#/components/responses/LibraryNotFoundError"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "503":
+          $ref: "#/components/responses/UpstreamError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/libraries/{libraryId}/shell/metadata:
+    get:
+      tags:
+        - libraries
+      summary: Get dynamic shell metadata for one library context
+      operationId: getFrontendShellMetadata
+      parameters:
+        - name: libraryId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: graphrag-survey
+      responses:
+        "200":
+          description: Recent sessions, library stats, and optional shell metadata.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShellMetadata"
+        "401":
+          $ref: "#/components/responses/AuthError"
+        "404":
+          $ref: "#/components/responses/LibraryNotFoundError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/libraries/{libraryId}/evaluation/dashboard:
+    get:
+      tags:
+        - libraries
+      summary: Get evaluation dashboard data for one library
+      operationId: getFrontendEvaluationDashboard
+      parameters:
+        - name: libraryId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: graphrag-survey
+        - name: dataset
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - smoke
+              - multihop
+              - review
+          description: Optional evaluation dataset or task-family key.
+          example: smoke
+        - name: timeRange
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - 7d
+              - 30d
+              - 90d
+            default: 30d
+          description: Relative evaluation dashboard window.
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          description: Inclusive ISO start date for an explicit dashboard window.
+          example: "2026-05-01"
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          description: Inclusive ISO end date for an explicit dashboard window.
+          example: "2026-05-27"
+      responses:
+        "200":
+          description: Evaluation dashboard summary, filters, metrics, and settings.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EvaluationDashboard"
+              examples:
+                emptyDashboard:
+                  value:
+                    summary:
+                      libraryId: rag-agent
+                      libraryName: RAG Agent
+                      datasetSummaryLabel: No evaluation data
+                      timeRangeLabel: Last 30 days
+                      lastRunLabel: null
+                    filters:
+                      datasets: []
+                      timeRanges: []
+                    budgetAlert: null
+                    kpis: []
+                    trend:
+                      days: []
+                      em: []
+                      faithfulness: []
+                      citation: []
+                      latency: []
+                      legend: []
+                    failureCases: []
+                    librarySettings:
+                      libraryLabel: RAG Agent
+                      models:
+                        routerLabel: "Router: routed"
+                        embeddingLabel: text-embedding-3-small (1536d)
+                        warning: null
+                      budgetLimits:
+                        - key: maxInputTokens
+                          label: LLM input tokens
+                          value: "32,000"
+                        - key: maxOutputTokens
+                          label: LLM output tokens
+                          value: "4,000"
+                        - key: maxLlmCalls
+                          label: Max LLM calls
+                          value: "20"
+                        - key: maxSteps
+                          label: Max retrieval steps
+                          value: "8"
+                      dataActions:
+                        canExport: true
+                        canPurge: true
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/AuthError"
+        "404":
+          $ref: "#/components/responses/LibraryNotFoundError"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/libraries/{libraryId}/chat/session:
+    get:
+      tags:
+        - libraries
+      summary: Get the current frontend chat session for one library
+      operationId: getFrontendChatSession
+      parameters:
+        - name: libraryId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: rag-agent
+      responses:
+        "200":
+          description: Current chat session, with empty arrays when no conversation content exists.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatSession"
+              examples:
+                emptySession:
+                  value:
+                    sessionId: chat-session-1
+                    title: New chat
+                    createdAtLabel: "2026-05-27 18:00"
+                    messages: []
+                    evidence: []
+        "401":
+          $ref: "#/components/responses/AuthError"
+        "404":
+          $ref: "#/components/responses/LibraryNotFoundError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/libraries/{libraryId}/chat/questions:
+    post:
+      tags:
+        - libraries
+      summary: Create a chat question and return a stream task
+      operationId: createFrontendChatQuestion
+      parameters:
+        - name: libraryId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: rag-agent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatQuestionRequest"
+      responses:
+        "202":
+          description: Question accepted; connect to streamUrl for answer events.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatQuestionResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/AuthError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "503":
+          $ref: "#/components/responses/UpstreamError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/libraries/{libraryId}/chat/questions/{taskId}/events:
+    get:
+      tags:
+        - libraries
+      summary: Stream frontend chat answer events
+      operationId: streamFrontendChatQuestionEvents
+      parameters:
+        - name: libraryId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: rag-agent
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: chat-0123456789abcdef
+      responses:
+        "200":
+          description: |
+            Server-Sent Events for the accepted chat task.
+
+            Event payloads:
+            - `token`: JSON object `{ "token": "<text>" }`.
+            - `citations`: JSON array of citation IDs matching `evidence[].id`.
+            - `evidence`: JSON array of `ChatEvidence` records.
+            - `status`: JSON object `{ "status": "idle|streaming|done|interrupted|unsubstantiated" }`.
+            - `done`: JSON object with the terminal status.
+            - `error`: JSON object `{ "code", "message", "request_id", "details" }`.
+          content:
+            text/event-stream:
+              schema:
+                $ref: "#/components/schemas/ChatStreamEvent"
+        "401":
+          $ref: "#/components/responses/AuthError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "503":
+          $ref: "#/components/responses/UpstreamError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/libraries/{libraryId}/reviews/current:
+    get:
+      tags:
+        - libraries
+      summary: Get the current frontend review run for one library
+      operationId: getFrontendReviewCurrentRun
+      parameters:
+        - name: libraryId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: rag-agent
+      responses:
+        "200":
+          description: Current review run state, or an empty state when no run is active.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReviewCurrentResponse"
+              examples:
+                empty:
+                  value:
+                    run: null
+        "401":
+          $ref: "#/components/responses/AuthError"
+        "404":
+          $ref: "#/components/responses/LibraryNotFoundError"
+        "503":
+          $ref: "#/components/responses/UpstreamError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/libraries/{libraryId}/reviews:
+    post:
+      tags:
+        - libraries
+      summary: Create a durable frontend review generation run
+      operationId: createFrontendReviewRun
+      parameters:
+        - name: libraryId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: rag-agent
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewCreateRequest"
+      responses:
+        "202":
+          description: Review run accepted; connect to streamUrl for generation events.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReviewAcceptedResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/AuthError"
+        "404":
+          $ref: "#/components/responses/LibraryNotFoundError"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "503":
+          $ref: "#/components/responses/UpstreamError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/libraries/{libraryId}/reviews/{reviewRunId}/sections/{sectionId}:regenerate:
+    post:
+      tags:
+        - libraries
+      summary: Queue a durable review section regeneration run
+      operationId: regenerateFrontendReviewSection
+      parameters:
+        - name: libraryId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: rag-agent
+        - name: reviewRunId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: review-0123456789abcdef
+        - name: sectionId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: methods
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewRegenerateRequest"
+      responses:
+        "202":
+          description: Section regeneration was accepted as a durable review task.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReviewAcceptedResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/AuthError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "503":
+          $ref: "#/components/responses/UpstreamError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/libraries/{libraryId}/reviews/{reviewRunId}:cancel:
+    post:
+      tags:
+        - libraries
+      summary: Cancel an active durable review run
+      operationId: cancelFrontendReviewRun
+      parameters:
+        - name: libraryId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: rag-agent
+        - name: reviewRunId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: review-0123456789abcdef
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewCancelRequest"
+      responses:
+        "202":
+          description: Cancel request accepted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReviewMutationFeedback"
+        "401":
+          $ref: "#/components/responses/AuthError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+        "503":
+          $ref: "#/components/responses/UpstreamError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/libraries/{libraryId}/reviews/{reviewRunId}/events:
+    get:
+      tags:
+        - libraries
+      summary: Stream frontend review generation events
+      operationId: streamFrontendReviewEvents
+      parameters:
+        - name: libraryId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: rag-agent
+        - name: reviewRunId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: review-0123456789abcdef
+      responses:
+        "200":
+          description: |
+            Server-Sent Events for a durable review task.
+
+            Event payloads:
+            - `draft_delta`: JSON object `{ "sectionId", "markdownDelta", "citations", "draftTokens" }`.
+            - `pipeline`: JSON array of `ReviewPipelineStep`.
+            - `citations`: JSON array of `ReviewCitation`.
+            - `stats`: JSON array of `ReviewRunStat`.
+            - `status`: JSON object `{ "status", "progress", "statusLabel", "draftTokens" }`.
+            - `done`: JSON object with the terminal status.
+            - `error`: JSON object `{ "code", "message", "request_id", "details" }`.
+          content:
+            text/event-stream:
+              schema:
+                $ref: "#/components/schemas/ReviewStreamEvent"
+        "401":
+          $ref: "#/components/responses/AuthError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "503":
+          $ref: "#/components/responses/UpstreamError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/libraries/{libraryId}/graph:
+    get:
+      tags:
+        - libraries
+      summary: Get knowledge graph workspace data for one library
+      operationId: getFrontendGraphWorkspace
+      parameters:
+        - name: libraryId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: graphrag-survey
+        - name: entityTypes
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Optional comma-separated entity type keys to render.
+          example: method,dataset
+        - name: minConfidence
+          in: query
+          required: false
+          schema:
+            type: number
+            format: float
+            minimum: 0
+            maximum: 1
+            default: 0
+          description: Minimum triple confidence threshold.
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 500
+            default: 100
+          description: Maximum nodes returned in the canvas.
+        - name: layout
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - static
+              - force
+              - webgl
+            default: static
+      responses:
+        "200":
+          description: Graph filters, canvas data, and summary labels.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GraphWorkspace"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/AuthError"
+        "404":
+          $ref: "#/components/responses/LibraryNotFoundError"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/libraries/{libraryId}/graph/entities/{entityId}:
+    get:
+      tags:
+        - libraries
+      summary: Get knowledge graph entity detail drawer data
+      operationId: getFrontendGraphEntityDetail
+      parameters:
+        - name: libraryId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: graphrag-survey
+        - name: entityId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: method:graphrag
+      responses:
+        "200":
+          description: Entity detail data for the frontend drawer.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GraphEntityDetail"
+        "401":
+          $ref: "#/components/responses/AuthError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "500":
+          $ref: "#/components/responses/InternalError"
 components:
-  schemas: {}
+  schemas:
+    ChatMessage:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - role
+        - text
+      properties:
+        id:
+          type: string
+          example: user-0123456789abcdef
+        role:
+          type: string
+          enum:
+            - user
+            - assistant
+        text:
+          type: string
+          example: How does GraphRAG combine graph retrieval and synthesis?
+        status:
+          type: string
+          enum:
+            - idle
+            - streaming
+            - done
+            - interrupted
+            - unsubstantiated
+        citations:
+          type: array
+          items:
+            type: string
+          example:
+            - chunk-1
+    ChatEvidence:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - label
+        - type
+        - title
+        - meta
+        - score
+        - snippet
+      properties:
+        id:
+          type: string
+          example: chunk-1
+        label:
+          type: string
+          example: "[1]"
+        type:
+          type: string
+          example: chunk
+        title:
+          type: string
+          example: "2210.03629"
+        meta:
+          type: string
+          example: p.2
+        score:
+          type: string
+          example: cited
+        snippet:
+          type: string
+          example: Graph retrieval grounds the final synthesis.
+    ChatSession:
+      type: object
+      additionalProperties: false
+      required:
+        - sessionId
+        - title
+        - createdAtLabel
+        - messages
+        - evidence
+      properties:
+        sessionId:
+          type: string
+          example: chat-session-1
+        title:
+          type: string
+          example: New chat
+        createdAtLabel:
+          type: string
+          example: "2026-05-27 18:00"
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChatMessage"
+        evidence:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChatEvidence"
+    ChatQuestionContext:
+      type: object
+      additionalProperties: false
+      properties:
+        evidenceIds:
+          type: array
+          items:
+            type: string
+          example:
+            - chunk-1
+        entityIds:
+          type: array
+          items:
+            type: string
+          example:
+            - method:graphrag
+    ChatQuestionRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - question
+      properties:
+        question:
+          type: string
+          minLength: 1
+          maxLength: 2000
+          example: How does GraphRAG answer grounded questions?
+        sessionId:
+          type: string
+          minLength: 1
+          maxLength: 64
+          description: Existing chat session to continue. Omit to create a new session.
+        context:
+          $ref: "#/components/schemas/ChatQuestionContext"
+    ChatQuestionResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - taskId
+        - streamUrl
+        - userMessage
+        - assistantMessage
+        - evidence
+      properties:
+        taskId:
+          type: string
+          example: chat-0123456789abcdef
+        streamUrl:
+          type: string
+          example: /api/libraries/rag-agent/chat/questions/chat-0123456789abcdef/events
+        userMessage:
+          $ref: "#/components/schemas/ChatMessage"
+        assistantMessage:
+          $ref: "#/components/schemas/ChatMessage"
+        evidence:
+          type: array
+          description: Optional initial evidence records. Empty when evidence arrives through the stream.
+          items:
+            $ref: "#/components/schemas/ChatEvidence"
+    ChatStreamEvent:
+      oneOf:
+        - type: object
+          additionalProperties: false
+          required:
+            - token
+          properties:
+            token:
+              type: string
+        - type: array
+          items:
+            type: string
+        - type: array
+          items:
+            $ref: "#/components/schemas/ChatEvidence"
+        - type: object
+          additionalProperties: false
+          required:
+            - status
+          properties:
+            status:
+              type: string
+              enum:
+                - idle
+                - streaming
+                - done
+                - interrupted
+                - unsubstantiated
+        - $ref: "#/components/schemas/ChatStreamDoneEvent"
+        - $ref: "#/components/schemas/ErrorEnvelope"
+    ChatStreamDoneEvent:
+      type: object
+      additionalProperties: false
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum:
+            - idle
+            - streaming
+            - done
+            - interrupted
+            - unsubstantiated
+    ReviewRun:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - libraryId
+        - status
+        - progress
+      properties:
+        id:
+          type: string
+          example: review-0123456789abcdef
+        libraryId:
+          type: string
+          example: rag-agent
+        status:
+          type: string
+          enum:
+            - idle
+            - queued
+            - running
+            - backgrounded
+            - cancelled
+            - failed
+            - done
+        progress:
+          type: integer
+          minimum: 0
+          maximum: 100
+          example: 47
+        taskId:
+          type: string
+          nullable: true
+          example: review-0123456789abcdef
+        streamUrl:
+          type: string
+          nullable: true
+          example: /api/libraries/rag-agent/reviews/review-0123456789abcdef/events
+        backgrounded:
+          type: boolean
+          nullable: true
+    ReviewPipelineDetail:
+      type: object
+      additionalProperties: false
+      required:
+        - label
+        - status
+      properties:
+        label:
+          type: string
+          example: Draft section
+        status:
+          type: string
+          enum:
+            - done
+            - active
+    ReviewPipelineStep:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - label
+        - status
+      properties:
+        id:
+          type: string
+          example: subtopic_draft
+        label:
+          type: string
+          example: Draft sections
+        status:
+          type: string
+          enum:
+            - done
+            - active
+            - pending
+        details:
+          type: array
+          nullable: true
+          items:
+            $ref: "#/components/schemas/ReviewPipelineDetail"
+    ReviewRunStat:
+      type: object
+      additionalProperties: false
+      required:
+        - label
+        - value
+      properties:
+        label:
+          type: string
+          example: Draft tokens
+        value:
+          type: string
+          example: "324 / 80,000"
+        accent:
+          type: boolean
+          nullable: true
+    ReviewCitation:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - type
+        - author
+      properties:
+        id:
+          type: string
+          example: chunk-1
+        type:
+          type: string
+          example: chunk
+        author:
+          type: string
+          example: 2404.16130-graphrag-local-to-global
+        isNew:
+          type: boolean
+          nullable: true
+    ReviewDraftSection:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - heading
+        - markdown
+        - citations
+      properties:
+        id:
+          type: string
+          example: retrieval
+        heading:
+          type: string
+          example: Retrieval and community summaries
+        markdown:
+          type: string
+          example: "GraphRAG combines local graph neighborhoods with global community summaries."
+        citations:
+          type: array
+          items:
+            type: string
+          example:
+            - chunk-1
+        unsubstantiated:
+          type: boolean
+          nullable: true
+    ReviewDraft:
+      type: object
+      additionalProperties: false
+      required:
+        - title
+        - authors
+        - generatedAtLabel
+        - badgeLabel
+        - totalTokensLabel
+        - draftTokens
+        - draftTokenLimit
+        - modelLabel
+        - statusLabel
+        - sections
+      properties:
+        title:
+          type: string
+          example: GraphRAG survey
+        authors:
+          type: array
+          items:
+            type: string
+        generatedAtLabel:
+          type: string
+          example: "2026-05-28 14:00"
+        badgeLabel:
+          type: string
+          example: Draft
+        totalTokensLabel:
+          type: string
+          example: "324 / 80,000 tokens"
+        draftTokens:
+          type: integer
+          minimum: 0
+        draftTokenLimit:
+          type: integer
+          minimum: 1
+          example: 80000
+        modelLabel:
+          type: string
+          example: Review generation
+        statusLabel:
+          type: string
+          example: Running
+        sections:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReviewDraftSection"
+    ReviewCurrentResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - run
+      properties:
+        run:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/ReviewRun"
+        pipelineSteps:
+          type: array
+          nullable: true
+          items:
+            $ref: "#/components/schemas/ReviewPipelineStep"
+        runStats:
+          type: array
+          nullable: true
+          items:
+            $ref: "#/components/schemas/ReviewRunStat"
+        citations:
+          type: array
+          nullable: true
+          items:
+            $ref: "#/components/schemas/ReviewCitation"
+        draft:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/ReviewDraft"
+        streamUrl:
+          type: string
+          nullable: true
+    ReviewAcceptedResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - run
+        - taskId
+        - streamUrl
+        - pipelineSteps
+        - runStats
+        - citations
+        - draft
+      properties:
+        run:
+          $ref: "#/components/schemas/ReviewRun"
+        taskId:
+          type: string
+          example: review-0123456789abcdef
+        streamUrl:
+          type: string
+          example: /api/libraries/rag-agent/reviews/review-0123456789abcdef/events
+        pipelineSteps:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReviewPipelineStep"
+        runStats:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReviewRunStat"
+        citations:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReviewCitation"
+        draft:
+          $ref: "#/components/schemas/ReviewDraft"
+    ReviewCreateRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        topic:
+          type: string
+          nullable: true
+          maxLength: 500
+        instructions:
+          type: string
+          nullable: true
+          maxLength: 2000
+        documentIds:
+          type: array
+          maxItems: 100
+          items:
+            type: string
+        mode:
+          type: string
+          nullable: true
+          maxLength: 64
+    ReviewRegenerateRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        instructions:
+          type: string
+          nullable: true
+          maxLength: 2000
+        keepCompletedSections:
+          type: boolean
+          default: true
+    ReviewCancelRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        keepGeneratedSections:
+          type: boolean
+          default: true
+    ReviewMutationFeedback:
+      type: object
+      additionalProperties: false
+      required:
+        - tone
+        - title
+        - detail
+      properties:
+        tone:
+          type: string
+          enum:
+            - success
+            - info
+            - warning
+            - danger
+        title:
+          type: string
+          example: Review cancelled
+        detail:
+          type: string
+          example: Review generation was cancelled and generated sections were kept.
+        action:
+          type: string
+          nullable: true
+          example: Refresh
+        run:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/ReviewRun"
+    ReviewDraftDeltaEvent:
+      type: object
+      additionalProperties: false
+      required:
+        - sectionId
+        - markdownDelta
+      properties:
+        sectionId:
+          type: string
+        markdownDelta:
+          type: string
+        citations:
+          type: array
+          items:
+            type: string
+        draftTokens:
+          type: integer
+          minimum: 0
+    ReviewStatusEvent:
+      type: object
+      additionalProperties: false
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum:
+            - idle
+            - queued
+            - running
+            - backgrounded
+            - cancelled
+            - failed
+            - done
+        progress:
+          type: integer
+          minimum: 0
+          maximum: 100
+        statusLabel:
+          type: string
+        draftTokens:
+          type: integer
+          minimum: 0
+    ReviewStreamEvent:
+      oneOf:
+        - $ref: "#/components/schemas/ReviewDraftDeltaEvent"
+        - type: array
+          items:
+            $ref: "#/components/schemas/ReviewPipelineStep"
+        - type: array
+          items:
+            $ref: "#/components/schemas/ReviewCitation"
+        - type: array
+          items:
+            $ref: "#/components/schemas/ReviewRunStat"
+        - $ref: "#/components/schemas/ReviewStatusEvent"
+        - $ref: "#/components/schemas/ErrorEnvelope"
+    LibrarySummary:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - name
+        - documentCountLabel
+        - chunkCountLabel
+        - entityCountLabel
+        - activityLabel
+        - statusLabel
+        - status
+        - accent
+      properties:
+        id:
+          type: string
+          description: Stable library slug used in frontend routes.
+          example: graphrag-survey
+        name:
+          type: string
+          example: GraphRAG Survey
+        documentCountLabel:
+          type: string
+          description: Display-ready document count label.
+          example: 0 documents
+        chunkCountLabel:
+          type: string
+          description: Display-ready chunk count label.
+          example: 0 chunks
+        entityCountLabel:
+          type: string
+          description: Display-ready entity count label.
+          example: 0 entities
+        activityLabel:
+          type: string
+          description: Display-ready recent activity label.
+          example: Created 2026-05-27
+        statusLabel:
+          type: string
+          example: Healthy
+        status:
+          type: string
+          enum:
+            - healthy
+            - indexing
+        accent:
+          type: string
+          enum:
+            - concept
+            - method
+            - dataset
+            - citation
+            - author
+        featured:
+          type: boolean
+          description: Optional frontend highlighting flag.
+    CreateLibraryRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - name
+        - slug
+        - description
+        - language
+        - template
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+          example: GraphRAG Survey
+        slug:
+          type: string
+          minLength: 3
+          maxLength: 31
+          pattern: ^[a-z][a-z0-9-]{2,30}$
+          example: graphrag-survey
+        description:
+          type: string
+          maxLength: 2000
+          example: Literature collection for GraphRAG papers.
+        language:
+          type: string
+          enum:
+            - en
+            - zh
+            - multi
+        template:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: Frontend-selected starter template key.
+          example: blank
+    CreateLibraryResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - library
+        - redirectTo
+      properties:
+        library:
+          $ref: "#/components/schemas/LibrarySummary"
+        redirectTo:
+          type: string
+          example: /libraries/graphrag-survey/docs?onboarding=1
+    DocumentStatus:
+      type: object
+      additionalProperties: false
+      required:
+        - kind
+        - label
+        - title
+        - message
+        - meta
+      properties:
+        kind:
+          type: string
+          enum:
+            - ready
+            - indexing
+            - parsing
+            - failed
+        label:
+          type: string
+          example: Ready
+        title:
+          type: string
+          example: Document ready
+        message:
+          type: string
+          example: Indexed and available for search, chat citations, and review generation.
+        meta:
+          type: string
+          example: "Chunks: 128"
+        progress:
+          type: integer
+          minimum: 0
+          maximum: 100
+        progressText:
+          type: string
+          example: 70%
+        actionLabel:
+          type: string
+          example: Retry ingestion
+    LibraryDocumentsSummary:
+      type: object
+      additionalProperties: false
+      required:
+        - libraryId
+        - documentCountLabel
+        - chunkCountLabel
+        - lastSyncLabel
+      properties:
+        libraryId:
+          type: string
+          example: graphrag-survey
+        documentCountLabel:
+          type: string
+          example: 2 documents
+        chunkCountLabel:
+          type: string
+          example: 222 chunks
+        lastSyncLabel:
+          type: string
+          example: Last sync 2026-05-27
+    LibraryDocument:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - libraryId
+        - title
+        - authors
+        - source
+        - year
+        - status
+        - chunks
+        - entities
+        - ingestedLabel
+      properties:
+        id:
+          type: string
+          example: doc-001
+        libraryId:
+          type: string
+          example: graphrag-survey
+        title:
+          type: string
+          example: GraphRAG Paper
+        authors:
+          type: string
+          description: Display-ready author list. Empty string when metadata is unavailable.
+          example: Edge et al.
+        source:
+          type: string
+          description: Display-ready source label, currently the uploaded file name when richer metadata is unavailable.
+          example: graphrag.pdf
+        year:
+          type: integer
+          description: Display year, using ingest year until publication metadata is available.
+          example: 2026
+        status:
+          $ref: "#/components/schemas/DocumentStatus"
+        chunks:
+          type: integer
+          nullable: true
+          minimum: 0
+          example: 128
+        entities:
+          type: integer
+          nullable: true
+          minimum: 0
+          example: 94
+        ingestedLabel:
+          type: string
+          example: Ingested 2026-05-27
+    DocumentStatistic:
+      type: object
+      additionalProperties: false
+      required:
+        - label
+        - value
+      properties:
+        label:
+          type: string
+          example: chunks
+        value:
+          type: string
+          example: "128"
+    DocumentSection:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - orderLabel
+        - title
+        - pageLabel
+      properties:
+        id:
+          type: string
+          example: abstract
+        orderLabel:
+          type: string
+          example: "01"
+        title:
+          type: string
+          example: Abstract and motivation
+        pageLabel:
+          type: string
+          example: p.1
+    DocumentChunk:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - locationLabel
+        - text
+      properties:
+        id:
+          type: string
+          example: chunk-001
+        locationLabel:
+          type: string
+          example: Methods / p.2
+        text:
+          type: string
+          example: Graph summaries ground the final response.
+    DocumentDetail:
+      allOf:
+        - $ref: "#/components/schemas/LibraryDocument"
+        - type: object
+          additionalProperties: false
+          required:
+            - fileFormat
+            - fileSizeLabel
+            - ingestedAtLabel
+            - pageCount
+            - selectedPage
+            - statistics
+            - sections
+            - chunksPreview
+          properties:
+            fileFormat:
+              type: string
+              example: PDF
+            fileSizeLabel:
+              type: string
+              description: Display-ready file size label. `Unknown` when storage metadata is unavailable.
+              example: Unknown
+            ingestedAtLabel:
+              type: string
+              example: 2026-05-27 10:45
+            pageCount:
+              type: integer
+              minimum: 0
+              example: 22
+            selectedPage:
+              type: integer
+              minimum: 1
+              example: 1
+            statistics:
+              type: array
+              items:
+                $ref: "#/components/schemas/DocumentStatistic"
+            sections:
+              type: array
+              items:
+                $ref: "#/components/schemas/DocumentSection"
+            chunksPreview:
+              type: array
+              items:
+                $ref: "#/components/schemas/DocumentChunk"
+    DocumentsWorkspace:
+      type: object
+      additionalProperties: false
+      required:
+        - summary
+        - documents
+      properties:
+        summary:
+          $ref: "#/components/schemas/LibraryDocumentsSummary"
+        documents:
+          type: array
+          items:
+            $ref: "#/components/schemas/LibraryDocument"
+    DocumentMutationFeedback:
+      type: object
+      additionalProperties: false
+      required:
+        - tone
+        - title
+        - detail
+      properties:
+        tone:
+          type: string
+          enum:
+            - success
+            - info
+            - warning
+            - danger
+          example: warning
+        title:
+          type: string
+          example: Retry queued
+        detail:
+          type: string
+          example: failed.pdf ingestion retry queued.
+        action:
+          type: string
+          example: Logs
+    DocumentUploadRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - files
+      properties:
+        files:
+          type: array
+          minItems: 1
+          description: One or more PDF files submitted under repeated multipart field name `files`.
+          items:
+            type: string
+            format: binary
+    CommandSearchTarget:
+      type: object
+      additionalProperties: false
+      properties:
+        libraryId:
+          type: string
+          example: graphrag-survey
+        documentId:
+          type: string
+          example: doc-001
+        entityId:
+          type: string
+          example: entity-001
+        sessionId:
+          type: string
+          example: chat-001
+        reviewRunId:
+          type: string
+          example: review-001
+        query:
+          type: string
+          example: graph
+    CommandSearchResult:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - type
+        - label
+        - meta
+        - screen
+      properties:
+        id:
+          type: string
+          example: doc-001
+        type:
+          type: string
+          enum:
+            - document
+            - entity
+            - library
+            - action
+        label:
+          type: string
+          example: GraphRAG Survey Notes
+        meta:
+          type: string
+          example: paper.pdf
+        screen:
+          type: string
+          enum:
+            - dashboard
+            - chat
+            - graph
+            - docs
+            - review
+            - eval
+        icon:
+          type: string
+          example: FileText
+        shortcut:
+          type: string
+          example: Ctrl+D
+        tone:
+          type: string
+          example: citation
+        target:
+          $ref: "#/components/schemas/CommandSearchTarget"
+    CommandSearchResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - query
+        - results
+      properties:
+        query:
+          type: string
+          example: graph
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/CommandSearchResult"
+    RecentSession:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - title
+        - time
+        - screen
+      properties:
+        id:
+          type: string
+          example: chat-001
+        title:
+          type: string
+          example: Recent GraphRAG chat
+        time:
+          type: string
+          example: 2026-05-27
+        screen:
+          type: string
+          enum:
+            - dashboard
+            - chat
+            - graph
+            - docs
+            - review
+            - eval
+        active:
+          type: boolean
+        target:
+          $ref: "#/components/schemas/CommandSearchTarget"
+    LibraryStat:
+      type: object
+      additionalProperties: false
+      required:
+        - label
+        - value
+      properties:
+        label:
+          type: string
+          example: Documents
+        value:
+          type: string
+          example: "2"
+    ShellNotifications:
+      type: object
+      additionalProperties: false
+      required:
+        - activeBackgroundStreams
+      properties:
+        activeBackgroundStreams:
+          type: integer
+          minimum: 0
+          example: 1
+        label:
+          type: string
+          example: 1 active stream
+    ShellProfile:
+      type: object
+      additionalProperties: false
+      required:
+        - initials
+        - displayName
+      properties:
+        initials:
+          type: string
+          example: AF
+        displayName:
+          type: string
+          example: AnyFast User
+        planLabel:
+          type: string
+          example: Local
+    ShellMetadata:
+      type: object
+      additionalProperties: false
+      required:
+        - recentSessions
+        - libraryStats
+      properties:
+        recentSessions:
+          type: array
+          items:
+            $ref: "#/components/schemas/RecentSession"
+        libraryStats:
+          type: array
+          items:
+            $ref: "#/components/schemas/LibraryStat"
+        notifications:
+          nullable: true
+          $ref: "#/components/schemas/ShellNotifications"
+        profile:
+          nullable: true
+          $ref: "#/components/schemas/ShellProfile"
+    EvaluationSummary:
+      type: object
+      additionalProperties: false
+      required:
+        - libraryId
+        - libraryName
+        - datasetSummaryLabel
+        - timeRangeLabel
+      properties:
+        libraryId:
+          type: string
+          example: rag-agent
+        libraryName:
+          type: string
+          example: RAG Agent
+        datasetSummaryLabel:
+          type: string
+          example: smoke (12)
+        timeRangeLabel:
+          type: string
+          example: Last 30 days
+        lastRunLabel:
+          type: string
+          nullable: true
+          example: Updated 2026-05-27
+    EvaluationDatasetFilter:
+      type: object
+      additionalProperties: false
+      required:
+        - key
+        - label
+        - count
+      properties:
+        key:
+          type: string
+          enum:
+            - smoke
+            - multihop
+            - review
+        label:
+          type: string
+          example: Smoke
+        count:
+          type: integer
+          minimum: 0
+          example: 12
+        active:
+          type: boolean
+    EvaluationTimeRangeFilter:
+      type: object
+      additionalProperties: false
+      required:
+        - key
+        - label
+      properties:
+        key:
+          type: string
+          enum:
+            - 7d
+            - 30d
+            - 90d
+        label:
+          type: string
+          example: Last 30 days
+        active:
+          type: boolean
+    EvaluationFilters:
+      type: object
+      additionalProperties: false
+      required:
+        - datasets
+        - timeRanges
+      properties:
+        datasets:
+          type: array
+          items:
+            $ref: "#/components/schemas/EvaluationDatasetFilter"
+        timeRanges:
+          type: array
+          items:
+            $ref: "#/components/schemas/EvaluationTimeRangeFilter"
+    EvaluationBudgetAlert:
+      type: object
+      additionalProperties: false
+      required:
+        - tone
+        - title
+        - detail
+      properties:
+        tone:
+          type: string
+          enum:
+            - success
+            - info
+            - warning
+            - danger
+        title:
+          type: string
+          example: "Evaluation alert: var drop 5pp"
+        detail:
+          type: string
+          example: var changed by -6.5pp.
+        action:
+          type: string
+          nullable: true
+          example: Review evaluation settings
+        dismissible:
+          type: boolean
+          nullable: true
+    EvaluationKpi:
+      type: object
+      additionalProperties: false
+      required:
+        - title
+        - value
+        - threshold
+        - tone
+        - points
+      properties:
+        title:
+          type: string
+          example: Answer relevancy EM@1
+        value:
+          type: string
+          example: "0.842"
+        threshold:
+          type: string
+          example: (>= 0.80)
+        tone:
+          type: string
+          enum:
+            - success
+            - secondary
+            - danger
+        points:
+          type: array
+          items:
+            type: number
+            format: float
+        icon:
+          type: string
+          nullable: true
+          example: timer
+    EvaluationTrendLegendItem:
+      type: object
+      additionalProperties: false
+      required:
+        - label
+        - tone
+      properties:
+        label:
+          type: string
+          example: EM@1
+        tone:
+          type: string
+          enum:
+            - success
+            - secondary
+            - citation
+            - danger
+    EvaluationTrend:
+      type: object
+      additionalProperties: false
+      required:
+        - days
+        - em
+        - faithfulness
+        - citation
+        - latency
+        - legend
+      properties:
+        days:
+          type: array
+          items:
+            type: string
+          example:
+            - May 26
+            - May 27
+        em:
+          type: array
+          items:
+            type: number
+            format: float
+        faithfulness:
+          type: array
+          items:
+            type: number
+            format: float
+        citation:
+          type: array
+          items:
+            type: number
+            format: float
+        latency:
+          type: array
+          items:
+            type: number
+            format: float
+          description: Normalized p95 latency values for the frontend chart.
+        legend:
+          type: array
+          items:
+            $ref: "#/components/schemas/EvaluationTrendLegendItem"
+    EvaluationFailureReplayContext:
+      type: object
+      additionalProperties: false
+      required:
+        - libraryId
+        - query
+      properties:
+        libraryId:
+          type: string
+          example: rag-agent
+        query:
+          type: string
+          example: Replay failed evaluation sample
+    EvaluationFailureCase:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - dataset
+        - question
+        - failure
+        - tone
+        - em
+        - faithfulness
+        - citation
+        - latency
+      properties:
+        id:
+          type: string
+          example: Q-0021
+        dataset:
+          type: string
+          example: smoke
+        question:
+          type: string
+        failure:
+          type: string
+          example: Missing evidence
+        tone:
+          type: string
+          enum:
+            - danger
+            - warning
+            - neutral
+        em:
+          type: string
+          example: "0.31"
+        faithfulness:
+          type: string
+          example: "0.52"
+        citation:
+          type: string
+          example: "0.48"
+        latency:
+          type: string
+          example: 2.90s
+        replayContext:
+          nullable: true
+          $ref: "#/components/schemas/EvaluationFailureReplayContext"
+    EvaluationModels:
+      type: object
+      additionalProperties: false
+      required:
+        - routerLabel
+        - embeddingLabel
+      properties:
+        routerLabel:
+          type: string
+          example: "Router: routed"
+        embeddingLabel:
+          type: string
+          example: text-embedding-3-small (1536d)
+        warning:
+          type: string
+          nullable: true
+    EvaluationBudgetLimit:
+      type: object
+      additionalProperties: false
+      required:
+        - key
+        - label
+        - value
+      properties:
+        key:
+          type: string
+          example: maxInputTokens
+        label:
+          type: string
+          example: LLM input tokens
+        value:
+          type: string
+          example: "32,000"
+    EvaluationDataActions:
+      type: object
+      additionalProperties: false
+      properties:
+        canExport:
+          type: boolean
+          nullable: true
+        canPurge:
+          type: boolean
+          nullable: true
+    EvaluationLibrarySettings:
+      type: object
+      additionalProperties: false
+      required:
+        - libraryLabel
+        - models
+        - budgetLimits
+      properties:
+        libraryLabel:
+          type: string
+          example: RAG Agent
+        models:
+          $ref: "#/components/schemas/EvaluationModels"
+        budgetLimits:
+          type: array
+          items:
+            $ref: "#/components/schemas/EvaluationBudgetLimit"
+        dataActions:
+          nullable: true
+          $ref: "#/components/schemas/EvaluationDataActions"
+    EvaluationDashboard:
+      type: object
+      additionalProperties: false
+      required:
+        - summary
+        - filters
+        - budgetAlert
+        - kpis
+        - trend
+        - failureCases
+        - librarySettings
+      properties:
+        summary:
+          $ref: "#/components/schemas/EvaluationSummary"
+        filters:
+          $ref: "#/components/schemas/EvaluationFilters"
+        budgetAlert:
+          nullable: true
+          $ref: "#/components/schemas/EvaluationBudgetAlert"
+        kpis:
+          type: array
+          items:
+            $ref: "#/components/schemas/EvaluationKpi"
+        trend:
+          $ref: "#/components/schemas/EvaluationTrend"
+        failureCases:
+          type: array
+          items:
+            $ref: "#/components/schemas/EvaluationFailureCase"
+        librarySettings:
+          $ref: "#/components/schemas/EvaluationLibrarySettings"
+    GraphEntityTypeFilter:
+      type: object
+      additionalProperties: false
+      required:
+        - key
+        - label
+        - count
+        - checked
+        - tone
+      properties:
+        key:
+          type: string
+          example: method
+        label:
+          type: string
+          example: Method
+        count:
+          type: integer
+          minimum: 0
+          example: 12
+        checked:
+          type: boolean
+        tone:
+          type: string
+          example: method
+    GraphFilters:
+      type: object
+      additionalProperties: false
+      required:
+        - entityTypes
+        - minConfidence
+      properties:
+        entityTypes:
+          type: array
+          items:
+            $ref: "#/components/schemas/GraphEntityTypeFilter"
+        minConfidence:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          example: 0.75
+    GraphNode:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - label
+        - type
+        - tone
+        - x
+        - y
+        - radius
+      properties:
+        id:
+          type: string
+          example: method:graphrag
+        label:
+          type: string
+          example: GraphRAG
+        type:
+          type: string
+          example: method
+        tone:
+          type: string
+          example: method
+        x:
+          type: number
+          format: float
+          example: 50
+        y:
+          type: number
+          format: float
+          example: 50
+        radius:
+          type: number
+          format: float
+          example: 16
+        selected:
+          type: boolean
+        faded:
+          type: boolean
+        confidence:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+        degree:
+          type: integer
+          minimum: 0
+        evidenceCount:
+          type: integer
+          minimum: 0
+    GraphEdge:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - source
+        - target
+      properties:
+        id:
+          type: string
+          example: edge-1
+        source:
+          type: string
+          example: method:graphrag
+        target:
+          type: string
+          example: dataset:hotpotqa
+        label:
+          type: string
+          example: evaluated_on
+        weight:
+          type: number
+          format: float
+          minimum: 0
+        confidence:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+        muted:
+          type: boolean
+        directed:
+          type: boolean
+    GraphCanvas:
+      type: object
+      additionalProperties: false
+      required:
+        - nodes
+        - edges
+        - layout
+        - largeGraph
+      properties:
+        nodes:
+          type: array
+          items:
+            $ref: "#/components/schemas/GraphNode"
+        edges:
+          type: array
+          items:
+            $ref: "#/components/schemas/GraphEdge"
+        layout:
+          type: string
+          enum:
+            - static
+            - force
+            - webgl
+        largeGraph:
+          type: boolean
+          description: Indicates that the graph was truncated by the requested limit.
+    GraphSummary:
+      type: object
+      additionalProperties: false
+      required:
+        - entityCountLabel
+        - tripleCountLabel
+        - confidenceLabel
+      properties:
+        entityCountLabel:
+          type: string
+          example: 128 entities
+        tripleCountLabel:
+          type: string
+          example: 342 triples
+        confidenceLabel:
+          type: string
+          example: Avg confidence 86%
+        warningLabel:
+          type: string
+          example: Showing 100 of 480 entities
+    GraphWorkspace:
+      type: object
+      additionalProperties: false
+      required:
+        - filters
+        - canvas
+        - summary
+      properties:
+        filters:
+          $ref: "#/components/schemas/GraphFilters"
+        canvas:
+          $ref: "#/components/schemas/GraphCanvas"
+        summary:
+          $ref: "#/components/schemas/GraphSummary"
+    GraphMentionsTrend:
+      type: object
+      additionalProperties: false
+      required:
+        - points
+        - startLabel
+        - endLabel
+      properties:
+        points:
+          type: array
+          items:
+            type: integer
+            minimum: 0
+        startLabel:
+          type: string
+          example: Current
+        endLabel:
+          type: string
+          example: Current
+    GraphCoOccurringEntity:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - name
+        - type
+        - count
+      properties:
+        id:
+          type: string
+          example: dataset:hotpotqa
+        name:
+          type: string
+          example: HotpotQA
+        type:
+          type: string
+          example: dataset
+        count:
+          type: integer
+          minimum: 0
+          example: 3
+    GraphEntityDetail:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - label
+        - kind
+        - stableId
+        - aliases
+        - summary
+        - degree
+        - confidence
+        - incoming
+        - mentions
+        - evidenceCount
+        - mentionsTrend
+        - coOccurring
+      properties:
+        id:
+          type: string
+          example: method:graphrag
+        label:
+          type: string
+          example: GraphRAG
+        kind:
+          type: string
+          example: Method
+        stableId:
+          type: string
+          example: method:graphrag
+        aliases:
+          type: array
+          items:
+            type: string
+          example:
+            - Graph RAG
+        summary:
+          type: string
+          description: Empty string when no entity description is available.
+          example: Graph-augmented retrieval method.
+        degree:
+          type: integer
+          minimum: 0
+        confidence:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+        incoming:
+          type: integer
+          minimum: 0
+        mentions:
+          type: integer
+          minimum: 0
+        evidenceCount:
+          type: integer
+          minimum: 0
+        mentionsTrend:
+          $ref: "#/components/schemas/GraphMentionsTrend"
+        coOccurring:
+          type: array
+          items:
+            $ref: "#/components/schemas/GraphCoOccurringEntity"
+    ErrorEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+        - code
+        - message
+        - request_id
+      properties:
+        code:
+          type: string
+          enum:
+            - VALIDATION_ERROR
+            - AUTH_ERROR
+            - NOT_FOUND
+            - LIBRARY_NOT_FOUND
+            - LIBRARY_ALREADY_EXISTS
+            - CONFLICT
+            - PAYLOAD_TOO_LARGE
+            - UNSUPPORTED_MEDIA_TYPE
+            - RATE_LIMITED
+            - UPSTREAM_ERROR
+            - INTERNAL_ERROR
+        message:
+          type: string
+        request_id:
+          type: string
+        details:
+          nullable: true
+          description: Optional machine-readable error context.
   parameters: {}
-  responses: {}
+  responses:
+    AuthError:
+      description: Authentication or authorization failed.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+    ValidationError:
+      description: Request validation failed.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+    LibraryAlreadyExistsError:
+      description: Library slug already exists.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+          examples:
+            duplicateSlug:
+              value:
+                code: LIBRARY_ALREADY_EXISTS
+                message: "Library already exists: graphrag-survey"
+                request_id: req_123
+                details:
+                  library_id: graphrag-survey
+    LibraryNotFoundError:
+      description: Library does not exist or is not visible to the caller.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+          examples:
+            missingLibrary:
+              value:
+                code: LIBRARY_NOT_FOUND
+                message: "Library not found: graphrag-survey"
+                request_id: req_123
+                details:
+                  library_id: graphrag-survey
+    NotFoundError:
+      description: Requested resource does not exist.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+          examples:
+            missingDocument:
+              value:
+                code: NOT_FOUND
+                message: "Document not found: doc-001"
+                request_id: req_123
+    ConflictError:
+      description: Request conflicts with current resource state.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+          examples:
+            ingestionAlreadyRunning:
+              value:
+                code: CONFLICT
+                message: "Document ingestion is already running: doc-001"
+                request_id: req_123
+    PayloadTooLargeError:
+      description: Uploaded payload exceeds the configured size limit.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+          examples:
+            pdfTooLarge:
+              value:
+                code: PAYLOAD_TOO_LARGE
+                message: "Uploaded PDF exceeds max size 104857600 bytes: paper.pdf"
+                request_id: req_123
+    UnsupportedMediaTypeError:
+      description: Uploaded file type is unsupported.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+          examples:
+            nonPdf:
+              value:
+                code: UNSUPPORTED_MEDIA_TYPE
+                message: "Only PDF files are supported: notes.txt"
+                request_id: req_123
+    UpstreamError:
+      description: Upstream dependency rejected the request.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+    InternalError:
+      description: Internal server error.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
   requestBodies: {}
   securitySchemes: {}

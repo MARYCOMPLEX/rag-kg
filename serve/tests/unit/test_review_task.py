@@ -132,6 +132,50 @@ class TestReviewGenerationTaskHappyPath:
         assert result.cost.output_tokens == 30
         assert result.cost.cost_usd == pytest.approx(0.006)
 
+    @pytest.mark.asyncio
+    async def test_accepts_outline_json_array(self) -> None:
+        planner = FakePlanner(default_evidence=(_ev("d::p1::0"),))
+        llm = FakeLLM(
+            responses=[
+                '["Retrieval planning", "Global synthesis"]',
+                "Planning body [d::p1::0].",
+                "Synthesis body [d::p1::0].",
+            ]
+        )
+        task = ReviewGenerationTask(
+            planner=planner,
+            llm=llm,
+            config=ReviewGenerationTaskConfig(max_sections=2, write_abstract=False),
+        )
+
+        result = await task.run("test-lib", "GraphRAG")
+
+        assert [section.heading for section in result.sections] == [
+            "Retrieval planning",
+            "Global synthesis",
+        ]
+
+    @pytest.mark.asyncio
+    async def test_accepts_numbered_outline_list(self) -> None:
+        planner = FakePlanner(default_evidence=(_ev("d::p1::0"),))
+        llm = FakeLLM(
+            responses=[
+                "1. Retrieval planning\n2. Global synthesis",
+                "Planning body [d::p1::0].",
+                "Synthesis body [d::p1::0].",
+            ]
+        )
+        task = ReviewGenerationTask(
+            planner=planner,
+            llm=llm,
+            config=ReviewGenerationTaskConfig(max_sections=2, write_abstract=False),
+        )
+
+        result = await task.run("test-lib", "GraphRAG")
+
+        assert len(result.sections) == 2
+        assert planner.calls == ["Retrieval planning", "Global synthesis"]
+
 
 class TestReviewGenerationTaskOutlineFailure:
     @pytest.mark.asyncio

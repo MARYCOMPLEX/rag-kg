@@ -20,6 +20,13 @@ M0_M6_ROUTES: tuple[str, ...] = (
 
 # Routes added in M7 — see BACKEND_ROADMAP §4 + ADR review:
 M7_ROUTES: tuple[str, ...] = (
+    "frontend_libraries",  # frontend /api adapter for integration
+    "frontend_documents",  # frontend /api document read adapter
+    "frontend_shell",  # frontend /api command search and shell metadata adapter
+    "frontend_graph",  # frontend /api knowledge graph workspace adapter
+    "frontend_evaluation",  # frontend /api evaluation dashboard adapter
+    "frontend_chat",  # frontend /api chat session and stream adapter
+    "frontend_reviews",  # frontend /api review lifecycle adapter
     "tasks",  # ADR-0009
     "notifications",  # ADR-0011
     "activity",  # ADR-0014

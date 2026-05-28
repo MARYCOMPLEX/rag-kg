@@ -21,6 +21,7 @@ from apps.api.deps import get_container
 from packages.orchestration.adapters.arq_queue import ArqTaskQueue
 from packages.orchestration.adapters.postgres_task_store import PostgresTaskStore
 from packages.orchestration.adapters.redis_event_bus import RedisTaskEventBus
+from packages.orchestration.errors import QueueFullError
 from packages.orchestration.queue import TaskEventBus, TaskQueue
 
 
@@ -77,7 +78,13 @@ async def get_task_bundle(
     if _bundle_cache is None:
         async with _bundle_lock:
             if _bundle_cache is None:
-                _bundle_cache = await _build_bundle(container)
+                try:
+                    _bundle_cache = await _build_bundle(container)
+                except QueueFullError:
+                    raise
+                except Exception as exc:
+                    msg = f"Task queue unavailable: {exc}"
+                    raise QueueFullError(msg) from exc
     return _bundle_cache
 
 
@@ -85,6 +92,12 @@ async def get_task_queue(
     bundle: _TaskBundle = Depends(get_task_bundle),
 ) -> TaskQueue:
     return bundle.queue
+
+
+async def get_task_store(
+    bundle: _TaskBundle = Depends(get_task_bundle),
+) -> PostgresTaskStore:
+    return bundle.store
 
 
 async def get_task_event_bus(

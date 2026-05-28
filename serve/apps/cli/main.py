@@ -201,6 +201,18 @@ def _report_ingest_plan(
         store.close()
 
 
+async def _init_library_for_ingest(container: AppContainer, library: str) -> None:
+    """Initialize only storage adapters enabled for the current ingest config."""
+    init_adapters = [container.vector_index]
+    if container.settings.hybrid_enabled:
+        init_adapters.append(container.bm25_index)
+    if container.settings.kg_enabled:
+        init_adapters.append(container.graph_index)
+    if container.settings.community_enabled:
+        init_adapters.append(container.community_index)
+    await init_library(library, adapters=init_adapters)
+
+
 @app.command()
 def ingest(
     path: str = typer.Argument(help="Path to PDF file or directory of PDFs"),
@@ -237,15 +249,7 @@ def ingest(
             if not await container.library_repo.exists(library):
                 console.print(f"[red]Library '{library}' does not exist. Create it first.[/red]")
                 raise typer.Exit(code=1)
-            await init_library(
-                library,
-                adapters=[
-                    container.vector_index,
-                    container.bm25_index,
-                    container.graph_index,
-                    container.community_index,
-                ],
-            )
+            await _init_library_for_ingest(container, library)
 
             extract_kg = container.extractor is not None
             if not extract_kg:
