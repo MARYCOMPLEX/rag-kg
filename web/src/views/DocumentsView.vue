@@ -16,17 +16,53 @@ const {
   documents,
   listState,
   listError,
+  uploadState,
+  uploadError,
   docSelection,
   selectedDocsLabel,
 } = storeToRefs(docs)
 const openStatusId = ref<string | null>(null)
-const libraryId = computed(() => String(route.params.libraryId ?? 'graphrag-survey'))
+const fileInput = ref<HTMLInputElement | null>(null)
+const libraryId = computed(() => String(route.params.libraryId ?? ''))
+type QueueStatusKind = Extract<LibraryDocument['status']['kind'], 'indexing' | 'parsing' | 'failed'>
+
+function isQueueStatusKind(kind: LibraryDocument['status']['kind']): kind is QueueStatusKind {
+  return kind === 'indexing' || kind === 'parsing' || kind === 'failed'
+}
+
 const summaryLine = computed(() => {
   const current = summary.value
   if (!current)
     return 'Loading document library...'
 
   return `${current.documentCountLabel} in ${current.libraryId} / ${current.chunkCountLabel} / ${current.lastSyncLabel}`
+})
+const queueStatusItems = computed(() => {
+  const counts: Record<QueueStatusKind, number> = {
+    indexing: 0,
+    parsing: 0,
+    failed: 0,
+  }
+
+  documents.value.forEach((document) => {
+    if (isQueueStatusKind(document.status.kind))
+      counts[document.status.kind] += 1
+  })
+
+  return [
+    { kind: 'indexing', label: 'indexing', count: counts.indexing },
+    { kind: 'parsing', label: 'parsing', count: counts.parsing },
+    { kind: 'failed', label: 'failed', count: counts.failed },
+  ].filter(item => item.count > 0)
+})
+const queueStatusLabel = computed(() => {
+  if (listState.value === 'loading')
+    return 'Loading queue...'
+
+  if (queueStatusItems.value.length === 0)
+    return 'No active ingestion'
+
+  return null
 })
 
 watch(libraryId, (nextLibraryId) => {
@@ -35,6 +71,10 @@ watch(libraryId, (nextLibraryId) => {
   ui.documentDrawerOpen = false
   void docs.loadDocuments(nextLibraryId)
 }, { immediate: true })
+
+function reloadDocuments() {
+  void docs.loadDocuments(libraryId.value, true)
+}
 
 function toggleStatusPopover(documentId: string) {
   openStatusId.value = openStatusId.value === documentId ? null : documentId
@@ -45,9 +85,10 @@ function closeStatusPopover() {
 }
 
 async function openDocument(document: LibraryDocument) {
+  ui.documentDrawerOpen = true
+
   try {
     await docs.openDocument(libraryId.value, document.id)
-    ui.documentDrawerOpen = true
   }
   catch {
     ui.pushToast('danger', 'Document unavailable', 'Unable to load this document detail.', 'Retry')
@@ -65,14 +106,34 @@ async function retryIngestion(document: LibraryDocument) {
   }
 }
 
-async function queueUpload() {
+function openFilePicker() {
+  fileInput.value?.click()
+}
+
+async function queueUpload(files: File[]) {
+  if (files.length === 0) {
+    ui.pushToast('warning', 'No PDF selected', 'Choose one or more PDF files before uploading.')
+    return
+  }
+
   try {
-    const feedback = await docs.queueUpload()
+    const feedback = await docs.queueUpload(files)
     ui.pushToast(feedback.tone, feedback.title, feedback.detail, feedback.action)
   }
-  catch {
-    ui.pushToast('danger', 'Upload failed', 'Unable to queue documents for ingestion.', 'Try again')
+  catch (error) {
+    const detail = error instanceof Error ? error.message : 'Unable to queue documents for ingestion.'
+    ui.pushToast('danger', 'Upload failed', detail, 'Try again')
   }
+}
+
+function handleFileInput(event: Event) {
+  const target = event.target as HTMLInputElement
+  void queueUpload(Array.from(target.files ?? []))
+  target.value = ''
+}
+
+function handleFileDrop(event: DragEvent) {
+  void queueUpload(Array.from(event.dataTransfer?.files ?? []))
 }
 
 function renderCount(value: number | null) {
@@ -87,16 +148,32 @@ function renderCount(value: number | null) {
         <h1>Documents</h1>
         <p>{{ summaryLine }}</p>
       </div>
-      <button class="primary-btn" type="button" @click="queueUpload">
+      <button class="primary-btn" type="button" :disabled="uploadState === 'loading'" @click="openFilePicker">
         <AppIcon name="upload" :size="15" />
-        Upload PDFs
+        {{ uploadState === 'loading' ? 'Uploading...' : 'Upload PDFs' }}
       </button>
+      <input
+        ref="fileInput"
+        class="visually-hidden"
+        type="file"
+        multiple
+        accept="application/pdf,.pdf"
+        @change="handleFileInput"
+      >
     </div>
 
-    <button class="drop-zone" type="button" @click="queueUpload">
+    <button
+      class="drop-zone"
+      type="button"
+      :disabled="uploadState === 'loading'"
+      @click="openFilePicker"
+      @dragover.prevent
+      @drop.prevent="handleFileDrop"
+    >
       <AppIcon name="upload" :size="28" />
       <strong>Drag & drop PDFs here, or click to browse</strong>
-      <span>Supports scanned PDFs / Auto OCR with MinerU</span>
+      <span v-if="uploadState === 'error'">{{ uploadError }}</span>
+      <span v-else>Supports scanned PDFs / Auto OCR with MinerU</span>
     </button>
 
     <div v-if="docSelection.length" class="selection-bar">
@@ -126,7 +203,22 @@ function renderCount(value: number | null) {
             <td colspan="6">Loading documents...</td>
           </tr>
           <tr v-else-if="listState === 'error'" class="document-state-row is-error">
-            <td colspan="6">{{ listError }}</td>
+            <td colspan="6">
+              <strong>Unable to load documents.</strong>
+              <span>{{ listError }}</span>
+              <button type="button" @click="reloadDocuments">
+                Retry
+              </button>
+            </td>
+          </tr>
+          <tr v-else-if="documents.length === 0" class="document-state-row">
+            <td colspan="6">
+              <strong>No documents yet.</strong>
+              <span>Upload PDFs to start ingestion for this library.</span>
+              <button type="button" @click="openFilePicker">
+                Upload PDFs
+              </button>
+            </td>
           </tr>
           <template v-else>
             <tr
@@ -158,22 +250,73 @@ function renderCount(value: number | null) {
 
     <div class="ingest-queue-bar">
       <span>Queue</span>
-      <b>14 indexing</b>
-      <b>3 parsing</b>
-      <b class="failed">1 failed</b>
-      <span class="daily-cap">Today $0.36 / $5.00 daily cap <i /></span>
+      <b
+        v-for="item in queueStatusItems"
+        :key="item.kind"
+        :class="{ failed: item.kind === 'failed' }"
+      >
+        {{ item.count }} {{ item.label }}
+      </b>
+      <span v-if="queueStatusLabel" class="queue-status-note">{{ queueStatusLabel }}</span>
     </div>
   </section>
 </template>
 
 <style scoped>
 .document-state-row td {
+  vertical-align: middle;
   height: 112px;
   color: var(--color-on-surface-variant);
   text-align: center;
 }
 
+.document-state-row td > * {
+  display: block;
+  margin: 0 auto;
+}
+
+.document-state-row strong {
+  margin-bottom: 4px;
+  color: var(--color-on-surface);
+  font-size: 14px;
+}
+
+.document-state-row span {
+  max-width: 420px;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.document-state-row button {
+  height: 32px;
+  margin-top: 12px;
+  border: 1px solid var(--color-outline-variant);
+  border-radius: var(--radius-control);
+  background: var(--color-surface-container-lowest);
+  padding: 0 14px;
+  color: var(--color-primary);
+  font-size: 13px;
+  font-weight: 700;
+}
+
 .document-state-row.is-error td {
   color: var(--color-error);
+}
+
+.document-state-row.is-error span {
+  color: var(--color-error);
+}
+
+.queue-status-note {
+  color: var(--color-on-surface-variant);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
 }
 </style>

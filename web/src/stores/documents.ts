@@ -22,6 +22,8 @@ export const useDocumentsStore = defineStore('documents', () => {
   const selectedDocument = ref<DocumentDetail | null>(null)
   const detailState = ref<DocumentsRequestState>('idle')
   const detailError = ref<string | null>(null)
+  const uploadState = ref<DocumentsRequestState>('idle')
+  const uploadError = ref<string | null>(null)
 
   const selectedDocsLabel = computed(() => `${docSelection.value.length} selected`)
 
@@ -86,8 +88,21 @@ export const useDocumentsStore = defineStore('documents', () => {
     return documentRepository.retryIngestion(libraryId.value, documentId)
   }
 
-  async function queueUpload(): Promise<DocumentMutationFeedback> {
-    return documentRepository.queueUpload(libraryId.value)
+  async function queueUpload(files: File[]): Promise<DocumentMutationFeedback> {
+    uploadState.value = 'loading'
+    uploadError.value = null
+
+    try {
+      const feedback = await documentRepository.queueUpload(libraryId.value, files)
+      await loadDocuments(libraryId.value, true)
+      uploadState.value = 'success'
+      return feedback
+    }
+    catch (error) {
+      uploadError.value = error instanceof Error ? error.message : 'Unable to queue documents for ingestion.'
+      uploadState.value = 'error'
+      throw error
+    }
   }
 
   function toggleDoc(id: string) {
@@ -112,6 +127,8 @@ export const useDocumentsStore = defineStore('documents', () => {
     selectedDocument,
     detailState,
     detailError,
+    uploadState,
+    uploadError,
     selectedDocsLabel,
     loadDocuments,
     openDocument,

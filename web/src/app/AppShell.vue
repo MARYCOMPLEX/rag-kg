@@ -100,6 +100,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', onGlobalKeydown)
   chat.clearStreamTimer()
+  review.disconnectStream()
   review.stopTaskRuntime()
 })
 </script>

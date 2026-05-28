@@ -6,21 +6,35 @@ import { useUiStore } from '../stores/ui'
 
 const ui = useUiStore()
 const library = useLibraryStore()
-const { activeLibrary, featuredLibraries, loading } = storeToRefs(library)
+const { activeLibrary, error, featuredLibraries, libraries, loading } = storeToRefs(library)
+
+const dashboardLibraries = computed(() => {
+  return featuredLibraries.value.length ? featuredLibraries.value : libraries.value
+})
 
 const summaryLine = computed(() => {
-  if (loading.value && !featuredLibraries.value.length)
+  if (loading.value && !dashboardLibraries.value.length)
     return 'Loading libraries...'
 
-  const totals = featuredLibraries.value.reduce((result, item) => {
+  if (error.value && !dashboardLibraries.value.length)
+    return 'Unable to load libraries.'
+
+  if (!dashboardLibraries.value.length)
+    return 'No libraries found.'
+
+  const totals = dashboardLibraries.value.reduce((result, item) => {
     result.documents += Number(item.documentCountLabel.replace(/,/g, ''))
     result.chunks += Number(item.chunkCountLabel.replace(/,/g, ''))
     result.entities += Number(item.entityCountLabel.replace(/,/g, ''))
     return result
   }, { documents: 0, chunks: 0, entities: 0 })
 
-  return `${featuredLibraries.value.length} active libraries / ${totals.documents.toLocaleString()} documents / ${totals.chunks.toLocaleString()} chunks / ${totals.entities.toLocaleString()} entities`
+  return `${dashboardLibraries.value.length} active libraries / ${totals.documents.toLocaleString()} documents / ${totals.chunks.toLocaleString()} chunks / ${totals.entities.toLocaleString()} entities`
 })
+
+function retryLoadLibraries() {
+  void library.loadLibraries(true)
+}
 
 onMounted(() => {
   void library.loadLibraries()
@@ -42,9 +56,25 @@ onMounted(() => {
       </button>
     </div>
 
-    <div class="library-grid">
+    <div v-if="error && !dashboardLibraries.length" class="library-state-card is-error">
+      <strong>Unable to load libraries</strong>
+      <span>{{ error }}</span>
+      <button type="button" @click="retryLoadLibraries">
+        Retry
+      </button>
+    </div>
+
+    <div v-else-if="!loading && !dashboardLibraries.length" class="library-state-card">
+      <strong>No libraries yet</strong>
+      <span>Create a library to start uploading documents and building a graph.</span>
+      <button type="button" @click="ui.openCreateLibrary">
+        Create library
+      </button>
+    </div>
+
+    <div v-else class="library-grid">
       <button
-        v-for="item in featuredLibraries"
+        v-for="item in dashboardLibraries"
         :key="item.id"
         class="library-card"
         :class="{ selected: activeLibrary === item.id, 'warning-card': item.status === 'indexing' }"
@@ -103,3 +133,43 @@ onMounted(() => {
     </div>
   </section>
 </template>
+
+<style scoped>
+.library-state-card {
+  display: grid;
+  max-width: 520px;
+  gap: 10px;
+  border: 1px solid var(--color-outline-variant);
+  border-radius: var(--radius-card);
+  background: var(--color-surface-container-lowest);
+  padding: 18px;
+  color: var(--color-on-surface);
+}
+
+.library-state-card span {
+  color: var(--color-on-surface-variant);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.library-state-card button {
+  justify-self: start;
+  height: 36px;
+  border: 1px solid var(--color-primary-container);
+  border-radius: var(--radius-control);
+  background: var(--color-primary-container);
+  padding: 0 14px;
+  color: var(--color-on-primary);
+  font-weight: 700;
+}
+
+.library-state-card.is-error {
+  border-color: var(--color-alpha-danger-20);
+  background: var(--color-error-container);
+}
+
+.library-state-card.is-error strong,
+.library-state-card.is-error span {
+  color: var(--color-error);
+}
+</style>

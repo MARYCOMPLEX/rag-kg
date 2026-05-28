@@ -8,7 +8,7 @@ export const router = createRouter({
       path: '/',
       component: AppShell,
       children: [
-        { path: '', redirect: '/libraries/graphrag-survey/chat' },
+        { path: '', redirect: '/libraries' },
         {
           path: 'libraries',
           name: 'libraries',

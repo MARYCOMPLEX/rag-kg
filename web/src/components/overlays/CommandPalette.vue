@@ -1,60 +1,108 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import BaseModal from '../base/BaseModal.vue'
 import AppIcon from '../base/AppIcon.vue'
 import { useWorkspaceNavigation } from '../../app/useWorkspaceNavigation'
+import { useLibraryStore } from '../../stores/library'
 import { useSearchStore } from '../../stores/search'
 import { useUiStore } from '../../stores/ui'
 import type { CommandSearchResult } from '../../types/application'
 
 const ui = useUiStore()
 const search = useSearchStore()
+const library = useLibraryStore()
 const { commandOpen, commandItems, commandQuery } = storeToRefs(ui)
-const { documentResults, entityResults } = storeToRefs(search)
+const { results, state: searchState, error: searchError } = storeToRefs(search)
+const { activeLibrary } = storeToRefs(library)
 const { goToScreen } = useWorkspaceNavigation()
+const usesApiData = import.meta.env.VITE_DATA_SOURCE === 'api'
 
 const actionResults = computed<CommandSearchResult[]>(() => commandItems.value.map((item) => ({
+  id: `local-${item.screen}-${item.label}`,
+  type: 'action',
   label: item.label,
   meta: item.meta,
   icon: item.screen === 'graph' ? 'graph' : item.screen === 'docs' ? 'file' : item.screen === 'review' ? 'review' : 'search',
   screen: item.screen,
-  shortcut: item.screen === 'review' ? 'Cmd N' : undefined,
+  shortcut: item.shortcut,
 })))
 
 const sections = computed(() => {
   const query = commandQuery.value.trim()
+  if (usesApiData) {
+    const typedSections = [
+      { title: 'Actions', items: results.value.filter(item => item.type === 'action') },
+      { title: 'Documents', items: results.value.filter(item => item.type === 'document') },
+      { title: 'Entities', items: results.value.filter(item => item.type === 'entity') },
+      { title: 'Libraries', items: results.value.filter(item => item.type === 'library') },
+    ]
+
+    return typedSections.filter(section => section.items.length)
+  }
+
   const allSections = [
-    { title: 'Entities in efficient-ml', items: entityResults.value },
-    { title: 'Documents', items: documentResults.value },
+    { title: 'Entities', items: results.value.filter(item => item.screen === 'graph') },
+    { title: 'Documents', items: results.value.filter(item => item.screen === 'docs') },
     { title: query ? `Actions matching "${query}"` : 'Suggested actions', items: actionResults.value },
   ]
-
-  if (!query)
-    return allSections
 
   const normalized = query.toLowerCase()
   return allSections
     .map(section => ({
       ...section,
-      items: section.items.filter(item =>
-        item.label.toLowerCase().includes(normalized)
-        || item.meta.toLowerCase().includes(normalized)
-        || section.title.toLowerCase().includes(normalized),
-      ),
+      items: query
+        ? section.items.filter(item =>
+            item.label.toLowerCase().includes(normalized)
+            || item.meta.toLowerCase().includes(normalized)
+            || section.title.toLowerCase().includes(normalized),
+          )
+        : section.items,
     }))
     .filter(section => section.items.length)
 })
+
+let searchTimer: number | undefined
+watch([commandOpen, commandQuery, activeLibrary], ([open, query, libraryId]) => {
+  window.clearTimeout(searchTimer)
+  if (!open)
+    return
+
+  searchTimer = window.setTimeout(() => {
+    void search.search(libraryId, {
+      query,
+      scope: ['documents', 'entities', 'libraries', 'actions'],
+      limit: 12,
+    })
+  }, usesApiData ? 180 : 0)
+}, { immediate: true })
 
 function closeCommand() {
   ui.commandOpen = false
 }
 
-function selectCommand(screen = sections.value[0]?.items[0]?.screen) {
-  if (!screen)
+function iconFor(item: CommandSearchResult) {
+  if (item.icon)
+    return item.icon
+
+  if (item.type === 'document' || item.screen === 'docs')
+    return 'file'
+  if (item.type === 'entity' || item.screen === 'graph')
+    return 'graph'
+  if (item.screen === 'review')
+    return 'review'
+
+  return 'search'
+}
+
+function selectCommand(item = sections.value[0]?.items[0]) {
+  if (!item)
     return
 
-  void goToScreen(screen)
+  if (item.target?.libraryId)
+    library.selectLibrary(item.target.libraryId)
+
+  void goToScreen(item.screen)
 }
 </script>
 
@@ -95,10 +143,10 @@ function selectCommand(screen = sections.value[0]?.items[0]?.screen) {
           role="option"
           type="button"
           :aria-selected="sectionIndex === 0 && itemIndex === 0"
-          @click="selectCommand(item.screen)"
+          @click="selectCommand(item)"
         >
           <span class="command-leading" :class="item.tone">
-            <AppIcon :name="item.icon" :size="16" />
+            <AppIcon :name="iconFor(item)" :size="16" />
           </span>
           <span class="command-copy">
             <strong>{{ item.label }}</strong>
@@ -111,7 +159,9 @@ function selectCommand(screen = sections.value[0]?.items[0]?.screen) {
 
       <div v-if="!sections.length" class="command-empty">
         <AppIcon name="search" :size="18" />
-        <span>No commands found in this Library.</span>
+        <span v-if="searchState === 'loading'">Searching this Library...</span>
+        <span v-else-if="searchState === 'error'">{{ searchError }}</span>
+        <span v-else>No commands found in this Library.</span>
       </div>
     </div>
 

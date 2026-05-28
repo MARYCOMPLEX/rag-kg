@@ -15,7 +15,7 @@ export interface DocumentRepository {
   list(libraryId: string): Promise<DocumentsWorkspace>
   getById(libraryId: string, documentId: string): Promise<DocumentDetail>
   retryIngestion(libraryId: string, documentId: string): Promise<DocumentMutationFeedback>
-  queueUpload(libraryId: string): Promise<DocumentMutationFeedback>
+  queueUpload(libraryId: string, files: File[]): Promise<DocumentMutationFeedback>
 }
 
 class MockDocumentRepository implements DocumentRepository {
@@ -35,7 +35,7 @@ class MockDocumentRepository implements DocumentRepository {
     return createMockRetryFeedback()
   }
 
-  async queueUpload(_libraryId: string) {
+  async queueUpload(_libraryId: string, _files: File[]) {
     return createMockUploadFeedback()
   }
 }
@@ -58,10 +58,13 @@ class HttpDocumentRepository implements DocumentRepository {
     )
   }
 
-  queueUpload(libraryId: string) {
+  queueUpload(libraryId: string, files: File[]) {
+    const body = new FormData()
+    files.forEach(file => body.append('files', file))
+
     return apiRequest<DocumentMutationFeedback>(
       `/api/libraries/${encodeURIComponent(libraryId)}/documents:upload`,
-      { method: 'POST' },
+      { method: 'POST', body },
     )
   }
 }

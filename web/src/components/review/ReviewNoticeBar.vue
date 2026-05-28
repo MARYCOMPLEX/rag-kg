@@ -6,11 +6,11 @@ import AppIcon from '../base/AppIcon.vue'
   <footer class="review-notice-bar">
     <p>
       <AppIcon name="warning" :size="15" />
-      <span>NOTE (for designers): When 0 chunks match a subtopic, render a warning banner instead of inventing content.</span>
+      <span>NOTE (for designers): When 0 chunks match a section, render a warning banner instead of inventing content.</span>
     </p>
     <p class="developer-note">
       <AppIcon name="info" :size="15" />
-      <span>NOTE (for developers): Annotate unsubstantiated paragraph markers [?] and sync state via taskStore.</span>
+      <span>NOTE (for developers): Annotate unsubstantiated sections and sync state via the review store.</span>
     </p>
   </footer>
 </template>

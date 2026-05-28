@@ -10,10 +10,16 @@ import { useUiStore } from '../../stores/ui'
 const ui = useUiStore()
 const documents = useDocumentsStore()
 const { documentDrawerOpen, drawerPinned } = storeToRefs(ui)
-const { selectedDocument } = storeToRefs(documents)
+const {
+  detailError,
+  detailState,
+  selectedDocument,
+  selectedDocumentId,
+} = storeToRefs(documents)
 const { focusComposer } = useWorkspaceNavigation()
 
-const drawerOpen = computed(() => documentDrawerOpen.value && Boolean(selectedDocument.value))
+const drawerOpen = computed(() => documentDrawerOpen.value && Boolean(selectedDocument.value || selectedDocumentId.value))
+const drawerTitle = computed(() => selectedDocument.value?.title ?? 'Document detail')
 const subtitle = computed(() => {
   const document = selectedDocument.value
   if (!document)
@@ -21,6 +27,9 @@ const subtitle = computed(() => {
 
   return `${document.authors} / ${document.source} / ${document.fileFormat} / ${document.fileSizeLabel} / Ingested ${document.ingestedAtLabel}`
 })
+const showDocumentContent = computed(() => detailState.value === 'success' && Boolean(selectedDocument.value))
+const showLoadingState = computed(() => detailState.value === 'loading')
+const showErrorState = computed(() => detailState.value === 'error')
 
 function updateDrawerShow(show: boolean) {
   ui.documentDrawerOpen = show
@@ -41,12 +50,25 @@ async function retrySelectedDocument() {
     ui.pushToast('danger', 'Retry failed', 'Unable to restart ingestion for this document.', 'Try again')
   }
 }
+
+async function reloadSelectedDocument() {
+  const documentId = selectedDocumentId.value
+  if (!documentId)
+    return
+
+  try {
+    await documents.openDocument(documents.libraryId, documentId)
+  }
+  catch {
+    ui.pushToast('danger', 'Document unavailable', 'Unable to load this document detail.', 'Retry')
+  }
+}
 </script>
 
 <template>
   <BaseDrawer
     :show="drawerOpen"
-    :title="selectedDocument?.title ?? ''"
+    :title="drawerTitle"
     :subtitle="subtitle"
     size="document"
     :pinned="drawerPinned"
@@ -55,20 +77,20 @@ async function retrySelectedDocument() {
     @update:show="updateDrawerShow"
   >
     <template #eyebrow>
-      <span class="document-status-pill" :class="selectedDocument?.status.kind">
+      <span v-if="selectedDocument" class="document-status-pill" :class="selectedDocument.status.kind">
         <i />
-        {{ selectedDocument?.status.label }}
+        {{ selectedDocument.status.label }}
       </span>
     </template>
 
     <template #actions>
-      <button type="button" title="Download document">
+      <button v-if="selectedDocument" type="button" title="Download document">
         <AppIcon name="download" :size="15" />
       </button>
-      <button type="button" title="Re-ingest document" @click="retrySelectedDocument">
+      <button v-if="selectedDocument" type="button" title="Re-ingest document" @click="retrySelectedDocument">
         <AppIcon name="refresh" :size="15" />
       </button>
-      <button type="button" title="Copy citation">
+      <button v-if="selectedDocument" type="button" title="Copy citation">
         <AppIcon name="copy" :size="15" />
       </button>
       <button type="button" :aria-pressed="drawerPinned" title="Pin drawer" @click="ui.drawerPinned = !ui.drawerPinned">
@@ -77,14 +99,27 @@ async function retrySelectedDocument() {
       </button>
     </template>
 
-    <section class="document-stat-row" aria-label="Document statistics">
+    <section v-if="showLoadingState" class="document-drawer-state" aria-live="polite">
+      <strong>Loading document detail...</strong>
+      <span>Fetching metadata, sections, and chunk previews from the API.</span>
+    </section>
+
+    <section v-else-if="showErrorState" class="document-drawer-state is-error" aria-live="polite">
+      <strong>Unable to load document detail.</strong>
+      <span>{{ detailError }}</span>
+      <button type="button" @click="reloadSelectedDocument">
+        Retry
+      </button>
+    </section>
+
+    <section v-if="showDocumentContent" class="document-stat-row" aria-label="Document statistics">
       <div v-for="stat in selectedDocument?.statistics ?? []" :key="stat.label">
         <strong>{{ stat.value }}</strong>
         <span>{{ stat.label }}</span>
       </div>
     </section>
 
-    <div class="document-drawer-grid">
+    <div v-if="showDocumentContent" class="document-drawer-grid">
       <section class="document-preview-column">
         <div class="pdf-preview-card" aria-label="PDF preview">
           <div class="pdf-page">
@@ -124,15 +159,18 @@ async function retrySelectedDocument() {
     </div>
 
     <template #footer>
-      <button class="drawer-secondary-action" type="button" @click="retrySelectedDocument">
+      <button v-if="showErrorState" class="drawer-primary-action" type="button" @click="reloadSelectedDocument">
+        Retry loading
+      </button>
+      <button v-if="showDocumentContent" class="drawer-secondary-action" type="button" @click="retrySelectedDocument">
         <AppIcon name="refresh" :size="15" />
         Re-parse
       </button>
-      <button class="drawer-primary-action" type="button" @click="focusComposer">
+      <button v-if="showDocumentContent" class="drawer-primary-action" type="button" @click="focusComposer">
         Open in Chat
         <AppIcon name="arrow-right" :size="15" />
       </button>
-      <button class="drawer-danger-action" type="button">
+      <button v-if="showDocumentContent" class="drawer-danger-action" type="button">
         <AppIcon name="trash" :size="15" />
         Remove document
       </button>
@@ -190,6 +228,42 @@ async function retrySelectedDocument() {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
   margin-bottom: 24px;
+}
+
+.document-drawer-state {
+  display: grid;
+  place-items: center;
+  min-height: 320px;
+  gap: 8px;
+  color: var(--color-on-surface-variant);
+  text-align: center;
+}
+
+.document-drawer-state strong {
+  color: var(--color-on-surface);
+  font-size: 16px;
+}
+
+.document-drawer-state span {
+  max-width: 420px;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.document-drawer-state button {
+  height: 34px;
+  margin-top: 8px;
+  border: 1px solid var(--color-outline-variant);
+  border-radius: var(--radius-control);
+  background: var(--color-surface-container-lowest);
+  padding: 0 16px;
+  color: var(--color-primary);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.document-drawer-state.is-error span {
+  color: var(--color-error);
 }
 
 .document-stat-row div {

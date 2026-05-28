@@ -1,4 +1,4 @@
-# API Requests
+﻿# API Requests
 
 This file is the shared queue for Frontend Agent requests when a page or component requires a backend API that is missing, incomplete, or unclear.
 
@@ -50,6 +50,21 @@ OpenAPI remains the single source of truth. Entries here are requests only; once
   - Frontend can run with `VITE_DATA_SOURCE=api` and `VITE_API_BASE_URL=http://localhost:8000`.
   - Dashboard covers loading, empty, error, and retry states from the real API.
 - Status: verified
+- Frontend verification note:
+  - Time: 2026-05-27 04:38 +08:00
+  - Backend SHA: `7fa6a241965043415482fad09338ba13b18dc25f`.
+  - Frontend SHA tested before log update: `410c02a`.
+  - `GET /api/libraries`: verified with real backend and returned library summaries.
+  - Valid `POST /api/libraries` slug `frontend-smoke-043320`: verified `201` with `library.id` matching the slug and `redirectTo` pointing to the library docs route.
+  - Duplicate `POST /api/libraries` slug `frontend-smoke-043320`: verified `409 LIBRARY_ALREADY_EXISTS` error envelope.
+  - Invalid `POST /api/libraries` slug `1bad`: verified `400 VALIDATION_ERROR` error envelope.
+  - Playwright browser smoke at `http://127.0.0.1:5174/libraries`: verified dashboard list load, top bar selector, create modal success path, duplicate error toast, and slug validation disabled submit for `1bad`.
+- Frontend verification note:
+  - Time: 2026-05-27 04:08 +08:00
+  - `GET /api/libraries`: verified with backend branch and returned library summaries.
+  - Invalid `POST /api/libraries` slug `1bad`: verified `400 VALIDATION_ERROR` envelope.
+  - Valid `POST /api/libraries`: blocked by backend `500 INTERNAL_ERROR` with `details.type: UnexpectedResponse` after Qdrant returned `502 Bad Gateway`.
+  - Follow-up `GET /api/libraries` included the failed create slug, so backend should make create atomic or avoid persisting the library before vector initialization succeeds.
 
 ## API Request: Library documents workspace and document detail
 
@@ -169,6 +184,241 @@ OpenAPI remains the single source of truth. Entries here are requests only; once
   - Added `/api/libraries/{libraryId}/search` backed by the existing cross-resource search service and mapped backend hits into frontend command result fields.
   - Added `/api/libraries/{libraryId}/shell/metadata` with recent chat sessions from the context store and document/chunk stats from ingest state.
   - Missing library returns `404 LIBRARY_NOT_FOUND`; invalid search scope returns `400 VALIDATION_ERROR`; invalid limit returns `422 VALIDATION_ERROR`.
+- Status: verified
+- Frontend verification note:
+  - Time: 2026-05-27 05:53 +08:00
+  - Backend SHA tested: `ee96a8226e1ace1602e60c48e8582a5f0e74a9af`.
+  - Frontend SHA tested before log update: `7ed4092`.
+  - `GET /api/libraries/rag-agent/documents`: verified `200` with seeded ready row `2210.03629` and failed row `frontend-retry-failed`.
+  - `GET /api/libraries/rag-agent/documents/2210.03629`: verified `200` with the contracted document detail shape and drawer-rendered statistics/actions.
+  - Browser smoke at `http://127.0.0.1:5174/libraries/rag-agent/docs`: verified API-backed list rendering, ready document row open, `DocumentDrawer` successful detail rendering, drawer close, failed document row rendering, and failed-row retry UI feedback.
+  - `POST /api/libraries/rag-agent/documents/frontend-retry-failed:retry`: verified frontend sends the retry request and shows traceable failure feedback when local Redis/Arq is unavailable; live backend returned `503 UPSTREAM_ERROR`.
+  - Successful retry `202 { tone, title, detail, action }` remains pending a local run with Redis/Arq available.
+- Frontend verification note:
+  - Time: 2026-05-27 05:07 +08:00
+  - Backend SHA tested: `835a21d9895634236b900c82b448b10377915864`.
+  - Frontend commit pushed after verification/log update: `a9f7250`.
+  - `GET /api/libraries/rag-agent/documents`: verified `200` with the contracted `{ summary, documents }` shape and an empty `documents` array.
+  - `GET /api/libraries/frontend-smoke-040442/documents`: verified `200` with the contracted empty workspace shape.
+  - `GET /api/libraries/missing-library/documents`: verified `404 LIBRARY_NOT_FOUND` error envelope.
+  - `GET /api/libraries/rag-agent/documents/not-a-doc`: verified `404 NOT_FOUND` error envelope and frontend drawer error/retry rendering.
+  - Playwright browser smoke at `http://127.0.0.1:5174/libraries/rag-agent/docs`: verified API-backed empty state, list error/retry state, and drawer detail error/retry state.
+  - Full `verified` status is pending a backend-backed library with at least one document row, or completed upload transport, so the frontend can exercise a successful `GET /api/libraries/{libraryId}/documents/{documentId}` drawer response without test-only data.
+
+## API Request: Document ingestion mutations and upload transport
+
+- Page: Documents workspace and document detail drawer.
+- Component: `web/src/views/DocumentsView.vue`, `web/src/components/overlays/DocumentDrawer.vue`, `web/src/services/documents/documentRepository.ts`.
+- Endpoint:
+  - `/api/libraries/{libraryId}/documents/{documentId}:retry`
+  - `/api/libraries/{libraryId}/documents:upload`
+- Method: `POST`
+- Params:
+  - Retry path params: `libraryId`, `documentId`.
+  - Upload path param: `libraryId`.
+  - Upload request body requested by frontend: `multipart/form-data`.
+  - Upload file field requested by frontend: one or more PDF files under repeated field name `files`.
+  - Upload request does not require a JSON body in the first slice; `libraryId` path param supplies the library context.
+  - Frontend will update `documentRepository.queueUpload()` to send `FormData` after OpenAPI defines this transport and will refresh the document list after successful feedback.
+- Required fields:
+  - Mutation feedback response: `tone`, `title`, `detail`, optional `action`.
+  - `tone` values required by UI: `success`, `info`, `warning`, `danger`.
+  - Upload success response requested by frontend: `202` mutation feedback with `tone`, `title`, `detail`, optional `action`.
+  - Retry success response expected from the existing backend handoff: `202` mutation feedback with `tone`, `title`, `detail`, optional `action`.
+  - Error contract for missing files, invalid multipart body, invalid file, unsupported file type, payload too large, duplicate upload, ingestion already running, missing document, missing library, and server failure.
+  - Error status expectations: `400 VALIDATION_ERROR` for missing files or invalid multipart body, `404 LIBRARY_NOT_FOUND` for unknown library, `404 NOT_FOUND` for unknown retry document, `409 CONFLICT` for duplicate upload or ingestion already running, `413 PAYLOAD_TOO_LARGE` for oversized uploads, `415 UNSUPPORTED_MEDIA_TYPE` for non-PDF files, and `500 INTERNAL_ERROR` for server failure.
+- Acceptance criteria:
+  - OpenAPI defines retry and upload request/response schemas.
+  - OpenAPI defines `/api/libraries/{libraryId}/documents:upload` as `multipart/form-data` with repeated `files` PDF upload fields, or explicitly rejects this frontend request with an alternate contract before implementation.
+  - Frontend can show real mutation feedback and preserve traceable error toasts.
+- Status: verified
+- Frontend verification note:
+  - Time: 2026-05-27 16:27 +08:00
+  - Backend SHA tested: `3535ca6c978c9a89c65db6be65f75cc1ce6d6b46`.
+  - Frontend route and components: `/libraries/rag-agent/docs`, `web/src/views/DocumentsView.vue`, `web/src/stores/documents.ts`, `web/src/services/documents/documentRepository.ts`.
+  - Frontend now sends `multipart/form-data` with each selected file appended under repeated field `files`; JSON `Content-Type` is not set for `FormData`.
+  - `POST /api/libraries/rag-agent/documents:upload` with no files: verified `400 VALIDATION_ERROR`.
+  - `POST /api/libraries/rag-agent/documents:upload` with `notes.txt`: verified `415 UNSUPPORTED_MEDIA_TYPE`.
+  - `POST /api/libraries/missing-library/documents:upload` with a PDF: verified `404 LIBRARY_NOT_FOUND`.
+  - `POST /api/libraries/rag-agent/documents:upload` with a PDF while Redis/Arq is unavailable: verified expected `503 UPSTREAM_ERROR` with message `Document upload queue unavailable`; no fake success row is rendered.
+  - Browser smoke at `http://127.0.0.1:5174/libraries/rag-agent/docs`: verified file picker upload feedback, document list refresh attempt, non-PDF error toast, PDF queue-unavailable error toast, and API-mode document list remains backend-backed.
+- Frontend clarification note:
+  - Time: 2026-05-27 05:32 +08:00
+  - Issue: #2
+  - Frontend route and components: `/libraries/:libraryId/docs`, `web/src/views/DocumentsView.vue`, `web/src/stores/documents.ts`, `web/src/services/documents/documentRepository.ts`.
+  - Current frontend behavior: Upload buttons and the drop zone call `queueUpload()`; API mode currently sends `POST /api/libraries/{libraryId}/documents:upload` with no body because the upload transport is not yet in OpenAPI.
+  - Requested backend contract: accept `multipart/form-data` with one or more PDF files in repeated field `files`, return `202 { tone, title, detail, action? }`, and expose the queued/ingested document rows through the existing document list endpoint.
+  - Frontend follow-up after OpenAPI update: add the file input/drop handling, send `FormData` without JSON `Content-Type`, refresh the document list after success, and verify browser upload feedback in API mode.
+- Frontend verification note:
+  - Time: 2026-05-27 05:20 +08:00
+  - Backend SHA tested: `835a21d9895634236b900c82b448b10377915864`.
+  - Frontend SHA tested before log update: `2426b8e`.
+  - `POST /api/libraries/rag-agent/documents/not-a-doc:retry`: verified `404 NOT_FOUND` error envelope, request id `fc17d253cd3d4023ba2a18f71f3635eb`.
+  - `POST /api/libraries/missing-library/documents/not-a-doc:retry`: verified `404 LIBRARY_NOT_FOUND` error envelope, request id `3e483f4dbe75455299a72b37389e90e5`.
+  - Playwright browser smoke at `http://127.0.0.1:5174/libraries/rag-agent/docs`: verified API-backed empty document state, frontend-origin CORS for document reads, and browser-visible retry error envelopes for missing document and missing library.
+  - A successful `202 { tone, title, detail, action }` retry feedback path is still blocked because the live backend document lists are empty and no failed document row is available.
+  - Upload remains blocked because `/api/libraries/{libraryId}/documents:upload` request content type and file field names are still undefined.
+- Frontend verification note:
+  - Time: 2026-05-27 05:08 +08:00
+  - Backend SHA tested: `835a21d9895634236b900c82b448b10377915864`.
+  - `POST /api/libraries/rag-agent/documents/not-a-doc:retry`: expected `404 NOT_FOUND` error envelope for a missing document; actual response was delayed and returned `500 INTERNAL_ERROR` with `details.type: TimeoutError`, request id `4e6db67589ec46b3bd8e3a5322925f63`.
+  - `POST /api/libraries/missing-library/documents/not-a-doc:retry`: expected `404 LIBRARY_NOT_FOUND`; actual response was delayed and returned `500 INTERNAL_ERROR` with `details.type: TimeoutError`, request id `8209b2c0bf36476a84557de198ab7a9f`.
+  - Impacted frontend surfaces: `web/src/services/documents/documentRepository.ts`, `web/src/views/DocumentsView.vue`, and `web/src/components/overlays/DocumentDrawer.vue`.
+  - A successful retry feedback path still needs a backend-backed failed document row; current live libraries returned empty document lists.
+  - Upload remains blocked because `/api/libraries/{libraryId}/documents:upload` request content type and file field names are still undefined.
+
+## API Request: Chat question lifecycle and grounded answer stream
+
+- Page: Chat workspace, citation popover, evidence panel.
+- Component: `web/src/views/ChatView.vue`, `web/src/stores/chat.ts`, `web/src/components/overlays/CitationPopover.vue`, `web/src/services/api/taskStreamClient.ts`.
+- Endpoint:
+  - Requested current session endpoint: `/api/libraries/{libraryId}/chat/session`
+  - Requested question creation endpoint: `/api/libraries/{libraryId}/chat/questions`
+  - Existing frontend stream helper points to `/v1/tasks/{taskId}/events`; backend can either contract that path or provide a replacement `streamUrl` returned by the question creation endpoint.
+- Method:
+  - `GET` current session.
+  - `POST` question creation.
+  - Existing stream helper uses `GET` SSE for `/v1/tasks/{taskId}/events`.
+- Params:
+  - Current session path param: `libraryId`.
+  - Question creation path param: `libraryId`.
+  - Question creation body requested by frontend: `question`, optional `sessionId`, optional `context`.
+  - `context` may contain selected `evidenceIds` and `entityIds` when the user cites graph/evidence context from another screen.
+  - Stream path param: `taskId`.
+- Required fields:
+  - Current session response: `sessionId`, `title`, `createdAtLabel`, `messages`, `evidence`.
+  - Question creation success response requested by frontend: `202` with `taskId`, `streamUrl`, `userMessage`, `assistantMessage`, and optional initial `evidence`.
+  - Message fields required by UI: `id`, `role`, `text`, optional `status`, optional `citations`.
+  - Message `role` values required by UI: `user`, `assistant`.
+  - Message `status` values required by UI: `idle`, `streaming`, `done`, `interrupted`, `unsubstantiated`.
+  - Evidence fields required by UI: `id`, `label`, `type`, `title`, `meta`, `score`, `snippet`.
+  - SSE events required by UI:
+    - `token`: plain text token or JSON `{ token }`.
+    - `citations`: JSON array of citation IDs matching `evidence[].id`.
+    - `evidence`: JSON array of evidence records if evidence arrives after question creation.
+    - `status`: JSON `{ status }` using the message status values above.
+    - `done`: terminal event after final text/citations are available.
+    - `error`: backend error envelope or JSON `{ code, message, request_id }`.
+  - Error contract for budget exceeded, no evidence, invalid session/library, stream interruption, task not found, unauthorized access, and server failure.
+- Acceptance criteria:
+  - OpenAPI defines current session, question creation, and SSE event payloads.
+  - Backend exposes a task/event stream that the frontend can consume without seeded messages, evidence, or answer tokens.
+  - Empty sessions return `200` with an empty `messages` array and an empty `evidence` array.
+  - Question creation returns a pending assistant message immediately so the frontend can render loading/streaming state before the first token.
+  - Frontend can replace `web/src/mocks/chat.ts` with repository/service-backed state.
+- Status: verified
+- Frontend clarification note:
+  - Time: 2026-05-27 10:32 +08:00
+  - Issue: #2
+  - Current frontend behavior: `web/src/stores/chat.ts` seeds `messages`, `evidence`, and `groundedAnswerTokens` from `web/src/mocks/chat.ts`, then simulates streaming with `window.setInterval`.
+  - Requested backend contract: provide a current session loader plus a question creation endpoint that returns a stream task and message placeholders; define the SSE event payloads before frontend removes mock answer tokens.
+  - Frontend follow-up after OpenAPI update: add a chat repository, load session state through the store, connect `sendQuestion()` to the real creation endpoint, and replace timer-based token generation with `taskStreamClient`.
+- Frontend cleanup note:
+  - Time: 2026-05-27 12:34 +08:00
+  - Issue: #2
+  - API mode no longer renders seeded chat messages, seeded evidence cards, static session title, or timer-driven grounded answer tokens from `web/src/mocks/chat.ts`.
+  - `ChatView.vue` now shows pending-contract empty states for the conversation and evidence panel while `/api/libraries/{libraryId}/chat/session`, `/api/libraries/{libraryId}/chat/questions`, and stream events remain uncontracted.
+  - `useChatStore.sendQuestion()` is disabled in API mode and reports a traceable pending-contract toast instead of simulating a response.
+  - Mock chat data remains available only when `VITE_DATA_SOURCE` is not `api`.
+- Frontend verification note:
+  - Time: 2026-05-28 06:00 +08:00
+  - Issue: #2
+  - Backend SHA tested: `c41979189e23bc0a0b33b848905fe73eefe31cd6`.
+  - Frontend SHA tested before log update: `7cc31260ae822cf4074e85604ff6e1d886455fa4`.
+  - `GET http://localhost:8000/healthz`: passed with `{"status":"ok","version":"0.1.0"}`.
+  - `GET /api/libraries/rag-agent/chat/session`: verified `200` session load.
+  - `POST /api/libraries/rag-agent/chat/questions`: verified `202` with `taskId`, `streamUrl`, `userMessage`, `assistantMessage`, and empty initial `evidence`.
+  - Browser raw stream fetch on `streamUrl`: verified token, evidence, citations, status, and done frames.
+  - Browser smoke at `http://127.0.0.1:5174/libraries/frontend-smoke-040442/chat`: verified empty session state with zero messages and zero evidence.
+  - Browser smoke at `http://127.0.0.1:5174/libraries/rag-agent/chat`: verified pending assistant state after submit, streamed answer text, inline citations, evidence cards, and terminal done state.
+  - Browser smoke at `http://127.0.0.1:5174/libraries/missing-library/chat`: verified traceable missing-library error state with retry action.
+  - Negative API checks: blank question returned `400 VALIDATION_ERROR`; missing library returned `404 LIBRARY_NOT_FOUND`; missing task returned `404 NOT_FOUND`.
+  - `VITE_DATA_SOURCE=api VITE_API_BASE_URL=http://localhost:8000 pnpm typecheck`: passed.
+  - `VITE_DATA_SOURCE=api VITE_API_BASE_URL=http://localhost:8000 pnpm build`: passed.
+- Backend follow-up:
+  - None for the chat slice; backend verification is complete for the contracted session/question/stream path.
+
+## API Request: Review generation run lifecycle
+
+- Page: Review workspace.
+- Component: `web/src/views/ReviewView.vue`, `web/src/stores/review.ts`, `web/src/components/review/ReviewPipelinePanel.vue`, `web/src/components/review/ReviewTimelineStepper.vue`, `web/src/components/review/ReviewDraftStream.vue`, `web/src/components/review/ReviewCitationsPanel.vue`, `web/src/components/overlays/BackgroundTaskPill.vue`, `web/src/services/api/taskStreamClient.ts`.
+- Endpoint:
+  - Requested current run endpoint: `/api/libraries/{libraryId}/reviews/current`
+  - Requested run creation endpoint: `/api/libraries/{libraryId}/reviews`
+  - Requested section regeneration endpoint: `/api/libraries/{libraryId}/reviews/{reviewRunId}/sections/{sectionId}:regenerate`
+  - Requested cancel endpoint: `/api/libraries/{libraryId}/reviews/{reviewRunId}:cancel`
+  - Existing stream helper points to `/v1/tasks/{taskId}/events`; backend can either contract that path or return a replacement `streamUrl` from create/regenerate/current run responses.
+- Method:
+  - `GET` current run.
+  - `POST` create/start run.
+  - `POST` regenerate section.
+  - `POST` cancel run.
+  - Existing stream helper uses `GET` SSE for task events.
+- Params:
+  - Path params: `libraryId`, `reviewRunId`, `sectionId`.
+  - Create body requested by frontend: optional `topic`, optional `instructions`, optional `documentIds`, optional `mode`.
+  - Regenerate body requested by frontend: optional `instructions`, optional `keepCompletedSections`.
+  - Cancel body requested by frontend: optional `keepGeneratedSections`.
+- Required fields:
+  - Current run response should support an empty state: `200 { run: null }` when no review run exists for the library.
+  - Non-empty current/create/regenerate response should include `run`, `pipelineSteps`, `runStats`, `citations`, `draft`, and optional `streamUrl`.
+  - `run`: `id`, `libraryId`, `status`, `progress`, optional `taskId`, optional `streamUrl`, optional `backgrounded`.
+  - `run.status` values required by UI: `idle`, `queued`, `running`, `backgrounded`, `cancelled`, `failed`, `done`.
+  - `pipelineSteps`: array with `id`, `label`, `status`, optional `details`.
+  - `pipelineSteps[].status` values required by UI: `done`, `active`, `pending`.
+  - `details`: array with `label`, `status`; detail `status` values required by UI: `done`, `active`.
+  - `runStats`: array with `label`, `value`, optional `accent`.
+  - `citations`: array with `id`, `type`, `author`, optional `isNew`; `id` must match citation markers emitted in `draft.sections[].citations`.
+  - `draft`: `title`, `authors`, `generatedAtLabel`, `badgeLabel`, `totalTokensLabel`, `draftTokens`, `draftTokenLimit`, `modelLabel`, `statusLabel`, and `sections`.
+  - `draft.sections`: array with `id`, `heading`, `markdown`, `citations`, optional `unsubstantiated`.
+  - `draft.sections[].citations`: array of citation IDs used by inline citation buttons.
+  - Create/regenerate success response requested by frontend: `202` with `run`, `taskId`, `streamUrl`, and initial `draft`/`pipelineSteps` state.
+  - Cancel success response requested by frontend: `202 { tone, title, detail, action? }` mutation feedback, plus optional updated `run`.
+  - SSE events required by UI:
+    - `draft_delta`: JSON `{ sectionId, markdownDelta, citations?, draftTokens? }`.
+    - `pipeline`: JSON pipeline step array or patch with the same `pipelineSteps` shape above.
+    - `citations`: JSON citation array with the same citation shape above.
+    - `stats`: JSON run stat array with the same `runStats` shape above.
+    - `status`: JSON `{ status, progress?, statusLabel?, draftTokens? }`.
+    - `done`: terminal event after the final run/draft state is available.
+    - `error`: backend error envelope or JSON `{ code, message, request_id }`.
+  - Error contract for missing library, missing run, stale task, cancellation conflict, regeneration validation failure, budget exceeded, no matching chunks/evidence, task not found, unauthorized access, and server failure.
+- Acceptance criteria:
+  - OpenAPI defines review current-run, create, regenerate, cancel, and SSE contracts.
+  - Backend provides current run state so the review page can load without `web/src/mocks/review.ts` or timer-driven progress.
+  - Empty review state renders without fake citations, fake draft text, or fake stats.
+  - Backend streams or returns draft section content with citation IDs so frontend can render inline citation buttons without hardcoded prose.
+  - Frontend can replace `web/src/mocks/review.ts` with a repository-backed store and preserve background, cancel, regenerate, loading, empty, error, and retry feedback.
+- Status: verified
+- Frontend clarification note:
+  - Time: 2026-05-27 10:59 +08:00
+  - Issue: #2
+  - Current frontend behavior: `web/src/stores/review.ts` seeds pipeline, citations, and stats from `web/src/mocks/review.ts`; `ReviewDraftStream.vue` hardcodes the draft document body and citation markers; `startTaskRuntime()` increments progress and token counts with `window.setInterval`; cancel/regenerate only push local toasts.
+  - Requested backend contract: provide a current run loader, create/start endpoint, section regenerate endpoint, cancel endpoint, and SSE event payloads before frontend removes the mock review data and timer-based progress.
+  - Frontend follow-up after OpenAPI update: add a review repository, move review state loading/mutations into the store, connect create/regenerate/cancel to real endpoints, replace hardcoded draft prose with `draft.sections`, and connect stream updates through `taskStreamClient`.
+- Frontend verification note:
+  - Time: 2026-05-29 00:00 +08:00
+  - Backend SHA tested: `7e47ad572381c46c10c9af52ca1ae7080f9f1989`
+  - Frontend SHA before this log update: `6092e6ff4828ceb5443181ff433ed42b8c8c6614`
+  - `GET /api/libraries/rag-agent/reviews/current`: verified `200 { run: null }`.
+  - `POST /api/libraries/rag-agent/reviews` with `{}`: verified `202` with `run`, `pipelineSteps`, `runStats`, `citations`, `draft`, and `streamUrl`.
+  - `POST /api/libraries/rag-agent/reviews/01KSQMZ3DYZZM9154X829ESJPA/sections/retrieval-augmented-generation-for-knowledge-intensive-tasks:regenerate`: verified `202` with the same contracted snapshot shape and a new queued run.
+  - `POST /api/libraries/rag-agent/reviews/01KSQN47S56STMVMD0RTBHF5DV:cancel`: verified `200` with warning feedback and a cancelled `run`.
+  - Browser smoke at `http://127.0.0.1:5176/libraries/rag-agent/review`: verified empty state, start review, queued/run view, live pipeline/draft/citation stream, and background cancel control through the Vite proxy.
+  - Browser smoke at `http://127.0.0.1:5176/libraries/frontend-smoke-040442/review`: empty state rendered, but start review failed with `503 UPSTREAM_ERROR` because the backend task store rejected `library_id=frontend-smoke-040442` as a foreign-key miss.
+- Frontend cleanup note:
+  - Time: 2026-05-27 12:47 +08:00
+  - Issue: #2
+  - API mode no longer renders seeded review pipeline steps, run stats, draft prose, citation rows, notice-bar prototype notes, or timer-driven progress from `web/src/mocks/review.ts` and review components.
+  - `ReviewView.vue` now shows a pending-contract empty state while `/api/libraries/{libraryId}/reviews/current`, `/api/libraries/{libraryId}/reviews`, regeneration/cancel endpoints, and stream events remain uncontracted.
+  - `useReviewStore` now keeps review mutations inert in API mode and reports a traceable pending-contract toast instead of simulating regenerate/background/cancel behavior.
+  - Mock review data remains available only outside API mode until OpenAPI defines the review lifecycle contract.
+- Frontend cleanup note:
+  - Time: 2026-05-27 13:22 +08:00
+  - Issue: #2
+  - Moved the remaining seeded review draft prose, metadata, and inline citation markers from `ReviewDraftStream.vue` into typed mock data in `web/src/mocks/review.ts`.
+  - `ReviewDraftStream.vue` now renders provided draft content from the store, so future API integration can replace the mock draft without editing the component body.
+  - API mode behavior is unchanged: the review page still shows the pending-contract empty state until OpenAPI defines the review lifecycle contract.
 
 ## API Request: Knowledge graph workspace and entity detail
 
@@ -203,6 +453,63 @@ OpenAPI remains the single source of truth. Entries here are requests only; once
   - Added `/api/libraries/{libraryId}/graph` backed by KG triples/entities when available. Empty or unavailable graph reads return a contracted empty workspace with real zero labels.
   - Added `/api/libraries/{libraryId}/graph/entities/{entityId}` for entity drawer details derived from stored entity metadata and incident triples.
   - Missing library returns `404 LIBRARY_NOT_FOUND`; missing entity returns `404 NOT_FOUND`; invalid entity type filter or unsupported layout returns `400 VALIDATION_ERROR`; invalid numeric query bounds return `422 VALIDATION_ERROR`.
+  - Requested graph workspace endpoint: `/api/libraries/{libraryId}/graph`
+  - Requested entity detail endpoint: `/api/libraries/{libraryId}/graph/entities/{entityId}`
+- Method: `GET`
+- Params:
+  - Workspace path param: `libraryId`.
+  - Workspace query params requested by frontend: optional `entityTypes` as a comma-separated list of entity type keys, optional `minConfidence` number from `0` to `1`, optional `limit` number for max rendered nodes, optional `layout` using `static`, `force`, or `webgl`.
+  - Entity detail path params: `libraryId`, `entityId`.
+- Required fields:
+  - Workspace response: `filters`, `canvas`, and `summary`.
+  - `filters.entityTypes`: array with `key`, `label`, `count`, `checked`, `tone`.
+  - `filters.minConfidence`: current numeric confidence threshold.
+  - `canvas.nodes`: array with `id`, `label`, `type`, `tone`, `x`, `y`, `radius`, optional `selected`, optional `faded`, optional `confidence`, optional `degree`, optional `evidenceCount`.
+  - `canvas.edges`: array with `id`, `source`, `target`, optional `label`, optional `weight`, optional `confidence`, optional `muted`, optional `directed`.
+  - `canvas.layout`: `static`, `force`, or `webgl`.
+  - `canvas.largeGraph`: boolean indicating whether the frontend should switch to simplified/WebGL rendering.
+  - `summary`: `entityCountLabel`, `tripleCountLabel`, `confidenceLabel`, optional `warningLabel`.
+  - Entity detail response: `id`, `label`, `kind`, `stableId`, `aliases`, `summary`, `degree`, `confidence`, `incoming`, `mentions`, `evidenceCount`, `mentionsTrend`, `coOccurring`.
+  - `mentionsTrend`: `points`, `startLabel`, `endLabel`.
+  - `coOccurring`: array with `id`, `name`, `type`, `count`.
+  - Error contract for missing library, missing entity, invalid filters, unsupported layout, no graph data, graph too large for requested layout, unauthorized access, and server failure.
+- Acceptance criteria:
+  - OpenAPI defines graph workspace and entity detail schemas with all nested node, edge, filter, summary, trend, and co-occurrence fields.
+  - Backend supports empty graphs with `200` and empty `canvas.nodes`/`canvas.edges` arrays.
+  - Backend supports large graphs predictably through `canvas.largeGraph`, `canvas.layout`, and a warning/error contract instead of relying on frontend hardcoded thresholds.
+  - Frontend can replace `web/src/mocks/graph.ts`, hardcoded SVG nodes/edges/counts in `GraphView.vue`, and hardcoded entity detail values in `GraphEntityDrawer.vue`.
+- Status: verified
+- Frontend verification note:
+  - Time: 2026-05-27 16:27 +08:00
+  - Backend SHA tested: `3535ca6c978c9a89c65db6be65f75cc1ce6d6b46`.
+  - Frontend route and components: `/libraries/rag-agent/kg`, `web/src/views/GraphView.vue`, `web/src/components/graph/GraphEntityDrawer.vue`, `web/src/stores/graph.ts`.
+  - `GET /api/libraries/rag-agent/graph`: verified `200` empty workspace with `filters.entityTypes: []`, `canvas.nodes: []`, `canvas.edges: []`, `layout: static`, `largeGraph: false`, and zero/no-confidence summary labels.
+  - Filtered graph query with `entityTypes=method,dataset&minConfidence=0.75&layout=force&limit=100`: verified `200` empty workspace with requested filter/layout values.
+  - Invalid entity type `bad!`: verified `400 VALIDATION_ERROR`.
+  - Invalid layout `circular`: verified `400 VALIDATION_ERROR`.
+  - Missing library: verified `404 LIBRARY_NOT_FOUND`.
+  - Missing entity detail: verified `404 NOT_FOUND`.
+  - Real entity detail success was skipped because the live graph response returned no `canvas.nodes`.
+  - Browser smoke at `http://127.0.0.1:5174/libraries/rag-agent/kg`: verified API-backed empty graph workspace and side-nav shell metadata.
+- Frontend clarification note:
+  - Time: 2026-05-27 11:02 +08:00
+  - Issue: #2
+  - Current frontend behavior: `web/src/stores/graph.ts` imports entity type filters, mention trend points, and co-occurring entities from `web/src/mocks/graph.ts`; `GraphView.vue` hardcodes SVG nodes, edges, total entity/triple counts, confidence labels, and graph performance notes; `GraphEntityDrawer.vue` hardcodes entity kind, stable ID, aliases, summary, network stats, tab counts, and mention trend date labels.
+  - Requested backend contract: provide a graph workspace endpoint for filters/canvas/summary and an entity detail endpoint for the drawer before frontend removes the graph mock and hardcoded graph values.
+  - Frontend follow-up after OpenAPI update: add graph domain types and a graph repository, load workspace state through `useGraphStore`, render contracted nodes/edges instead of static SVG groups, load drawer details by selected entity ID, and add loading/empty/error/retry states for workspace and drawer.
+- Frontend cleanup note:
+  - Time: 2026-05-27 12:52 +08:00
+  - Issue: #2
+  - API mode no longer renders mock entity filters, static SVG graph nodes/edges/counts, hardcoded graph notes, fake entity detail fields, mention trend, co-occurring entities, or cite-in-chat behavior.
+  - `GraphView.vue` now shows a pending-contract empty state while `/api/libraries/{libraryId}/graph` and `/api/libraries/{libraryId}/graph/entities/{entityId}` remain uncontracted.
+  - `useGraphStore` now keeps graph mocks and cite-in-chat mutation behavior behind non-API mode.
+  - Mock graph data remains available only outside API mode until OpenAPI defines the graph workspace and entity detail contracts.
+- Frontend cleanup note:
+  - Time: 2026-05-27 13:22 +08:00
+  - Issue: #2
+  - Moved the remaining seeded graph SVG nodes, edges, counts, filter badge, canvas notes, entity stable ID, aliases, detail summary, and stats from `GraphView.vue`, `GraphEntityDrawer.vue`, and `useGraphStore` into typed mock data in `web/src/mocks/graph.ts`.
+  - `GraphView.vue` and `GraphEntityDrawer.vue` now render graph seed content through the store, so future API integration can replace the mock graph workspace/detail payloads without editing static component text.
+  - API mode behavior is unchanged: graph still shows the pending-contract empty state until OpenAPI defines the graph workspace and entity detail contracts.
 
 ## API Request: Evaluation dashboard data
 
@@ -353,3 +660,181 @@ OpenAPI remains the single source of truth. Entries here are requests only; once
   - Frontend verification found that `frontend-smoke-040442` appeared in `GET /api/libraries` but `POST /api/libraries/frontend-smoke-040442/reviews` failed with `503 UPSTREAM_ERROR` because the durable task store rejected the library FK.
   - The review adapter now materializes the API-visible filesystem library row into the Postgres `libraries` table before enqueuing `run_review`, keeping the existing review contract unchanged.
   - Fresh live smoke from the backend worktree on `127.0.0.1:8014` returned `202` for both `POST /api/libraries/frontend-smoke-040442/reviews` and `POST /api/libraries/rag-agent/reviews`.
+- Endpoint: Requested dashboard endpoint: `/api/libraries/{libraryId}/evaluation/dashboard`
+- Method: `GET`
+- Params:
+  - Path param: `libraryId`.
+  - Query params requested by frontend:
+    - optional `dataset` as a dataset/task-family key, for example `smoke`, `multihop`, or `review`.
+    - optional `timeRange` using `7d`, `30d`, or `90d`.
+    - optional `from` and `to` ISO dates for explicit calendar ranges.
+- Required fields:
+  - Dashboard response: `summary`, `filters`, `budgetAlert`, `kpis`, `trend`, `failureCases`, and `librarySettings`.
+  - `summary`: `libraryId`, `libraryName`, `datasetSummaryLabel`, `timeRangeLabel`, optional `lastRunLabel`.
+  - `filters.datasets`: array with `key`, `label`, `count`, optional `active`.
+  - `filters.timeRanges`: array with `key`, `label`, optional `active`.
+  - `budgetAlert`: nullable object with `tone`, `title`, `detail`, optional `action`, optional `dismissible`.
+  - `budgetAlert.tone` values required by UI: `success`, `info`, `warning`, `danger`.
+  - `kpis`: array with `title`, `value`, `threshold`, `tone`, `points`, optional `icon`.
+  - `kpis[].tone` values required by UI: `success`, `secondary`, `danger`.
+  - `trend.days`: array of x-axis labels.
+  - `trend.em`, `trend.faithfulness`, `trend.citation`, and `trend.latency`: numeric arrays aligned to `trend.days`.
+  - `trend.legend`: array with `label`, `tone`; legend tone values required by UI: `success`, `secondary`, `citation`, `danger`.
+  - `failureCases`: array with `id`, `dataset`, `question`, `failure`, `tone`, `em`, `faithfulness`, `citation`, `latency`, optional `replayContext`.
+  - `failureCases[].tone` values required by UI: `danger`, `warning`, `neutral`.
+  - `librarySettings`: `libraryLabel`, `models`, `budgetLimits`, and `dataActions`.
+  - `librarySettings.models`: `routerLabel`, `embeddingLabel`, optional `warning`.
+  - `librarySettings.budgetLimits`: array with `key`, `label`, `value`.
+  - `librarySettings.dataActions`: optional booleans `canExport` and `canPurge`.
+  - Error contract for missing library, invalid dataset filter, invalid time range/date range, no evaluation runs, unauthorized access, and server failure.
+- Acceptance criteria:
+  - OpenAPI defines the evaluation dashboard request and response schemas.
+  - Backend supports empty KPI/trend/failure-case states with `200` and empty arrays, not fake seeded metrics.
+  - Backend can return `budgetAlert: null` when there is no budget issue.
+  - Frontend can remove hardcoded library selector options, budget warning, model labels, budget limit inputs, trend labels, and failure cases from `EvaluationView.vue` and `web/src/mocks/evaluation.ts`.
+  - Frontend can replace `web/src/mocks/evaluation.ts` with service-backed state.
+- Status: verified
+- Frontend verification note:
+  - Time: 2026-05-27 18:58 +08:00
+  - Backend SHA tested: `63789540fa185ee59f630b66c2e9a9448065414d`.
+  - Frontend SHA tested before log update: `bebc9c0fb20bc7a67dff8dc0b214e93ceec0e5bc`.
+  - Restarted the local Uvicorn process because the listener on port `8000` predated the backend checkout; after restart, `GET /healthz` returned `200`.
+  - Valid `GET /api/libraries/rag-agent/evaluation/dashboard`: verified `200` contracted empty dashboard in `1207ms`.
+  - Valid query `dataset=smoke&timeRange=7d`: verified `200` contracted empty dashboard in `1059ms`.
+  - Valid explicit date query `dataset=smoke&from=2026-05-01&to=2026-05-27`: verified `200` contracted empty dashboard in `1066ms`.
+  - Invalid dataset `unknown`: verified `400 VALIDATION_ERROR`.
+  - Invalid time range `14d`: verified `400 VALIDATION_ERROR`.
+  - Missing library: verified `404 LIBRARY_NOT_FOUND`.
+  - Browser smoke at `http://127.0.0.1:5174/libraries/rag-agent/eval` with API mode verified the empty dashboard loads without timeout, backend `librarySettings` renders, and no mock KPI grid, budget banner, trend, failure-case, `Budget Exceeded`, or `Mock evaluation run` content is rendered.
+  - Browser-context filtered fetch for `dataset=smoke&timeRange=7d` returned `200` and `Last 7 days` without hanging; the backend empty dashboard exposes no dataset/time-range filter options for a select-control change in this state.
+  - Synthetic API error routing verified `EvaluationView` error and retry UI still renders a traceable backend-style error envelope.
+- Frontend verification note:
+  - Time: 2026-05-27 17:25 +08:00
+  - Backend SHA tested: `c6ab292e2d5c71ecabbf96e7b83338e3c061feb2`.
+  - Frontend route and components: `/libraries/rag-agent/eval`, `web/src/views/EvaluationView.vue`, `web/src/stores/evaluation.ts`, `web/src/services/evaluation/evaluationRepository.ts`, `web/src/components/evaluation/*`.
+  - Valid `GET /api/libraries/rag-agent/evaluation/dashboard`: returned `200` with the contracted empty dashboard shape, but only after `32.684444s`.
+  - Valid query `dataset=smoke&timeRange=7d`: returned `200` with the contracted empty dashboard shape, but only after `32.679893s`.
+  - Valid explicit date query `dataset=smoke&from=2026-05-01&to=2026-05-27`: returned `200` with the contracted empty dashboard shape, but only after `32.758821s`.
+  - Invalid dataset `unknown`: verified `400 VALIDATION_ERROR`.
+  - Invalid time range `14d`: verified `400 VALIDATION_ERROR`.
+  - Missing library: verified `404 LIBRARY_NOT_FOUND`.
+  - Browser smoke at `http://127.0.0.1:5174/libraries/rag-agent/eval`: still reaches the frontend `20s` API timeout before the valid dashboard response returns, so the empty dashboard cannot be verified in the browser yet.
+  - Frontend now keeps backend-provided `librarySettings` renderable for an empty successful dashboard without rendering empty/mock KPI, trend, or failure-case panels, but that success UI remains blocked by the slow valid response.
+- Frontend verification note:
+  - Time: 2026-05-27 16:27 +08:00
+  - Backend SHA tested: `3535ca6c978c9a89c65db6be65f75cc1ce6d6b46`.
+  - Frontend route and components: `/libraries/rag-agent/eval`, `web/src/views/EvaluationView.vue`, `web/src/stores/evaluation.ts`, `web/src/components/evaluation/*`.
+  - Frontend now calls `GET /api/libraries/{libraryId}/evaluation/dashboard`, wires dataset/time-range filters to query params, and renders loading, empty, error, retry, budget alert, KPI, trend, failure-case, and library-settings states from the response.
+  - Valid `GET /api/libraries/rag-agent/evaluation/dashboard`: blocked; curl timed out after 30 seconds with no HTTP status/body.
+  - Valid query `dataset=smoke&timeRange=7d`: blocked; curl timed out after 30 seconds with no HTTP status/body.
+  - Valid explicit date query `dataset=smoke&from=2026-05-01&to=2026-05-27`: blocked; curl timed out after 30 seconds with no HTTP status/body.
+  - Invalid dataset `unknown`: verified `400 VALIDATION_ERROR`.
+  - Invalid time range `14d`: verified `400 VALIDATION_ERROR`.
+  - Missing library: verified `404 LIBRARY_NOT_FOUND`.
+  - Frontend added a 20s API request timeout so the evaluation page reaches a traceable error/retry state instead of spinning indefinitely.
+  - Browser smoke at `http://127.0.0.1:5174/libraries/rag-agent/eval`: verified evaluation loading reaches the error/retry state for the valid-request timeout.
+- Frontend clarification note:
+  - Time: 2026-05-27 11:17 +08:00
+  - Issue: #2
+  - Current frontend behavior: `web/src/stores/evaluation.ts` exposes static computed values from `web/src/mocks/evaluation.ts`; `EvaluationView.vue` hardcodes dataset/time range copy, library selector options, and the budget warning; `LibrarySettingsPanel.vue` hardcodes the selected library label, model labels, embedding rebuild warning, budget limit values, and data actions.
+  - Requested backend contract: provide a single dashboard endpoint scoped by library and filters before frontend removes the evaluation mock and hardcoded dashboard/settings text.
+  - Frontend follow-up after OpenAPI update: add evaluation domain types and a repository, load dashboard state through `useEvaluationStore`, wire filter changes to query params, render loading/empty/error/retry states, and keep replay actions routed through the chat workspace with optional `replayContext`.
+- Frontend cleanup note:
+  - Time: 2026-05-27 12:01 +08:00
+  - Issue: #2
+  - Removed the remaining hardcoded fake evaluation library options from `web/src/views/EvaluationView.vue`.
+  - `EvaluationView.vue` now reads the active library list from `useLibraryStore` and keeps library selection routed through the current library workspace.
+  - `LibrarySettingsPanel.vue` now receives the selected library label from the page instead of displaying the stale `graphrag-survey` fixture.
+  - Evaluation metrics, filters, budget alert, model labels, budget limits, and failure cases still needed API-mode gating until OpenAPI defines `/api/libraries/{libraryId}/evaluation/dashboard`.
+- Frontend cleanup note:
+  - Time: 2026-05-27 12:17 +08:00
+  - Issue: #2
+  - API mode no longer renders mock evaluation KPIs, trend data, failure cases, budget warning, model labels, budget limits, or data actions from `web/src/mocks/evaluation.ts` and `LibrarySettingsPanel.vue`.
+  - `EvaluationView.vue` now shows a pending-contract empty state while preserving the real library selector and route context.
+  - Mock evaluation dashboard data remains available only outside API mode until OpenAPI defines `/api/libraries/{libraryId}/evaluation/dashboard`.
+
+## API Request: Command palette search and navigation metadata
+
+- Page: Global command palette and application shell.
+- Component: `web/src/components/overlays/CommandPalette.vue`, `web/src/components/layout/SideNav.vue`, `web/src/components/layout/TopBar.vue`, `web/src/stores/search.ts`, `web/src/stores/ui.ts`.
+- Endpoint:
+  - Requested command search endpoint: `/api/libraries/{libraryId}/search`
+  - Requested shell metadata endpoint: `/api/libraries/{libraryId}/shell/metadata`
+- Method:
+  - `GET` search.
+  - `GET` shell metadata.
+- Params:
+  - Search path param: `libraryId`.
+  - Search query params:
+    - `q`: user-entered command palette query.
+    - optional `scope`: comma-separated result scopes using `documents`, `entities`, `libraries`, and `actions`.
+    - optional `limit`: max total returned results.
+  - Shell metadata path param: `libraryId`.
+- Required fields:
+  - Search response: `query`, `results`.
+  - `results`: array with `id`, `type`, `label`, `meta`, `screen`, optional `icon`, optional `shortcut`, optional `tone`, optional `target`.
+  - `results[].type` values required by UI: `document`, `entity`, `library`, `action`.
+  - `results[].screen` values required by UI: `dashboard`, `chat`, `graph`, `docs`, `review`, `eval`.
+  - `results[].target`: optional object for follow-up navigation context, with optional `libraryId`, `documentId`, `entityId`, `sessionId`, `reviewRunId`, and `query`.
+  - Shell metadata response: `recentSessions`, `libraryStats`, optional `notifications`, optional `profile`.
+  - `recentSessions`: array with `id`, `title`, `time`, `screen`, optional `active`, optional `target`.
+  - `recentSessions[].screen` uses the same screen values as search results.
+  - `libraryStats`: array with `label`, `value`.
+  - `notifications`: optional object with `activeBackgroundStreams`, optional `label`.
+  - `profile`: optional object with `initials`, `displayName`, optional `planLabel`.
+  - Error contract for missing library, invalid query, invalid scope, unsupported limit, unauthorized access, and server failure.
+- Acceptance criteria:
+  - OpenAPI defines search and dynamic shell metadata contracts.
+  - Backend supports empty search results without errors.
+  - Backend supports empty recent session and library stat arrays without seeded/fake values.
+  - Frontend can replace `web/src/mocks/search.ts` and the dynamic `recentSessions`/`libraryStats` exports from `web/src/mocks/navigation.ts`.
+  - Frontend-static decision: route/navigation structure remains frontend-owned. `screenNavigation`, `mainNavigation`, TopBar `sectionLabels`, keyboard shortcut labels, command palette footer hints, and icon names should stay static in frontend code because they describe local routes and UI chrome, not backend data.
+- Status: verified
+- Frontend verification note:
+  - Time: 2026-05-27 16:27 +08:00
+  - Backend SHA tested: `3535ca6c978c9a89c65db6be65f75cc1ce6d6b46`.
+  - Frontend route and components: `web/src/components/overlays/CommandPalette.vue`, `web/src/components/layout/SideNav.vue`, `web/src/stores/search.ts`, `web/src/stores/ui.ts`.
+  - `GET /api/libraries/rag-agent/search?q=review&scope=actions&limit=10`: verified `200` action result `generate_review`.
+  - Broad search `q=graph&scope=documents,entities,libraries,actions&limit=10`: verified `200` with backend search results.
+  - Blank search and one-character search: verified `200 { results: [] }` empty state.
+  - Invalid scope `unknown`: verified `400 VALIDATION_ERROR`.
+  - `GET /api/libraries/rag-agent/shell/metadata`: verified `200` with backend `recentSessions` and `libraryStats`.
+  - Missing library shell metadata: verified `404 LIBRARY_NOT_FOUND`.
+  - Browser smoke at `http://127.0.0.1:5174`: verified command palette result rendering, empty search state, result navigation to graph, and side-nav metadata rendering.
+- Frontend clarification note:
+  - Time: 2026-05-27 11:19 +08:00
+  - Issue: #2
+  - Current frontend behavior: `web/src/stores/search.ts` exposes document/entity results from `web/src/mocks/search.ts`; `CommandPalette.vue` filters those arrays client-side and derives action results from `ui.commandItems`; `web/src/stores/ui.ts` imports `commandItems`, `recentSessions`, and `libraryStats` from `web/src/mocks/navigation.ts`; `SideNav.vue` also hardcodes storage/profile shell values outside the store.
+  - Requested backend contract: provide library-scoped search results plus per-library shell metadata for recent sessions, library statistics, notification summary, and optional profile display before frontend removes the dynamic mock data.
+  - Frontend-owned static data: app route navigation remains local because it maps Vue route names, icons, and keyboard hints; after backend support, frontend should move static navigation constants out of `web/src/mocks/navigation.ts` or rename them so they are not mistaken for backend fixtures.
+  - Frontend follow-up after OpenAPI update: add search/shell repositories, load metadata through `useUiStore`, debounce command search through `useSearchStore`, render loading/empty/error states in the command palette, and route selected results using `target` context.
+- Frontend cleanup note:
+  - Time: 2026-05-27 11:34 +08:00
+  - Issue: #2
+  - `screenNavigation`, `mainNavigation`, and suggested route actions now live in `web/src/app/staticNavigation.ts` because they are frontend-owned route/UI chrome, not backend fixtures.
+  - Suggested command action paths now derive from the active library instead of the removed hardcoded `graphrag-survey` slug.
+  - `web/src/mocks/navigation.ts` now only contains dynamic shell metadata placeholders (`recentSessions`, `libraryStats`) pending the requested `/api/libraries/{libraryId}/shell/metadata` contract.
+- Frontend cleanup note:
+  - Time: 2026-05-27 12:04 +08:00
+  - Issue: #2
+  - API mode no longer renders mock command search records from `web/src/mocks/search.ts`.
+  - API mode no longer renders mock shell metadata from `web/src/mocks/navigation.ts`; recent sessions, library stats, storage, and profile are hidden or shown as empty until `/api/libraries/{libraryId}/shell/metadata` exists.
+  - `CommandPalette.vue` now filters out empty dynamic sections and uses a generic `Entities` section title instead of a fixture-specific entity group.
+  - Removed a fixture-specific `efficient-ml` graph canvas ARIA label from `web/src/views/GraphView.vue`.
+  - Mock data remains available only when `VITE_DATA_SOURCE` is not `api`.
+
+## Frontend Audit Note: OpenAPI still blocks real API integration
+
+- Time: 2026-05-27 03:30 +08:00
+- Issue: #2
+- Finding:
+  - `contracts/openapi.yaml` currently has `paths: {}` and no schemas.
+  - Existing frontend HTTP repositories already target `/api/libraries`, `/api/libraries/{libraryId}/documents`, `/api/libraries/{libraryId}/documents/{documentId}`, `/api/libraries/{libraryId}/documents/{documentId}:retry`, and `/api/libraries/{libraryId}/documents:upload`, but these endpoints are not yet contracted.
+  - Chat, review, graph, evaluation, command search, and shell metadata are still mock-backed because no OpenAPI contract exists for their request/response fields or error shapes.
+- Frontend change made:
+  - Removed hardcoded `graphrag-survey` as the default active library and root redirect target.
+  - Added library dashboard loading/empty/error/retry behavior so API mode can surface real failures or empty responses.
+  - Removed fake create-library slug availability for `graphrag-survey`; slug validity is now local format validation only, with duplicate/availability left to the backend contract.
+- Needs backend:
+  - Add OpenAPI paths/schemas for the requested endpoints above before frontend can remove remaining mock-backed stores without guessing fields.
+- Status: requested

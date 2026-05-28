@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import type { ReviewPipelineStep, ReviewRunStat } from '../../types/application'
+import type { ReviewPipelineStep, ReviewRunStat } from '../../domain/review/types'
 import AppIcon from '../base/AppIcon.vue'
 import ReviewTimelineStepper from './ReviewTimelineStepper.vue'
 
@@ -9,11 +9,12 @@ defineProps<{
   stats: ReviewRunStat[]
   running: boolean
   draftTokens: number
+  draftTokenLimit: number
 }>()
 
 const emit = defineEmits<{
   cancel: []
-  regenerate: [label: string]
+  regenerate: [sectionId: string]
 }>()
 
 const cancelPending = ref(false)
@@ -30,7 +31,12 @@ function confirmCancel() {
       <h2>Pipeline</h2>
     </header>
 
-    <ReviewTimelineStepper :steps="steps" :draft-tokens="draftTokens" @regenerate="emit('regenerate', $event)" />
+    <ReviewTimelineStepper
+      :steps="steps"
+      :draft-tokens="draftTokens"
+      :draft-token-limit="draftTokenLimit"
+      @regenerate="emit('regenerate', $event)"
+    />
 
     <footer class="run-stats-panel">
       <h3>Run Stats</h3>

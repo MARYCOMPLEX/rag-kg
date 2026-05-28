@@ -1,7 +1,10 @@
 <script setup lang="ts">
+import { computed } from 'vue'
+import type { ReviewDraft } from '../../domain/review/types'
 import AppIcon from '../base/AppIcon.vue'
 
-defineProps<{
+const props = defineProps<{
+  draft: ReviewDraft
   running: boolean
   draftTokens: number
 }>()
@@ -9,50 +12,58 @@ defineProps<{
 const emit = defineEmits<{
   citation: [id: string]
 }>()
+
+const authorLabel = computed(() => Array.isArray(props.draft.authors) ? props.draft.authors.join(', ') : props.draft.authors)
 </script>
 
 <template>
   <article class="review-draft-panel" aria-label="Review draft stream" aria-live="polite">
     <header class="draft-document-header">
-      <h1>GraphRAG advances<br>2024&ndash;2025</h1>
+      <h1>{{ draft.title }}</h1>
       <div class="draft-metadata">
-        <span>Yue Lin</span>
-        <span>May 16 2025</span>
-        <span class="draft-badge">Draft</span>
-        <span>14,328 tokens</span>
+        <span class="draft-badge">{{ draft.badgeLabel }}</span>
+        <span>{{ authorLabel }}</span>
+        <span>{{ draft.generatedAtLabel }}</span>
+        <span>{{ draft.totalTokensLabel }}</span>
       </div>
     </header>
 
     <div class="draft-document-body">
-      <h2>## 1. Pre-trained models</h2>
-      <p>
-        Recent advancements in GraphRAG have heavily leveraged large pre-trained models to align unstructured text with structured knowledge graphs
-        <button class="draft-citation" type="button" aria-label="Open citation 1" @click="emit('citation', '1')">[1]</button>.
-        By embedding both nodes and relationships into high-dimensional vector spaces, systems can perform semantic retrieval over graphs with unprecedented accuracy
-        <button class="draft-citation" type="button" aria-label="Open citation 2" @click="emit('citation', '2')">[2]</button>.
-        Furthermore, fine-tuning techniques applied to domain-specific corpora have shown significant improvements in reducing hallucination rates
-        <button class="draft-citation" type="button" aria-label="Open citation 3" @click="emit('citation', '3')">[3]</button>.
-      </p>
+      <section v-for="section in draft.sections" :key="section.id" class="draft-section">
+        <h2>{{ section.heading }}</h2>
+        <p class="draft-markdown">
+          {{ section.markdown }}
+        </p>
+        <div v-if="section.citations.length" class="draft-citation-row">
+          <button
+            v-for="citationId in section.citations"
+            :key="`${section.id}-${citationId}`"
+            class="draft-citation"
+            :class="{ 'is-warning': section.unsubstantiated }"
+            type="button"
+            :aria-label="`Open citation ${citationId}`"
+            @click="emit('citation', citationId)"
+          >
+            [{{ citationId }}]
+          </button>
+        </div>
+        <p v-if="section.unsubstantiated" class="draft-warning">
+          Unsubstantiated content flagged in this section.
+        </p>
+      </section>
 
-      <h2>## 2. Hierarchical KG</h2>
-      <p>
-        The integration of hierarchical structures within Knowledge Graphs represents a paradigm shift for complex reasoning tasks
-        <button class="draft-citation" type="button" aria-label="Open citation 4" @click="emit('citation', '4')">[4]</button>.
-        Instead of treating all entities uniformly, modern pipelines segment sub-graphs into distinct abstraction layers. This allows the RAG system to traverse from abstract concepts down to specific facts seamlessly
-        <button class="draft-citation" type="button" aria-label="Open citation 5" @click="emit('citation', '5')">[5]</button>.
-        Current methodologies emphasize community detection algorithms to generate these hierarchies dynamically during the ingestion phase, which significantly optimizes context window utilization during synthesis
-        <button class="draft-citation is-warning" type="button" aria-label="Unsubstantiated citation">[?]</button>
-        <span v-if="running" class="draft-caret" aria-hidden="true" />
-      </p>
+      <div v-if="!draft.sections.length" class="draft-empty">
+        No draft sections yet.
+      </div>
     </div>
 
     <footer class="draft-stream-status">
       <span class="drafting-state" :class="{ paused: !running }">
         <AppIcon name="pencil" :size="15" />
-        {{ running ? 'Drafting subtopic 2' : 'Generation paused' }}
+        {{ draft.statusLabel }}
       </span>
-      <span>Haiku 4.5</span>
-      <span>{{ draftTokens }} / 800 tokens</span>
+      <span>{{ draft.modelLabel }}</span>
+      <span>{{ draftTokens }} / {{ draft.draftTokenLimit }} tokens</span>
     </footer>
   </article>
 </template>
@@ -86,6 +97,7 @@ const emit = defineEmits<{
   font-weight: 600;
   letter-spacing: 0;
   line-height: 40px;
+  white-space: pre-line;
 }
 
 .draft-metadata {
@@ -117,8 +129,12 @@ const emit = defineEmits<{
   line-height: 22px;
 }
 
+.draft-section + .draft-section {
+  margin-top: 24px;
+}
+
 .draft-document-body h2 {
-  margin: 24px 0 8px;
+  margin: 0 0 8px;
   color: var(--color-on-surface);
   font-family: "Hanken Grotesk", Inter, sans-serif;
   font-size: 20px;
@@ -127,19 +143,26 @@ const emit = defineEmits<{
   line-height: 28px;
 }
 
-.draft-document-body p {
-  margin: 0 0 16px;
+.draft-markdown {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.draft-citation-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
 }
 
 .draft-citation {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  margin-left: 4px;
   border: 1px solid var(--color-alpha-citation-35);
   border-radius: var(--radius-xs);
   background: var(--color-alpha-citation-10);
-  padding: 0 4px;
+  padding: 0 6px;
   color: var(--color-on-secondary-container);
   font-size: 12px;
   font-weight: 600;
@@ -159,14 +182,19 @@ const emit = defineEmits<{
   color: var(--color-on-error-container);
 }
 
-.draft-caret {
-  display: inline-block;
-  width: 8px;
-  height: 16px;
-  margin-left: 4px;
-  background: var(--color-primary);
-  vertical-align: middle;
-  animation: drafting-caret var(--motion-duration-blink) linear infinite;
+.draft-warning {
+  margin: 8px 0 0;
+  color: var(--color-error);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.draft-empty {
+  border: 1px dashed var(--color-outline-variant);
+  border-radius: var(--radius-control);
+  background: var(--color-surface-container-lowest);
+  padding: 16px;
+  color: var(--color-on-surface-variant);
 }
 
 .draft-stream-status {

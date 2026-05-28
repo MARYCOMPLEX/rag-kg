@@ -1,14 +1,15 @@
 <script setup lang="ts">
-import type { ReviewPipelineStep } from '../../types/application'
+import type { ReviewPipelineStep } from '../../domain/review/types'
 import AppIcon from '../base/AppIcon.vue'
 
 defineProps<{
   steps: ReviewPipelineStep[]
   draftTokens: number
+  draftTokenLimit: number
 }>()
 
 const emit = defineEmits<{
-  regenerate: [label: string]
+  regenerate: [sectionId: string]
 }>()
 </script>
 
@@ -34,7 +35,7 @@ const emit = defineEmits<{
             class="regenerate-action"
             type="button"
             :aria-label="`Regenerate ${step.label}`"
-            @click="emit('regenerate', step.label)"
+            @click="emit('regenerate', step.id)"
           >
             <AppIcon name="refresh" :size="13" />
           </button>
@@ -47,7 +48,7 @@ const emit = defineEmits<{
               :class="`is-${detail.status}`"
             >
               <AppIcon :name="detail.status === 'done' ? 'check' : 'pencil'" :size="13" />
-              <span>{{ detail.status === 'active' ? `Draft (${draftTokens}/800 tok)` : detail.label }}</span>
+              <span>{{ detail.status === 'active' ? `Draft (${draftTokens}/${draftTokenLimit} tok)` : detail.label }}</span>
             </span>
           </span>
         </span>

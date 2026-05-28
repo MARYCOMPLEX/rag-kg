@@ -1,23 +1,54 @@
 <script setup lang="ts">
+import { computed, watch } from 'vue'
 import { storeToRefs } from 'pinia'
+import { useRoute } from 'vue-router'
 import { useWorkspaceNavigation } from '../app/useWorkspaceNavigation'
 import AppIcon from '../components/base/AppIcon.vue'
 import GraphEntityDrawer from '../components/graph/GraphEntityDrawer.vue'
 import { useGraphStore } from '../stores/graph'
 
+const route = useRoute()
 const graph = useGraphStore()
-const { entityTypes, selectedNode } = storeToRefs(graph)
+const { canvas, entityTypes, selectedEntityId, workspaceError, workspaceState } = storeToRefs(graph)
 const { goToScreen } = useWorkspaceNavigation()
+const libraryId = computed(() => String(route.params.libraryId ?? ''))
+
+watch(libraryId, (nextLibraryId) => {
+  void graph.loadWorkspace(nextLibraryId, true)
+}, { immediate: true })
 
 async function citeNodeInChat() {
   graph.citeNodeInChat()
   await goToScreen('chat')
 }
+
+function reloadGraph() {
+  void graph.loadWorkspace(libraryId.value, true)
+}
 </script>
 
 <template>
   <section class="kg-workspace">
-    <aside class="kg-filter-panel" aria-label="Filters">
+    <div v-if="workspaceState === 'loading'" class="kg-pending-state" role="status">
+      <AppIcon name="graph" :size="28" />
+      <h1>Loading graph workspace</h1>
+      <p>Fetching graph filters, canvas data, and summary labels from this library.</p>
+    </div>
+
+    <div v-else-if="workspaceState === 'error'" class="kg-pending-state is-error" role="alert">
+      <AppIcon name="warning" :size="28" />
+      <h1>Unable to load graph</h1>
+      <p>{{ workspaceError }}</p>
+      <button type="button" @click="reloadGraph">Retry</button>
+    </div>
+
+    <div v-else-if="canvas && canvas.nodes.length === 0" class="kg-pending-state" role="status">
+      <AppIcon name="graph" :size="28" />
+      <h1>No graph data yet</h1>
+      <p>{{ canvas.summaryLabel }} / {{ canvas.confidenceLabel }}. Upload and index documents to populate the knowledge graph.</p>
+    </div>
+
+    <aside v-else-if="canvas" class="kg-filter-panel" aria-label="Filters">
       <header>
         <h2>Filters</h2>
         <div>
@@ -31,7 +62,7 @@ async function citeNodeInChat() {
       <div class="kg-filter-body">
         <section>
           <h3>Entity Types</h3>
-          <label v-for="type in entityTypes" :key="type.label" class="kg-filter-row">
+          <label v-for="type in entityTypes" :key="type.key ?? type.label" class="kg-filter-row">
             <span>
               <input :checked="type.checked" type="checkbox">
               <i :class="type.tone" />
@@ -44,23 +75,23 @@ async function citeNodeInChat() {
         <section class="confidence-filter">
           <div>
             <h3>Confidence</h3>
-            <b>&gt;= 0.65</b>
+            <b>{{ canvas.confidenceLabel }}</b>
           </div>
-          <input type="range" min="0" max="1" step="0.05" value="0.65">
+          <input type="range" min="0" max="1" step="0.05" :value="graph.workspace?.filters.minConfidence ?? 0">
         </section>
       </div>
 
       <footer>
         <button type="button">
           Apply filters
-          <span>6</span>
+          <span>{{ canvas?.filterCountLabel }}</span>
         </button>
       </footer>
     </aside>
 
-    <main class="kg-canvas-panel" role="application" aria-label="Knowledge graph for efficient-ml">
-      <div class="kg-canvas-note top-note">Spec: Switch to WebGL when nodes &gt; 3000</div>
-      <div class="kg-canvas-note bottom-note">Spec: Zoom &lt; 0.5 hides labels to declutter</div>
+    <main v-if="canvas && canvas.nodes.length" class="kg-canvas-panel" role="application" aria-label="Knowledge graph">
+      <div class="kg-canvas-note top-note">{{ canvas?.topNote }}</div>
+      <div class="kg-canvas-note bottom-note">{{ canvas?.bottomNote }}</div>
 
       <div class="kg-toolbar" aria-label="Canvas toolbar">
         <button type="button" title="Fit to view">
@@ -75,7 +106,7 @@ async function citeNodeInChat() {
         <button type="button" title="Cypher Query">
           <AppIcon name="code" :size="18" />
         </button>
-        <span>100%</span>
+        <span>{{ canvas?.zoomLabel }}</span>
       </div>
 
       <div v-if="graph.contextMenuOpen" class="kg-context-menu" :style="{ left: `${graph.contextMenuX - 260}px`, top: `${graph.contextMenuY - 56}px` }">
@@ -94,44 +125,45 @@ async function citeNodeInChat() {
           </marker>
         </defs>
         <g class="kg-edges" marker-end="url(#arrowhead)">
-          <line x1="400" x2="250" y1="300" y2="150" />
-          <line x1="400" x2="600" y1="300" y2="200" />
-          <line x1="400" x2="200" y1="300" y2="400" />
-          <line class="muted" x1="400" x2="550" y1="300" y2="450" />
+          <line
+            v-for="edge in canvas?.edges"
+            :key="edge.id"
+            :class="{ muted: edge.muted }"
+            :x1="edge.x1"
+            :x2="edge.x2"
+            :y1="edge.y1"
+            :y2="edge.y2"
+          />
         </g>
 
-        <g class="kg-node selected" transform="translate(400, 300)" tabindex="0" @contextmenu.prevent="graph.openNodeContext" @click="selectedNode = 'GraphRAG'">
-          <circle class="outer" r="44" />
-          <circle class="inner" r="40" />
-          <text y="5">GraphRAG</text>
-        </g>
-        <g class="kg-node concept" transform="translate(250, 150)" @click="selectedNode = 'Leiden algorithm'">
-          <circle r="25" />
-          <text y="40">Leiden algorithm</text>
-        </g>
-        <g class="kg-node method" transform="translate(600, 200)" @click="selectedNode = 'Community detection'">
-          <circle class="outer" r="34" />
-          <circle r="30" />
-          <text y="45">Community detection</text>
-        </g>
-        <g class="kg-node dataset" transform="translate(200, 400)" @click="selectedNode = 'MultiHop-RAG'">
-          <circle r="25" />
-          <text y="40">MultiHop-RAG</text>
-        </g>
-        <g class="kg-node author faded" transform="translate(550, 450)" @click="selectedNode = 'D. Edge et al.'">
-          <circle r="20" />
-          <text y="35">D. Edge et al.</text>
+        <g
+          v-for="node in canvas?.nodes"
+          :key="node.id"
+          class="kg-node"
+          :class="[node.tone, { selected: node.selected, faded: node.faded }]"
+          :transform="`translate(${node.x}, ${node.y})`"
+          tabindex="0"
+          @contextmenu.prevent="graph.openNodeContext"
+          @click="graph.selectNode(node.id)"
+        >
+          <circle v-if="node.outerRadius" class="outer" :r="node.outerRadius" />
+          <circle :class="{ inner: node.selected }" :r="node.radius" />
+          <text :y="node.selected ? 5 : node.radius + 15">{{ node.label }}</text>
         </g>
       </svg>
 
       <footer class="kg-canvas-footer">
-        <span>8,491 entities | 31,219 triples</span>
-        <span class="kg-legend"><i class="concept" /> Concept <i class="method" /> Method</span>
-        <span>confidence &gt;= 0.65</span>
+        <span>{{ canvas?.summaryLabel }}</span>
+        <span class="kg-legend">
+          <template v-for="item in canvas?.legendItems" :key="item.label">
+            <i :class="item.tone" /> {{ item.label }}
+          </template>
+        </span>
+        <span>{{ canvas?.confidenceLabel }}</span>
       </footer>
     </main>
 
-    <GraphEntityDrawer />
+    <GraphEntityDrawer v-if="selectedEntityId && canvas?.nodes.length" />
   </section>
 </template>
 
@@ -145,6 +177,59 @@ async function citeNodeInChat() {
   min-height: 0;
   overflow: hidden;
   background: var(--color-surface);
+}
+
+.kg-pending-state {
+  display: grid;
+  grid-column: 1 / -1;
+  place-items: center;
+  align-content: center;
+  gap: 12px;
+  margin: 24px;
+  border: 1px dashed var(--color-outline-variant);
+  border-radius: var(--radius-card);
+  background: var(--color-surface-container-lowest);
+  padding: 32px;
+  color: var(--color-on-surface-variant);
+  text-align: center;
+}
+
+.kg-pending-state :deep(.app-icon) {
+  color: var(--color-primary);
+}
+
+.kg-pending-state h1 {
+  margin: 0;
+  color: var(--color-on-surface);
+  font-size: 20px;
+  line-height: 28px;
+}
+
+.kg-pending-state p {
+  max-width: 760px;
+  margin: 0;
+  line-height: 22px;
+}
+
+.kg-pending-state code {
+  color: var(--color-on-surface);
+  font-size: .92em;
+}
+
+.kg-pending-state.is-error :deep(.app-icon),
+.kg-pending-state.is-error h1 {
+  color: var(--color-error);
+}
+
+.kg-pending-state button {
+  height: 34px;
+  border: 1px solid var(--color-outline-variant);
+  border-radius: var(--radius-control);
+  background: var(--color-surface-container-lowest);
+  padding: 0 14px;
+  color: var(--color-primary);
+  font-size: 13px;
+  font-weight: 700;
 }
 
 .kg-filter-panel {
