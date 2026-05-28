@@ -28,6 +28,30 @@ Use this log during local integration, E2E testing, and contract verification. E
 
 ## Logs
 
+## 2026-05-28 17:05 - Frontend review lifecycle API slice
+
+- Time: 2026-05-28 17:05 +08:00
+- Agent: Backend Agent
+- Issue: #3
+- Cause: Supervisor dispatched the frontend review generation lifecycle API request so `ReviewView` can stop relying on mock review state and timer-driven progress.
+- Fix status: implemented
+- Fix:
+  - Added OpenAPI paths and schemas for `GET /api/libraries/{libraryId}/reviews/current`, `POST /api/libraries/{libraryId}/reviews`, `POST /api/libraries/{libraryId}/reviews/{reviewRunId}/sections/{sectionId}:regenerate`, `POST /api/libraries/{libraryId}/reviews/{reviewRunId}:cancel`, and `GET /api/libraries/{libraryId}/reviews/{reviewRunId}/events`.
+  - Added `apps/api/routes/frontend_reviews.py`, registered it in route discovery, and preserved existing `/v1/libraries/{library_id}/review` behavior.
+  - Review create/regenerate now enqueue real durable `run_review` tasks; cancel uses the existing task queue cancellation path; current returns `200 { run: null }` when no active review task exists.
+  - The review SSE adapter maps durable task events to frontend `draft_delta`, `pipeline`, `citations`, `stats`, `status`, `done`, and `error` events.
+  - Updated the `run_review` worker to emit durable `draft_delta` and `citations` events from actual `ReviewGenerationTask` output when sections/citations are produced.
+- Verification:
+  - `uv run --group test pytest tests/integration/api/test_frontend_review_routes.py tests/integration/worker/test_run_review_job.py -q`: passed, 11 tests.
+  - `uv run python -c "import yaml; yaml.safe_load(open('..\\contracts\\openapi.yaml', encoding='utf-8')); print('openapi yaml parsed')"`: passed.
+  - `uv run --group dev ruff check apps/api/routes/frontend_reviews.py apps/api/routes/__init__.py apps/worker/jobs/run_review.py tests/integration/api/test_frontend_review_routes.py tests/integration/worker/test_run_review_job.py`: passed.
+  - `uv run --group dev ruff format --check apps/api/routes/frontend_reviews.py apps/api/routes/__init__.py apps/worker/jobs/run_review.py tests/integration/api/test_frontend_review_routes.py tests/integration/worker/test_run_review_job.py`: passed.
+  - `make typecheck`: failed on pre-existing unrelated `apps/cli/main.py` adapter list type errors; no new `frontend_reviews.py` pyright errors were reported.
+  - Live smoke on `127.0.0.1:8012` with local API, Postgres task store, Redis event bus, and Arq worker: `GET /healthz` returned 200, `GET /api/libraries/rag-agent/reviews/current` returned 200, `POST /api/libraries/rag-agent/reviews` returned 202 with task `01KSPWVG557R4VP3YNB39YNQM5`, and the returned stream emitted durable `status`, `pipeline`, `stats`, and `done`.
+- Runtime blocker:
+  - The live review smoke did not emit `draft_delta` or `citations` for task `01KSPWVG557R4VP3YNB39YNQM5`; the worker completed the run with stats but no generated sections/citations surfaced in the task event stream.
+  - Frontend review verification should wait for a backend runtime handoff that includes live `draft_delta` and, when grounded evidence is available, `citations` events. The route and worker tests cover those event shapes with durable task events.
+
 ## 2026-05-28 12:57 - Durable chat grounded frontend handoff
 
 - Time: 2026-05-28 12:57 +08:00

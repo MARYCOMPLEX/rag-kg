@@ -295,3 +295,49 @@ OpenAPI remains the single source of truth. Entries here are requests only; once
   - Live durable chat with Postgres task store, Redis event bus, Arq worker, SiliconFlow embeddings, and the ingested PDF corpus returned `202` from `POST /api/libraries/rag-agent/chat/questions`.
   - The returned stream URL emitted durable `status`, `token`, `evidence`, `citations`, `status`, and `done` SSE events.
   - Backend is ready for frontend API-mode chat verification against backend SHA `3a2958ad6f68725f282b132cf6218c59083b4124` or newer.
+
+## API Request: Review generation run lifecycle
+
+- Page: Review workspace.
+- Component: `web/src/views/ReviewView.vue`, `web/src/stores/review.ts`, `web/src/components/review/ReviewPipelinePanel.vue`, `web/src/components/review/ReviewTimelineStepper.vue`, `web/src/components/review/ReviewDraftStream.vue`, `web/src/components/review/ReviewCitationsPanel.vue`, `web/src/components/overlays/BackgroundTaskPill.vue`, `web/src/services/api/taskStreamClient.ts`.
+- Endpoint:
+  - `/api/libraries/{libraryId}/reviews/current`
+  - `/api/libraries/{libraryId}/reviews`
+  - `/api/libraries/{libraryId}/reviews/{reviewRunId}/sections/{sectionId}:regenerate`
+  - `/api/libraries/{libraryId}/reviews/{reviewRunId}:cancel`
+  - `/api/libraries/{libraryId}/reviews/{reviewRunId}/events`
+- Method:
+  - `GET` current run.
+  - `POST` create/start run.
+  - `POST` regenerate section.
+  - `POST` cancel run.
+  - `GET` SSE stream.
+- Params:
+  - Path params: `libraryId`, `reviewRunId`, `sectionId`.
+  - Create body: optional `topic`, optional `instructions`, optional `documentIds`, optional `mode`.
+  - Regenerate body: optional `instructions`, optional `keepCompletedSections`.
+  - Cancel body: optional `keepGeneratedSections`.
+- Required fields:
+  - Current run empty response: `200 { run: null }`.
+  - Non-empty current/create/regenerate responses include `run`, `pipelineSteps`, `runStats`, `citations`, `draft`, and optional `streamUrl`.
+  - Create/regenerate responses return `202` with `taskId` and `streamUrl`.
+  - Cancel returns `202 { tone, title, detail, action?, run? }`.
+  - SSE events: `draft_delta`, `pipeline`, `citations`, `stats`, `status`, `done`, and `error`.
+- Acceptance criteria:
+  - OpenAPI defines review current-run, create, regenerate, cancel, and SSE contracts.
+  - Backend queues real durable `run_review` tasks through the existing queue and worker architecture.
+  - Backend streams review events from durable task events, including draft deltas and citation/stat updates derived from the actual `ReviewGenerationTask` result.
+  - Frontend can replace `web/src/mocks/review.ts` with repository-backed state.
+- Status: implemented
+- Backend implementation note:
+  - Time: 2026-05-28 14:20 +08:00
+  - Added frontend `/api` review adapter endpoints for current, create, regenerate, cancel, and review task SSE.
+  - `POST /api/libraries/{libraryId}/reviews` enqueues durable `run_review` tasks and returns `202 { run, taskId, streamUrl, pipelineSteps, runStats, citations, draft }`.
+  - `GET /api/libraries/{libraryId}/reviews/current` returns `200 { run: null }` when no active run exists, and active durable task state when one exists.
+  - `POST /api/libraries/{libraryId}/reviews/{reviewRunId}:cancel` uses the existing task queue cancellation path and returns frontend mutation feedback.
+  - `POST /api/libraries/{libraryId}/reviews/{reviewRunId}/sections/{sectionId}:regenerate` validates an existing terminal review run and enqueues a new durable `run_review` regeneration task.
+  - The `run_review` worker now emits durable review result events derived from the real review output: `draft_delta` sections, `citations`, `stats`, terminal `status`, and `done` through the existing task event bus.
+- Backend runtime note:
+  - Time: 2026-05-28 17:05 +08:00
+  - Live smoke with local API, Postgres task store, Redis event bus, and Arq worker verified durable enqueue and stream plumbing for `rag-agent`: create returned `202` with task `01KSPWVG557R4VP3YNB39YNQM5`, and SSE emitted `status`, `pipeline`, `stats`, and `done`.
+  - The same live run did not emit `draft_delta` or `citations` because no generated review sections/citations surfaced in that worker result stream. Frontend verification should wait for a follow-up runtime handoff that includes live `draft_delta` and grounded citation events.

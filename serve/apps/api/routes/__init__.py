@@ -26,6 +26,7 @@ M7_ROUTES: tuple[str, ...] = (
     "frontend_graph",  # frontend /api knowledge graph workspace adapter
     "frontend_evaluation",  # frontend /api evaluation dashboard adapter
     "frontend_chat",  # frontend /api chat session and stream adapter
+    "frontend_reviews",  # frontend /api review lifecycle adapter
     "tasks",  # ADR-0009
     "notifications",  # ADR-0011
     "activity",  # ADR-0014

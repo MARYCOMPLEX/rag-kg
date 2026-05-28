@@ -508,6 +508,214 @@ paths:
           $ref: "#/components/responses/UpstreamError"
         "500":
           $ref: "#/components/responses/InternalError"
+  /api/libraries/{libraryId}/reviews/current:
+    get:
+      tags:
+        - libraries
+      summary: Get the current frontend review run for one library
+      operationId: getFrontendReviewCurrentRun
+      parameters:
+        - name: libraryId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: rag-agent
+      responses:
+        "200":
+          description: Current review run state, or an empty state when no run is active.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReviewCurrentResponse"
+              examples:
+                empty:
+                  value:
+                    run: null
+        "401":
+          $ref: "#/components/responses/AuthError"
+        "404":
+          $ref: "#/components/responses/LibraryNotFoundError"
+        "503":
+          $ref: "#/components/responses/UpstreamError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/libraries/{libraryId}/reviews:
+    post:
+      tags:
+        - libraries
+      summary: Create a durable frontend review generation run
+      operationId: createFrontendReviewRun
+      parameters:
+        - name: libraryId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: rag-agent
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewCreateRequest"
+      responses:
+        "202":
+          description: Review run accepted; connect to streamUrl for generation events.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReviewAcceptedResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/AuthError"
+        "404":
+          $ref: "#/components/responses/LibraryNotFoundError"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "503":
+          $ref: "#/components/responses/UpstreamError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/libraries/{libraryId}/reviews/{reviewRunId}/sections/{sectionId}:regenerate:
+    post:
+      tags:
+        - libraries
+      summary: Queue a durable review section regeneration run
+      operationId: regenerateFrontendReviewSection
+      parameters:
+        - name: libraryId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: rag-agent
+        - name: reviewRunId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: review-0123456789abcdef
+        - name: sectionId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: methods
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewRegenerateRequest"
+      responses:
+        "202":
+          description: Section regeneration was accepted as a durable review task.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReviewAcceptedResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/AuthError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "503":
+          $ref: "#/components/responses/UpstreamError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/libraries/{libraryId}/reviews/{reviewRunId}:cancel:
+    post:
+      tags:
+        - libraries
+      summary: Cancel an active durable review run
+      operationId: cancelFrontendReviewRun
+      parameters:
+        - name: libraryId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: rag-agent
+        - name: reviewRunId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: review-0123456789abcdef
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewCancelRequest"
+      responses:
+        "202":
+          description: Cancel request accepted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReviewMutationFeedback"
+        "401":
+          $ref: "#/components/responses/AuthError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+        "503":
+          $ref: "#/components/responses/UpstreamError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/libraries/{libraryId}/reviews/{reviewRunId}/events:
+    get:
+      tags:
+        - libraries
+      summary: Stream frontend review generation events
+      operationId: streamFrontendReviewEvents
+      parameters:
+        - name: libraryId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: rag-agent
+        - name: reviewRunId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: review-0123456789abcdef
+      responses:
+        "200":
+          description: |
+            Server-Sent Events for a durable review task.
+
+            Event payloads:
+            - `draft_delta`: JSON object `{ "sectionId", "markdownDelta", "citations", "draftTokens" }`.
+            - `pipeline`: JSON array of `ReviewPipelineStep`.
+            - `citations`: JSON array of `ReviewCitation`.
+            - `stats`: JSON array of `ReviewRunStat`.
+            - `status`: JSON object `{ "status", "progress", "statusLabel", "draftTokens" }`.
+            - `done`: JSON object with the terminal status.
+            - `error`: JSON object `{ "code", "message", "request_id", "details" }`.
+          content:
+            text/event-stream:
+              schema:
+                $ref: "#/components/schemas/ReviewStreamEvent"
+        "401":
+          $ref: "#/components/responses/AuthError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "503":
+          $ref: "#/components/responses/UpstreamError"
+        "500":
+          $ref: "#/components/responses/InternalError"
   /api/libraries/{libraryId}/graph:
     get:
       tags:
@@ -804,6 +1012,389 @@ components:
             - done
             - interrupted
             - unsubstantiated
+    ReviewRun:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - libraryId
+        - status
+        - progress
+      properties:
+        id:
+          type: string
+          example: review-0123456789abcdef
+        libraryId:
+          type: string
+          example: rag-agent
+        status:
+          type: string
+          enum:
+            - idle
+            - queued
+            - running
+            - backgrounded
+            - cancelled
+            - failed
+            - done
+        progress:
+          type: integer
+          minimum: 0
+          maximum: 100
+          example: 47
+        taskId:
+          type: string
+          nullable: true
+          example: review-0123456789abcdef
+        streamUrl:
+          type: string
+          nullable: true
+          example: /api/libraries/rag-agent/reviews/review-0123456789abcdef/events
+        backgrounded:
+          type: boolean
+          nullable: true
+    ReviewPipelineDetail:
+      type: object
+      additionalProperties: false
+      required:
+        - label
+        - status
+      properties:
+        label:
+          type: string
+          example: Draft section
+        status:
+          type: string
+          enum:
+            - done
+            - active
+    ReviewPipelineStep:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - label
+        - status
+      properties:
+        id:
+          type: string
+          example: subtopic_draft
+        label:
+          type: string
+          example: Draft sections
+        status:
+          type: string
+          enum:
+            - done
+            - active
+            - pending
+        details:
+          type: array
+          nullable: true
+          items:
+            $ref: "#/components/schemas/ReviewPipelineDetail"
+    ReviewRunStat:
+      type: object
+      additionalProperties: false
+      required:
+        - label
+        - value
+      properties:
+        label:
+          type: string
+          example: Draft tokens
+        value:
+          type: string
+          example: "324 / 80,000"
+        accent:
+          type: boolean
+          nullable: true
+    ReviewCitation:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - type
+        - author
+      properties:
+        id:
+          type: string
+          example: chunk-1
+        type:
+          type: string
+          example: chunk
+        author:
+          type: string
+          example: 2404.16130-graphrag-local-to-global
+        isNew:
+          type: boolean
+          nullable: true
+    ReviewDraftSection:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - heading
+        - markdown
+        - citations
+      properties:
+        id:
+          type: string
+          example: retrieval
+        heading:
+          type: string
+          example: Retrieval and community summaries
+        markdown:
+          type: string
+          example: "GraphRAG combines local graph neighborhoods with global community summaries."
+        citations:
+          type: array
+          items:
+            type: string
+          example:
+            - chunk-1
+        unsubstantiated:
+          type: boolean
+          nullable: true
+    ReviewDraft:
+      type: object
+      additionalProperties: false
+      required:
+        - title
+        - authors
+        - generatedAtLabel
+        - badgeLabel
+        - totalTokensLabel
+        - draftTokens
+        - draftTokenLimit
+        - modelLabel
+        - statusLabel
+        - sections
+      properties:
+        title:
+          type: string
+          example: GraphRAG survey
+        authors:
+          type: array
+          items:
+            type: string
+        generatedAtLabel:
+          type: string
+          example: "2026-05-28 14:00"
+        badgeLabel:
+          type: string
+          example: Draft
+        totalTokensLabel:
+          type: string
+          example: "324 / 80,000 tokens"
+        draftTokens:
+          type: integer
+          minimum: 0
+        draftTokenLimit:
+          type: integer
+          minimum: 1
+          example: 80000
+        modelLabel:
+          type: string
+          example: Review generation
+        statusLabel:
+          type: string
+          example: Running
+        sections:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReviewDraftSection"
+    ReviewCurrentResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - run
+      properties:
+        run:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/ReviewRun"
+        pipelineSteps:
+          type: array
+          nullable: true
+          items:
+            $ref: "#/components/schemas/ReviewPipelineStep"
+        runStats:
+          type: array
+          nullable: true
+          items:
+            $ref: "#/components/schemas/ReviewRunStat"
+        citations:
+          type: array
+          nullable: true
+          items:
+            $ref: "#/components/schemas/ReviewCitation"
+        draft:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/ReviewDraft"
+        streamUrl:
+          type: string
+          nullable: true
+    ReviewAcceptedResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - run
+        - taskId
+        - streamUrl
+        - pipelineSteps
+        - runStats
+        - citations
+        - draft
+      properties:
+        run:
+          $ref: "#/components/schemas/ReviewRun"
+        taskId:
+          type: string
+          example: review-0123456789abcdef
+        streamUrl:
+          type: string
+          example: /api/libraries/rag-agent/reviews/review-0123456789abcdef/events
+        pipelineSteps:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReviewPipelineStep"
+        runStats:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReviewRunStat"
+        citations:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReviewCitation"
+        draft:
+          $ref: "#/components/schemas/ReviewDraft"
+    ReviewCreateRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        topic:
+          type: string
+          nullable: true
+          maxLength: 500
+        instructions:
+          type: string
+          nullable: true
+          maxLength: 2000
+        documentIds:
+          type: array
+          maxItems: 100
+          items:
+            type: string
+        mode:
+          type: string
+          nullable: true
+          maxLength: 64
+    ReviewRegenerateRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        instructions:
+          type: string
+          nullable: true
+          maxLength: 2000
+        keepCompletedSections:
+          type: boolean
+          default: true
+    ReviewCancelRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        keepGeneratedSections:
+          type: boolean
+          default: true
+    ReviewMutationFeedback:
+      type: object
+      additionalProperties: false
+      required:
+        - tone
+        - title
+        - detail
+      properties:
+        tone:
+          type: string
+          enum:
+            - success
+            - info
+            - warning
+            - danger
+        title:
+          type: string
+          example: Review cancelled
+        detail:
+          type: string
+          example: Review generation was cancelled and generated sections were kept.
+        action:
+          type: string
+          nullable: true
+          example: Refresh
+        run:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/ReviewRun"
+    ReviewDraftDeltaEvent:
+      type: object
+      additionalProperties: false
+      required:
+        - sectionId
+        - markdownDelta
+      properties:
+        sectionId:
+          type: string
+        markdownDelta:
+          type: string
+        citations:
+          type: array
+          items:
+            type: string
+        draftTokens:
+          type: integer
+          minimum: 0
+    ReviewStatusEvent:
+      type: object
+      additionalProperties: false
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum:
+            - idle
+            - queued
+            - running
+            - backgrounded
+            - cancelled
+            - failed
+            - done
+        progress:
+          type: integer
+          minimum: 0
+          maximum: 100
+        statusLabel:
+          type: string
+        draftTokens:
+          type: integer
+          minimum: 0
+    ReviewStreamEvent:
+      oneOf:
+        - $ref: "#/components/schemas/ReviewDraftDeltaEvent"
+        - type: array
+          items:
+            $ref: "#/components/schemas/ReviewPipelineStep"
+        - type: array
+          items:
+            $ref: "#/components/schemas/ReviewCitation"
+        - type: array
+          items:
+            $ref: "#/components/schemas/ReviewRunStat"
+        - $ref: "#/components/schemas/ReviewStatusEvent"
+        - $ref: "#/components/schemas/ErrorEnvelope"
     LibrarySummary:
       type: object
       additionalProperties: false

@@ -103,6 +103,7 @@ async def _run_inner(
             citation_style=citation_style,
             stage_emitter=emitter,
         )
+        await _emit_review_result_events(jc, result)
 
         markdown = _render_review_markdown(result)
         result_pointer = ""
@@ -150,6 +151,71 @@ def _render_review_markdown(result: ReviewResult) -> str:
     for section in result.sections:
         parts.extend([f"## {section.heading}", "", section.body, ""])
     return "\n".join(parts)
+
+
+async def _emit_review_result_events(jc: JobContext, result: ReviewResult) -> None:
+    """Publish frontend review stream events derived from the real result."""
+    draft_tokens = 0
+    citations = _frontend_citations(result)
+    for index, section in enumerate(result.sections, start=1):
+        draft_tokens += _token_estimate(section.body)
+        await jc.events.emit(
+            TaskEvent(
+                library_id=jc.library_id,
+                task_id=jc.task_id,
+                seq=0,
+                timestamp=datetime.now(UTC),
+                type=TaskEventType.STAGE_COMPLETED,
+                stage_name="draft_delta",
+                payload={
+                    "sectionId": _section_id(section.heading, index),
+                    "markdownDelta": f"## {section.heading}\n\n{section.body}",
+                    "citations": [citation.chunk_id for citation in section.citations],
+                    "draftTokens": draft_tokens,
+                },
+            )
+        )
+    if citations:
+        await jc.events.emit(
+            TaskEvent(
+                library_id=jc.library_id,
+                task_id=jc.task_id,
+                seq=0,
+                timestamp=datetime.now(UTC),
+                type=TaskEventType.CITATION_ADDED,
+                payload={"citations": citations},
+            )
+        )
+
+
+def _frontend_citations(result: ReviewResult) -> list[dict[str, object]]:
+    seen: set[str] = set()
+    citations: list[dict[str, object]] = []
+    for section in result.sections:
+        for citation in section.citations:
+            if citation.chunk_id in seen:
+                continue
+            seen.add(citation.chunk_id)
+            citations.append(
+                {
+                    "id": citation.chunk_id,
+                    "type": "chunk",
+                    "author": citation.doc_id,
+                    "isNew": True,
+                }
+            )
+    return citations
+
+
+def _section_id(heading: str, index: int) -> str:
+    slug = "".join(ch.lower() if ch.isalnum() else "-" for ch in heading).strip("-")
+    while "--" in slug:
+        slug = slug.replace("--", "-")
+    return slug or f"section-{index}"
+
+
+def _token_estimate(text: str) -> int:
+    return max(1, len(text) // 4) if text else 0
 
 
 __all__ = ["run"]
