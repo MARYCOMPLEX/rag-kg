@@ -1,4 +1,5 @@
 import type { Evidence, StreamState } from '../../types/application'
+import { resolveApiBaseUrl } from './apiBaseUrl'
 
 export interface TaskStreamHandlers {
   onToken?: (token: string) => void
@@ -9,7 +10,7 @@ export interface TaskStreamHandlers {
   onError?: (error: unknown) => void
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
+const API_BASE_URL = resolveApiBaseUrl()
 
 function buildStreamUrl(streamUrl: string) {
   return new URL(streamUrl, API_BASE_URL || window.location.origin).href

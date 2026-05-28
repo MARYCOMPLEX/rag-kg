@@ -296,13 +296,23 @@ OpenAPI remains the single source of truth. Entries here are requests only; once
   - Empty review state renders without fake citations, fake draft text, or fake stats.
   - Backend streams or returns draft section content with citation IDs so frontend can render inline citation buttons without hardcoded prose.
   - Frontend can replace `web/src/mocks/review.ts` with a repository-backed store and preserve background, cancel, regenerate, loading, empty, error, and retry feedback.
-- Status: requested
+- Status: verified
 - Frontend clarification note:
   - Time: 2026-05-27 10:59 +08:00
   - Issue: #2
   - Current frontend behavior: `web/src/stores/review.ts` seeds pipeline, citations, and stats from `web/src/mocks/review.ts`; `ReviewDraftStream.vue` hardcodes the draft document body and citation markers; `startTaskRuntime()` increments progress and token counts with `window.setInterval`; cancel/regenerate only push local toasts.
   - Requested backend contract: provide a current run loader, create/start endpoint, section regenerate endpoint, cancel endpoint, and SSE event payloads before frontend removes the mock review data and timer-based progress.
   - Frontend follow-up after OpenAPI update: add a review repository, move review state loading/mutations into the store, connect create/regenerate/cancel to real endpoints, replace hardcoded draft prose with `draft.sections`, and connect stream updates through `taskStreamClient`.
+- Frontend verification note:
+  - Time: 2026-05-29 00:00 +08:00
+  - Backend SHA tested: `7e47ad572381c46c10c9af52ca1ae7080f9f1989`
+  - Frontend SHA before this log update: `6092e6ff4828ceb5443181ff433ed42b8c8c6614`
+  - `GET /api/libraries/rag-agent/reviews/current`: verified `200 { run: null }`.
+  - `POST /api/libraries/rag-agent/reviews` with `{}`: verified `202` with `run`, `pipelineSteps`, `runStats`, `citations`, `draft`, and `streamUrl`.
+  - `POST /api/libraries/rag-agent/reviews/01KSQMZ3DYZZM9154X829ESJPA/sections/retrieval-augmented-generation-for-knowledge-intensive-tasks:regenerate`: verified `202` with the same contracted snapshot shape and a new queued run.
+  - `POST /api/libraries/rag-agent/reviews/01KSQN47S56STMVMD0RTBHF5DV:cancel`: verified `200` with warning feedback and a cancelled `run`.
+  - Browser smoke at `http://127.0.0.1:5176/libraries/rag-agent/review`: verified empty state, start review, queued/run view, live pipeline/draft/citation stream, and background cancel control through the Vite proxy.
+  - Browser smoke at `http://127.0.0.1:5176/libraries/frontend-smoke-040442/review`: empty state rendered, but start review failed with `503 UPSTREAM_ERROR` because the backend task store rejected `library_id=frontend-smoke-040442` as a foreign-key miss.
 - Frontend cleanup note:
   - Time: 2026-05-27 12:47 +08:00
   - Issue: #2

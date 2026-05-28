@@ -1,4 +1,10 @@
-import type { ReviewCitation, ReviewDraftContent, ReviewPipelineStep, ReviewRunStat } from '../types/application'
+import type {
+  ReviewCitation,
+  ReviewDraft,
+  ReviewPipelineStep,
+  ReviewRunStat,
+  ReviewSnapshot,
+} from '../domain/review/types'
 
 export const reviewPipelineSteps: ReviewPipelineStep[] = [
   { id: 'decompose', label: 'Decompose into subtopics', status: 'done' },
@@ -41,62 +47,46 @@ export const reviewRunStats: ReviewRunStat[] = [
   { label: 'ETA', value: '~03:30', accent: true },
 ]
 
-export const reviewDraftContent: ReviewDraftContent = {
+export const reviewDraftContent: ReviewDraft = {
   title: 'Seeded review draft\n2024-2025',
-  metadata: ['Mock Author', 'May 16 2025', '14,328 tokens'],
-  badge: 'Draft',
-  runningLabel: 'Drafting subtopic 2',
-  pausedLabel: 'Generation paused',
+  authors: 'Mock Author',
+  generatedAtLabel: 'May 16 2025',
+  badgeLabel: 'Draft',
+  totalTokensLabel: '14,328 tokens',
+  draftTokens: 324,
+  draftTokenLimit: 800,
   modelLabel: 'Haiku 4.5',
-  tokenLimit: 800,
+  statusLabel: 'Drafting subtopic 2',
   sections: [
     {
       id: 'pre-trained-models',
-      heading: '## 1. Pre-trained models',
-      paragraphs: [
-        {
-          id: 'model-alignment',
-          segments: [
-            {
-              text: 'Recent advancements in GraphRAG have heavily leveraged large pre-trained models to align unstructured text with structured knowledge graphs',
-              citation: { id: '1', label: '[1]', ariaLabel: 'Open citation 1' },
-            },
-            {
-              text: '. By embedding both nodes and relationships into high-dimensional vector spaces, systems can perform semantic retrieval over graphs with unprecedented accuracy',
-              citation: { id: '2', label: '[2]', ariaLabel: 'Open citation 2' },
-            },
-            {
-              text: '. Furthermore, fine-tuning techniques applied to domain-specific corpora have shown significant improvements in reducing hallucination rates',
-              citation: { id: '3', label: '[3]', ariaLabel: 'Open citation 3' },
-            },
-            { text: '.' },
-          ],
-        },
-      ],
+      heading: '1. Pre-trained models',
+      markdown: 'Recent advancements in GraphRAG have heavily leveraged large pre-trained models to align unstructured text with structured knowledge graphs. By embedding both nodes and relationships into high-dimensional vector spaces, systems can perform semantic retrieval over graphs with unprecedented accuracy. Furthermore, fine-tuning techniques applied to domain-specific corpora have shown significant improvements in reducing hallucination rates.',
+      citations: ['1', '2', '3'],
     },
     {
       id: 'hierarchical-kg',
-      heading: '## 2. Hierarchical KG',
-      paragraphs: [
-        {
-          id: 'hierarchical-reasoning',
-          trailingCaret: true,
-          segments: [
-            {
-              text: 'The integration of hierarchical structures within Knowledge Graphs represents a paradigm shift for complex reasoning tasks',
-              citation: { id: '4', label: '[4]', ariaLabel: 'Open citation 4' },
-            },
-            {
-              text: '. Instead of treating all entities uniformly, modern pipelines segment sub-graphs into distinct abstraction layers. This allows the RAG system to traverse from abstract concepts down to specific facts seamlessly',
-              citation: { id: '5', label: '[5]', ariaLabel: 'Open citation 5' },
-            },
-            {
-              text: '. Current methodologies emphasize community detection algorithms to generate these hierarchies dynamically during the ingestion phase, which significantly optimizes context window utilization during synthesis',
-              citation: { id: 'unsubstantiated', label: '[?]', ariaLabel: 'Unsubstantiated citation', warning: true },
-            },
-          ],
-        },
-      ],
+      heading: '2. Hierarchical KG',
+      markdown: 'The integration of hierarchical structures within Knowledge Graphs represents a paradigm shift for complex reasoning tasks. Instead of treating all entities uniformly, modern pipelines segment sub-graphs into distinct abstraction layers. This allows the RAG system to traverse from abstract concepts down to specific facts seamlessly. Current methodologies emphasize community detection algorithms to generate these hierarchies dynamically during the ingestion phase, which significantly optimizes context window utilization during synthesis.',
+      citations: ['4', '5'],
+      unsubstantiated: true,
     },
   ],
+}
+
+export const reviewSnapshot: ReviewSnapshot = {
+  run: {
+    id: 'mock-review-run',
+    libraryId: 'rag-agent',
+    status: 'running',
+    progress: 47,
+    taskId: 'mock-review-task',
+    streamUrl: '',
+    backgrounded: false,
+  },
+  pipelineSteps: reviewPipelineSteps,
+  runStats: reviewRunStats,
+  citations: reviewCitations,
+  draft: reviewDraftContent,
+  streamUrl: '',
 }

@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import type { ReviewDraftContent } from '../../types/application'
+import { computed } from 'vue'
+import type { ReviewDraft } from '../../domain/review/types'
 import AppIcon from '../base/AppIcon.vue'
 
-defineProps<{
-  draft: ReviewDraftContent
+const props = defineProps<{
+  draft: ReviewDraft
   running: boolean
   draftTokens: number
 }>()
@@ -11,6 +12,8 @@ defineProps<{
 const emit = defineEmits<{
   citation: [id: string]
 }>()
+
+const authorLabel = computed(() => Array.isArray(props.draft.authors) ? props.draft.authors.join(', ') : props.draft.authors)
 </script>
 
 <template>
@@ -18,40 +21,49 @@ const emit = defineEmits<{
     <header class="draft-document-header">
       <h1>{{ draft.title }}</h1>
       <div class="draft-metadata">
-        <span class="draft-badge">{{ draft.badge }}</span>
-        <span v-for="item in draft.metadata" :key="item">{{ item }}</span>
+        <span class="draft-badge">{{ draft.badgeLabel }}</span>
+        <span>{{ authorLabel }}</span>
+        <span>{{ draft.generatedAtLabel }}</span>
+        <span>{{ draft.totalTokensLabel }}</span>
       </div>
     </header>
 
     <div class="draft-document-body">
-      <template v-for="section in draft.sections" :key="section.id">
+      <section v-for="section in draft.sections" :key="section.id" class="draft-section">
         <h2>{{ section.heading }}</h2>
-        <p v-for="paragraph in section.paragraphs" :key="paragraph.id">
-          <template v-for="(segment, index) in paragraph.segments" :key="`${paragraph.id}-${index}`">
-            {{ segment.text }}
-            <button
-              v-if="segment.citation"
-              class="draft-citation"
-              :class="{ 'is-warning': segment.citation.warning }"
-              type="button"
-              :aria-label="segment.citation.ariaLabel"
-              @click="emit('citation', segment.citation.id)"
-            >
-              {{ segment.citation.label }}
-            </button>
-          </template>
-          <span v-if="running && paragraph.trailingCaret" class="draft-caret" aria-hidden="true" />
+        <p class="draft-markdown">
+          {{ section.markdown }}
         </p>
-      </template>
+        <div v-if="section.citations.length" class="draft-citation-row">
+          <button
+            v-for="citationId in section.citations"
+            :key="`${section.id}-${citationId}`"
+            class="draft-citation"
+            :class="{ 'is-warning': section.unsubstantiated }"
+            type="button"
+            :aria-label="`Open citation ${citationId}`"
+            @click="emit('citation', citationId)"
+          >
+            [{{ citationId }}]
+          </button>
+        </div>
+        <p v-if="section.unsubstantiated" class="draft-warning">
+          Unsubstantiated content flagged in this section.
+        </p>
+      </section>
+
+      <div v-if="!draft.sections.length" class="draft-empty">
+        No draft sections yet.
+      </div>
     </div>
 
     <footer class="draft-stream-status">
       <span class="drafting-state" :class="{ paused: !running }">
         <AppIcon name="pencil" :size="15" />
-        {{ running ? draft.runningLabel : draft.pausedLabel }}
+        {{ draft.statusLabel }}
       </span>
       <span>{{ draft.modelLabel }}</span>
-      <span>{{ draftTokens }} / {{ draft.tokenLimit }} tokens</span>
+      <span>{{ draftTokens }} / {{ draft.draftTokenLimit }} tokens</span>
     </footer>
   </article>
 </template>
@@ -117,8 +129,12 @@ const emit = defineEmits<{
   line-height: 22px;
 }
 
+.draft-section + .draft-section {
+  margin-top: 24px;
+}
+
 .draft-document-body h2 {
-  margin: 24px 0 8px;
+  margin: 0 0 8px;
   color: var(--color-on-surface);
   font-family: "Hanken Grotesk", Inter, sans-serif;
   font-size: 20px;
@@ -127,19 +143,26 @@ const emit = defineEmits<{
   line-height: 28px;
 }
 
-.draft-document-body p {
-  margin: 0 0 16px;
+.draft-markdown {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.draft-citation-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
 }
 
 .draft-citation {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  margin-left: 4px;
   border: 1px solid var(--color-alpha-citation-35);
   border-radius: var(--radius-xs);
   background: var(--color-alpha-citation-10);
-  padding: 0 4px;
+  padding: 0 6px;
   color: var(--color-on-secondary-container);
   font-size: 12px;
   font-weight: 600;
@@ -159,14 +182,19 @@ const emit = defineEmits<{
   color: var(--color-on-error-container);
 }
 
-.draft-caret {
-  display: inline-block;
-  width: 8px;
-  height: 16px;
-  margin-left: 4px;
-  background: var(--color-primary);
-  vertical-align: middle;
-  animation: drafting-caret var(--motion-duration-blink) linear infinite;
+.draft-warning {
+  margin: 8px 0 0;
+  color: var(--color-error);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.draft-empty {
+  border: 1px dashed var(--color-outline-variant);
+  border-radius: var(--radius-control);
+  background: var(--color-surface-container-lowest);
+  padding: 16px;
+  color: var(--color-on-surface-variant);
 }
 
 .draft-stream-status {

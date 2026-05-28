@@ -28,6 +28,28 @@ Use this log during local integration, E2E testing, and contract verification. E
 
 ## Logs
 
+## 2026-05-28 23:59 - Review lifecycle API-mode verified through proxy
+
+- Time: 2026-05-28 23:59 +08:00
+- Agent: Frontend Agent
+- Issue: #2
+- Backend SHA: `7e47ad572381c46c10c9af52ca1ae7080f9f1989`
+- Frontend SHA before this log update: `6092e6ff4828ceb5443181ff433ed42b8c8c6614`
+- Verification:
+  - Added a Vite dev proxy for `/api` and switched API clients to relative URLs when `VITE_API_PROXY_TARGET` is set, so browser API-mode requests stay same-origin during local review work.
+  - `GET /api/libraries/rag-agent/reviews/current`: passed with `200 { run: null }`.
+  - `POST /api/libraries/rag-agent/reviews` with `{}`: passed with `202` and the contracted snapshot shape (`run`, `pipelineSteps`, `runStats`, `citations`, `draft`, `streamUrl`).
+  - `POST /api/libraries/rag-agent/reviews/01KSQMZ3DYZZM9154X829ESJPA/sections/retrieval-augmented-generation-for-knowledge-intensive-tasks:regenerate`: passed with `202` and a new queued run snapshot.
+  - `POST /api/libraries/rag-agent/reviews/01KSQN47S56STMVMD0RTBHF5DV:cancel`: passed with warning feedback and a cancelled `run`.
+  - Browser smoke at `http://127.0.0.1:5176/libraries/rag-agent/review`: passed API-mode empty state, start-review action, queued/live run rendering, live pipeline and draft updates, citation updates, and cancel control through the Vite proxy.
+  - Browser smoke at `http://127.0.0.1:5176/libraries/frontend-smoke-040442/review`: empty state rendered, but start review returned `503 UPSTREAM_ERROR` because the backend task store rejected `library_id=frontend-smoke-040442` as a foreign-key miss.
+  - `pnpm typecheck`: passed.
+  - `pnpm build`: passed.
+- Fix status: verified
+- Backend note:
+  - The review lifecycle contract is now exercised end to end for `rag-agent`.
+  - The smoke library shows a backend data consistency issue on create that is separate from the contract itself.
+
 ## 2026-05-27 18:58 - Evaluation dashboard API-mode retest verified
 
 - Time: 2026-05-27 18:58 +08:00

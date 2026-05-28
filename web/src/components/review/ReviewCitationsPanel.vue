@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { nextTick, ref, watch } from 'vue'
-import type { ReviewCitation } from '../../types/application'
+import type { ReviewCitation } from '../../domain/review/types'
 import AppIcon from '../base/AppIcon.vue'
 
 const props = defineProps<{

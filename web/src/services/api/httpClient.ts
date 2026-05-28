@@ -14,7 +14,9 @@ export class ApiError extends Error {
   }
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
+import { resolveApiBaseUrl } from './apiBaseUrl'
+
+const API_BASE_URL = resolveApiBaseUrl()
 
 interface ErrorEnvelope {
   code: string
