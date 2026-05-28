@@ -69,11 +69,15 @@ web/test-results/
 *.sqlite3
 *.db
 *.db-journal
+*.pid
 *.zip
 storage/
 tmp/
 temp/
 .cache/
+
+# Local verification libraries created by agents
+serve/data/libraries/frontend-smoke-*/
 
 # Docker / compose local overrides
 docker-compose.override.yml
