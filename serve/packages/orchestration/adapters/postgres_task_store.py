@@ -31,8 +31,10 @@ from sqlalchemy import (
     select,
     update,
 )
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
+from packages.core.models import Library
 from packages.observability import with_span
 from packages.orchestration.queue import (
     BudgetSpec,
@@ -50,6 +52,19 @@ logger = structlog.get_logger(__name__)
 # ----------------------------------------------------------------------
 
 _metadata = MetaData()
+
+libraries_table = Table(
+    "libraries",
+    _metadata,
+    Column("library_id", Text, primary_key=True),
+    Column("name", Text, nullable=False),
+    Column("description", Text, nullable=True),
+    Column("created_at", DateTime(timezone=True), nullable=False),
+    Column("domain", Text, nullable=True),
+    Column("language", Text, nullable=True),
+    Column("status", Text, nullable=False),
+    Column("status_updated_at", DateTime(timezone=True), nullable=True),
+)
 
 tasks_table = Table(
     "tasks",
@@ -120,6 +135,41 @@ class PostgresTaskStore:
         self._sessionmaker: async_sessionmaker[AsyncSession] = async_sessionmaker(
             engine, expire_on_commit=False
         )
+
+    async def ensure_library(self, library: Library) -> None:
+        """Upsert a Library row so task-table FK checks match API-visible libraries."""
+        async with with_span(
+            "orchestration.postgres.library_ensure",
+            library_id=library.library_id,
+        ):
+            row = {
+                "library_id": library.library_id,
+                "name": library.name,
+                "description": library.description,
+                "created_at": library.created_at,
+                "domain": library.domain,
+                "language": library.language,
+                "status": str(library.status),
+                "status_updated_at": library.status_updated_at,
+            }
+            stmt = pg_insert(libraries_table).values(**row)
+            stmt = stmt.on_conflict_do_update(
+                index_elements=[libraries_table.c.library_id],
+                set_={
+                    "name": stmt.excluded.name,
+                    "description": stmt.excluded.description,
+                    "domain": stmt.excluded.domain,
+                    "language": stmt.excluded.language,
+                    "status": stmt.excluded.status,
+                    "status_updated_at": stmt.excluded.status_updated_at,
+                },
+            )
+            async with self._sessionmaker() as session, session.begin():
+                await session.execute(stmt)
+            await logger.ainfo(
+                "library_materialized_for_tasks",
+                library_id=library.library_id,
+            )
 
     async def insert(
         self,

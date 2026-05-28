@@ -10,14 +10,16 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field
 
 from apps._shared.factories import AppContainer
-from apps.api._task_deps import get_task_event_bus, get_task_queue
+from apps.api._task_deps import get_task_event_bus, get_task_queue, get_task_store
 from apps.api.auth import Principal, get_current_principal
 from apps.api.deps import get_container
 from apps.api.middleware.sse_bridge import parse_last_event_id
 from apps.api.sse import SSE_HEADERS, SSE_MEDIA_TYPE, encode_event
 from packages.core.api_errors import ErrorCode, ErrorEnvelope
 from packages.core.errors import LibraryNotFoundError
-from packages.orchestration.errors import TaskNotFoundError
+from packages.core.models import Library
+from packages.orchestration.adapters.postgres_task_store import PostgresTaskStore
+from packages.orchestration.errors import QueueFullError, TaskNotFoundError
 from packages.orchestration.queue import (
     TaskEvent,
     TaskEventBus,
@@ -184,6 +186,23 @@ async def _ensure_library(container: AppContainer, library_id: str) -> None:
         raise LibraryNotFoundError(library_id)
 
 
+async def _get_library(container: AppContainer, library_id: str) -> Library:
+    library = await container.library_repo.get(library_id)
+    if library is None:
+        raise LibraryNotFoundError(library_id)
+    return library
+
+
+async def _ensure_task_store_library(store: PostgresTaskStore, library: Library) -> None:
+    try:
+        await store.ensure_library(library)
+    except QueueFullError:
+        raise
+    except Exception as exc:
+        msg = f"Task store library sync failed: {exc}"
+        raise QueueFullError(msg) from exc
+
+
 @router.get(
     "/current",
     response_model=ReviewCurrentResponse,
@@ -213,10 +232,12 @@ async def create_review_run(
     library_id: str = Path(..., description="Library slug"),
     container: AppContainer = Depends(get_container),
     queue: TaskQueue = Depends(get_task_queue),
+    store: PostgresTaskStore = Depends(get_task_store),
     _principal: Principal = Depends(get_current_principal),
 ) -> ReviewAcceptedResponse:
-    await _ensure_library(container, library_id)
-    topic = await _resolve_create_topic(container, library_id, body)
+    library = await _get_library(container, library_id)
+    await _ensure_task_store_library(store, library)
+    topic = _resolve_create_topic(library, body)
     handle = await queue.enqueue(
         library_id,
         TaskSpec(
@@ -247,9 +268,10 @@ async def regenerate_review_section(
     section_id: str = Path(..., description="Draft section identifier"),
     container: AppContainer = Depends(get_container),
     queue: TaskQueue = Depends(get_task_queue),
+    store: PostgresTaskStore = Depends(get_task_store),
     _principal: Principal = Depends(get_current_principal),
 ) -> ReviewAcceptedResponse:
-    await _ensure_library(container, library_id)
+    library = await _get_library(container, library_id)
     state = await queue.get(library_id, review_run_id)
     if state is None or state.task_type != "run_review":
         raise TaskNotFoundError(library_id, review_run_id)
@@ -259,6 +281,7 @@ async def regenerate_review_section(
             detail=f"Review run is still active: {review_run_id}",
         )
     topic = _regeneration_topic(section_id, body)
+    await _ensure_task_store_library(store, library)
     handle = await queue.enqueue(
         library_id,
         TaskSpec(
@@ -365,17 +388,10 @@ async def _latest_active_review_state(queue: TaskQueue, library_id: str) -> Task
     return max(states, key=lambda state: state.enqueued_at)
 
 
-async def _resolve_create_topic(
-    container: AppContainer,
-    library_id: str,
-    body: ReviewCreateRequest,
-) -> str:
+def _resolve_create_topic(library: Library, body: ReviewCreateRequest) -> str:
     for candidate in (body.topic, body.instructions):
         if candidate is not None and candidate.strip():
             return candidate.strip()
-    library = await container.library_repo.get(library_id)
-    if library is None:
-        raise LibraryNotFoundError(library_id)
     return library.name
 
 

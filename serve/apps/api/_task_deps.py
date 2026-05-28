@@ -94,6 +94,12 @@ async def get_task_queue(
     return bundle.queue
 
 
+async def get_task_store(
+    bundle: _TaskBundle = Depends(get_task_bundle),
+) -> PostgresTaskStore:
+    return bundle.store
+
+
 async def get_task_event_bus(
     bundle: _TaskBundle = Depends(get_task_bundle),
 ) -> TaskEventBus:

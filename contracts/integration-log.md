@@ -28,6 +28,26 @@ Use this log during local integration, E2E testing, and contract verification. E
 
 ## Logs
 
+## 2026-05-29 00:21 - Review create task-store library FK fix
+
+- Time: 2026-05-29 00:21 +08:00
+- Agent: Backend Agent
+- Issue: #3
+- Cause: Frontend review API-mode verification found `frontend-smoke-040442` in `GET /api/libraries`, but `POST /api/libraries/frontend-smoke-040442/reviews` returned `503 UPSTREAM_ERROR` because the durable task store rejected `library_id=frontend-smoke-040442` as a missing Postgres `libraries` FK.
+- Fix status: fixed
+- Fix:
+  - Added task-store library materialization before frontend review create/regenerate enqueue.
+  - The materialization upserts the API-visible filesystem `Library` metadata into the Postgres `libraries` table used by durable task FKs.
+  - Preserved the existing `/api/libraries/{libraryId}/reviews*` OpenAPI response and error shapes; no frontend field changes are required.
+- Verification:
+  - `uv run --group test pytest tests\integration\api\test_frontend_review_routes.py -q`: passed, 11 tests.
+  - `uv run --group test pytest tests\integration\api\test_frontend_review_routes.py tests\integration\worker\test_run_review_job.py -q`: passed, 13 tests.
+  - `uv run --group dev ruff check apps\api\_task_deps.py apps\api\routes\frontend_reviews.py packages\orchestration\adapters\postgres_task_store.py tests\integration\api\test_frontend_review_routes.py`: passed.
+  - `uv run --group dev ruff format --check apps\api\_task_deps.py apps\api\routes\frontend_reviews.py packages\orchestration\adapters\postgres_task_store.py tests\integration\api\test_frontend_review_routes.py`: passed.
+  - `uv run python -c "import yaml; yaml.safe_load(open('..\\contracts\\openapi.yaml', encoding='utf-8')); print('openapi yaml parsed')"`: passed.
+  - `make typecheck`: failed on pre-existing unrelated `apps/cli/main.py` adapter-list type errors at lines 208, 210, and 212; touched files produced no pyright errors.
+  - Live smoke from a short-lived local API on `127.0.0.1:8014`: `GET /api/libraries` returned `frontend-smoke-040442` and `rag-agent`; `POST /api/libraries/frontend-smoke-040442/reviews` returned `202` with task `01KSQP72FE99F0XGR8099MS316`; `POST /api/libraries/rag-agent/reviews` returned `202` with task `01KSQP72M5ZN0Y5DSF6MN4J7JY`.
+
 ## 2026-05-28 22:13 - Review lifecycle durable stream runtime handoff
 
 - Time: 2026-05-28 22:13 +08:00

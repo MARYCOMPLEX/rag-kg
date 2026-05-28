@@ -6,7 +6,7 @@ from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -24,6 +24,7 @@ from packages.context.prompt_composer import PromptComposer
 from packages.context.protocols import ContextBudget
 from packages.context.service import ContextService
 from packages.core.config import Settings
+from packages.core.models import Library
 from packages.llm.protocols import LLMResponse
 from packages.orchestration.errors import QueueFullError
 from packages.orchestration.queue import (
@@ -101,6 +102,17 @@ class _FakeTaskQueue(TaskQueue):
         return tuple(handles)
 
 
+class _FakeTaskStore:
+    def __init__(self) -> None:
+        self.ensured: list[str] = []
+        self.fail_ensure = False
+
+    async def ensure_library(self, library: Library) -> None:
+        if self.fail_ensure:
+            raise RuntimeError("library table unavailable")
+        self.ensured.append(library.library_id)
+
+
 class _FakeTaskEventBus(TaskEventBus):
     def __init__(self) -> None:
         self.events: dict[tuple[str, str], list[TaskEvent]] = {}
@@ -130,6 +142,7 @@ class _Harness:
     client: AsyncClient
     queue: _FakeTaskQueue
     bus: _FakeTaskEventBus
+    store: _FakeTaskStore
 
 
 def _build_container(tmp_path: Path) -> AppContainer:
@@ -188,11 +201,12 @@ async def harness(tmp_path: Path) -> AsyncIterator[_Harness]:
     await container.library_repo.create(make_library(library_id="review-lib", name="Review Lib"))
     queue = _FakeTaskQueue()
     bus = _FakeTaskEventBus()
+    store = _FakeTaskStore()
     app.dependency_overrides[get_container] = lambda: container
-    set_task_bundle_for_testing(queue, bus)
+    set_task_bundle_for_testing(queue, bus, store=cast(Any, store))
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
-        yield _Harness(client=client, queue=queue, bus=bus)
+        yield _Harness(client=client, queue=queue, bus=bus, store=store)
     app.dependency_overrides.clear()
     await reset_task_bundle()
 
@@ -228,6 +242,7 @@ async def test_create_review_enqueues_durable_run_review_task(harness: _Harness)
     assert body["draft"]["sections"] == []
 
     assert len(harness.queue.enqueued) == 1
+    assert harness.store.ensured == ["review-lib"]
     spec = harness.queue.enqueued[0]
     assert spec.library_id == "review-lib"
     assert spec.task_type == "run_review"
@@ -382,6 +397,38 @@ async def test_create_review_queue_unavailable_uses_upstream_error(
     body = res.json()
     assert body["code"] == "UPSTREAM_ERROR"
     assert body["message"] == "Review task queue unavailable"
+
+
+async def test_create_review_without_topic_uses_api_library_name(
+    harness: _Harness,
+) -> None:
+    res = await harness.client.post(
+        "/api/libraries/review-lib/reviews",
+        json={},
+    )
+
+    assert res.status_code == 202
+    body = res.json()
+    assert body["draft"]["title"] == "Review Lib"
+    assert harness.store.ensured == ["review-lib"]
+    assert len(harness.queue.enqueued) == 1
+
+
+async def test_create_review_task_store_library_sync_failure_uses_upstream_error(
+    harness: _Harness,
+) -> None:
+    harness.store.fail_ensure = True
+
+    res = await harness.client.post(
+        "/api/libraries/review-lib/reviews",
+        json={"topic": "GraphRAG"},
+    )
+
+    assert res.status_code == 503
+    body = res.json()
+    assert body["code"] == "UPSTREAM_ERROR"
+    assert body["message"].startswith("Task store library sync failed")
+    assert harness.queue.enqueued == []
 
 
 async def test_review_missing_library_uses_library_error(harness: _Harness) -> None:

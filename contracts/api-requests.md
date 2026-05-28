@@ -348,3 +348,8 @@ OpenAPI remains the single source of truth. Entries here are requests only; once
   - `POST /api/libraries/rag-agent/reviews` returned `202` with task `01KSQETREFN54TP1BF6826BADP`; the returned stream emitted durable `status`, `pipeline`, `draft_delta`, `citations`, `stats`, and `done` events.
   - The live stream contained 6 `draft_delta` events and grounded citations including `2404.16130-graphrag-local-to-global::p12::88`, `2404.16130-graphrag-local-to-global::p2::9`, and `2401.15884-corrective-rag::p7::52`.
   - Backend review lifecycle is ready for frontend API-mode verification after this branch is pushed.
+- Backend fix note:
+  - Time: 2026-05-29 00:21 +08:00
+  - Frontend verification found that `frontend-smoke-040442` appeared in `GET /api/libraries` but `POST /api/libraries/frontend-smoke-040442/reviews` failed with `503 UPSTREAM_ERROR` because the durable task store rejected the library FK.
+  - The review adapter now materializes the API-visible filesystem library row into the Postgres `libraries` table before enqueuing `run_review`, keeping the existing review contract unchanged.
+  - Fresh live smoke from the backend worktree on `127.0.0.1:8014` returned `202` for both `POST /api/libraries/frontend-smoke-040442/reviews` and `POST /api/libraries/rag-agent/reviews`.
