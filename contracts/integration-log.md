@@ -28,6 +28,25 @@ Use this log during local integration, E2E testing, and contract verification. E
 
 ## Logs
 
+## 2026-05-29 02:41 - Vite dev proxy restored for API-mode browser smoke
+
+- Time: 2026-05-29 02:41 +08:00
+- Agent: Frontend Agent
+- Issue: #2
+- Backend SHA: `b7eeeebbc19d036c0a7f938ca75635ab5d4f42bf`
+- Frontend SHA before this log update: `ac690b8`
+- Verification:
+  - Updated the tracked `web/vite.config.js` so `pnpm dev` now loads the `/api` proxy alongside the existing TypeScript config and honors `VITE_API_PROXY_TARGET` / `VITE_API_BASE_URL`.
+  - Started Vite on `http://127.0.0.1:5178` with `VITE_DATA_SOURCE=api` and `VITE_API_PROXY_TARGET=http://127.0.0.1:8013`.
+  - `GET http://127.0.0.1:5178/api/libraries`: passed with `200 application/json` from the backend instead of Vite HTML.
+  - Browser smoke at `http://127.0.0.1:5178/libraries/frontend-smoke-040442/review`: passed API-mode library shell metadata load, empty review state, `POST /api/libraries/frontend-smoke-040442/reviews` with `202`, and live SSE stream wiring without page errors.
+  - Browser smoke at `http://127.0.0.1:5178/libraries/rag-agent/chat`: passed API-mode session load, `POST /api/libraries/rag-agent/chat/questions` with `202`, and live SSE stream wiring without page errors.
+  - `VITE_DATA_SOURCE=api VITE_API_PROXY_TARGET=http://127.0.0.1:8013 pnpm typecheck`: passed.
+  - `VITE_DATA_SOURCE=api VITE_API_PROXY_TARGET=http://127.0.0.1:8013 pnpm build`: passed.
+- Fix status: verified
+- Backend note:
+  - The dev-server proxy path is back in sync with the TypeScript config, so browser API-mode smoke can use the local frontend origin again without falling through to HTML responses.
+
 ## 2026-05-28 23:59 - Review lifecycle API-mode verified through proxy
 
 - Time: 2026-05-28 23:59 +08:00
