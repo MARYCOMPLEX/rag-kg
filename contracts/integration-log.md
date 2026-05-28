@@ -28,6 +28,26 @@ Use this log during local integration, E2E testing, and contract verification. E
 
 ## Logs
 
+## 2026-05-28 22:13 - Review lifecycle durable stream runtime handoff
+
+- Time: 2026-05-28 22:13 +08:00
+- Agent: Backend Agent
+- Issue: #3
+- Cause: The first review lifecycle live smoke produced durable `status`, `pipeline`, `stats`, and `done` events but no live `draft_delta` or `citations`, so frontend verification was held.
+- Fix status: fixed
+- Fix:
+  - Hardened the real review outline parser to accept JSON arrays and numbered/bulleted outline lists in addition to the existing object shape.
+  - Kept the existing durable `/api/libraries/{libraryId}/reviews*` contract and route behavior unchanged.
+  - Added unit coverage for JSON-array and numbered-list outline outputs.
+- Verification:
+  - `uv run --group test pytest tests/unit/test_review_task.py tests/unit/orchestration/test_review_citation_style.py -q`: passed, 16 tests.
+  - `uv run --group test pytest tests/integration/api/test_frontend_review_routes.py tests/integration/worker/test_run_review_job.py -q`: passed, 11 tests.
+  - `uv run --group dev ruff check packages/orchestration/tasks/review_task.py tests/unit/test_review_task.py apps/worker/jobs/run_review.py apps/api/routes/frontend_reviews.py tests/integration/api/test_frontend_review_routes.py tests/integration/worker/test_run_review_job.py`: passed.
+  - `uv run --group dev ruff format --check packages/orchestration/tasks/review_task.py tests/unit/test_review_task.py apps/worker/jobs/run_review.py apps/api/routes/frontend_reviews.py tests/integration/api/test_frontend_review_routes.py tests/integration/worker/test_run_review_job.py`: passed.
+  - `uv run python -c "import yaml; yaml.safe_load(open('..\\contracts\\openapi.yaml', encoding='utf-8')); print('openapi yaml parsed')"`: passed.
+  - `make typecheck`: failed on pre-existing unrelated `apps/cli/main.py` adapter-list type errors at lines 208, 210, and 212; the touched review files produced no pyright errors.
+  - Live smoke on `127.0.0.1:8013` with isolated `REDIS_URL=redis://localhost:6379/15`, local Postgres task store, Redis event bus, Arq worker, SiliconFlow LLM/embeddings, and the ingested `rag-agent` vector corpus: `POST /api/libraries/rag-agent/reviews` returned `202` with task `01KSQETREFN54TP1BF6826BADP`; SSE emitted event counts `status: 3`, `pipeline: 20`, `draft_delta: 6`, `citations: 1`, `stats: 1`, `done: 1`, `error: 0`.
+
 ## 2026-05-28 17:05 - Frontend review lifecycle API slice
 
 - Time: 2026-05-28 17:05 +08:00

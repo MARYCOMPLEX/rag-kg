@@ -25,9 +25,7 @@ import re
 import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from typing import Literal
-
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from typing import Literal, cast
 
 from packages.core.models import Query
 from packages.llm.protocols import LLMClient, LLMResponse, Message
@@ -109,26 +107,32 @@ Write the abstract now."""
 # returned by the planner before constructing Citation objects.
 _CITATION_PATTERN = re.compile(r"\[([a-zA-Z0-9:_\-/.]+)\]")
 _JSON_BLOCK_RE = re.compile(r"\{.*\}", re.DOTALL)
+_JSON_ARRAY_RE = re.compile(r"\[.*\]", re.DOTALL)
+_OUTLINE_LINE_RE = re.compile(r"^(?:[-*]\s+|\d{1,2}[.)]\s+)(.+)$")
+_HEADING_KEYS = ("headings", "sections", "subtopics", "topics")
+_HEADING_ITEM_KEYS = ("heading", "title", "name")
 
 _SECTION_CONCURRENCY = 3
 _SNIPPET_LEN = 200
 
 
-def _extract_json_block(text: str) -> str | None:
-    """Best-effort: pull the largest balanced JSON object from LLM output."""
+def _strip_markdown_fence(text: str) -> str:
     text = text.strip()
     if text.startswith("```"):
         text = re.sub(r"^```(?:json)?\s*", "", text)
         text = re.sub(r"\s*```$", "", text)
+    return text
+
+
+def _extract_json_block(text: str) -> str | None:
+    """Best-effort: pull the largest JSON object from LLM output."""
+    text = _strip_markdown_fence(text)
+    if text.startswith("{") and text.endswith("}"):
+        return text
     match = _JSON_BLOCK_RE.search(text)
     if match is None:
         return None
     return match.group(0)
-
-
-class _OutlinePayload(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-    headings: list[str] = Field(default_factory=list)  # type: ignore[arg-type]
 
 
 @dataclass(frozen=True, slots=True)
@@ -399,15 +403,96 @@ class ReviewGenerationTask:
 
 
 def _parse_headings(text: str) -> list[str]:
-    """Best-effort parse of the outline JSON; on any failure, return []."""
-    block = _extract_json_block(text)
-    if block is None:
+    """Best-effort parse of real outline output; on failure, return []."""
+    for candidate in _outline_json_candidates(text):
+        try:
+            parsed: object = json.loads(candidate)
+        except json.JSONDecodeError:
+            continue
+        headings = _headings_from_json(parsed)
+        if headings:
+            return headings
+
+    return _headings_from_lines(text)
+
+
+def _outline_json_candidates(text: str) -> list[str]:
+    clean = _strip_markdown_fence(text)
+    candidates: list[str] = []
+    if (clean.startswith("{") and clean.endswith("}")) or (
+        clean.startswith("[") and clean.endswith("]")
+    ):
+        candidates.append(clean)
+    block = _extract_json_block(clean)
+    if block is not None:
+        candidates.append(block)
+    array_match = _JSON_ARRAY_RE.search(clean)
+    if array_match is not None:
+        candidates.append(array_match.group(0))
+
+    unique: list[str] = []
+    for candidate in candidates:
+        if candidate not in unique:
+            unique.append(candidate)
+    return unique
+
+
+def _headings_from_json(parsed: object) -> list[str]:
+    if isinstance(parsed, dict):
+        mapping = cast("dict[object, object]", parsed)
+        for key in _HEADING_KEYS:
+            value = mapping.get(key)
+            if isinstance(value, list):
+                headings = _headings_from_items(cast("list[object]", value))
+                if headings:
+                    return headings
         return []
-    try:
-        payload = _OutlinePayload.model_validate_json(block)
-    except (json.JSONDecodeError, ValidationError):
+    if isinstance(parsed, list):
+        return _headings_from_items(cast("list[object]", parsed))
+    return []
+
+
+def _headings_from_items(items: list[object]) -> list[str]:
+    raw: list[str] = []
+    for item in items:
+        if isinstance(item, str):
+            raw.append(item)
+            continue
+        if isinstance(item, dict):
+            mapping = cast("dict[object, object]", item)
+            for key in _HEADING_ITEM_KEYS:
+                value = mapping.get(key)
+                if isinstance(value, str):
+                    raw.append(value)
+                    break
+    return _clean_headings(raw)
+
+
+def _headings_from_lines(text: str) -> list[str]:
+    raw: list[str] = []
+    for line in _strip_markdown_fence(text).splitlines():
+        match = _OUTLINE_LINE_RE.match(line.strip())
+        if match is not None:
+            raw.append(match.group(1))
+    if len(raw) < 2:
         return []
-    return [h.strip() for h in payload.headings if h and h.strip()]
+    return _clean_headings(raw)
+
+
+def _clean_headings(items: list[str]) -> list[str]:
+    headings: list[str] = []
+    seen: set[str] = set()
+    for item in items:
+        heading = re.sub(r"^#+\s*", "", item).strip().strip("\"'`")
+        heading = heading.rstrip(".:").strip()
+        if not heading:
+            continue
+        key = heading.casefold()
+        if key in seen:
+            continue
+        seen.add(key)
+        headings.append(heading)
+    return headings
 
 
 def _format_context(evidence: tuple[RetrievedEvidence, ...]) -> str:

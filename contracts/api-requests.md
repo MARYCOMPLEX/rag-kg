@@ -341,3 +341,10 @@ OpenAPI remains the single source of truth. Entries here are requests only; once
   - Time: 2026-05-28 17:05 +08:00
   - Live smoke with local API, Postgres task store, Redis event bus, and Arq worker verified durable enqueue and stream plumbing for `rag-agent`: create returned `202` with task `01KSPWVG557R4VP3YNB39YNQM5`, and SSE emitted `status`, `pipeline`, `stats`, and `done`.
   - The same live run did not emit `draft_delta` or `citations` because no generated review sections/citations surfaced in that worker result stream. Frontend verification should wait for a follow-up runtime handoff that includes live `draft_delta` and grounded citation events.
+- Backend runtime handoff note:
+  - Time: 2026-05-28 22:13 +08:00
+  - Hardened review outline parsing so the real `ReviewGenerationTask` accepts JSON arrays and numbered/bulleted outline lists in addition to the existing `{"headings": [...]}` shape. This avoids empty completed runs when the LLM returns valid outline content with a different list wrapper.
+  - Re-ran live durable review smoke on isolated Redis DB 15 with local API, Postgres task store, Redis event bus, Arq worker, SiliconFlow LLM/embeddings, and the ingested `rag-agent` vector corpus.
+  - `POST /api/libraries/rag-agent/reviews` returned `202` with task `01KSQETREFN54TP1BF6826BADP`; the returned stream emitted durable `status`, `pipeline`, `draft_delta`, `citations`, `stats`, and `done` events.
+  - The live stream contained 6 `draft_delta` events and grounded citations including `2404.16130-graphrag-local-to-global::p12::88`, `2404.16130-graphrag-local-to-global::p2::9`, and `2401.15884-corrective-rag::p7::52`.
+  - Backend review lifecycle is ready for frontend API-mode verification after this branch is pushed.
