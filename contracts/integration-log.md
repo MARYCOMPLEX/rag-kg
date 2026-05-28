@@ -28,6 +28,24 @@ Use this log during local integration, E2E testing, and contract verification. E
 
 ## Logs
 
+## 2026-05-28 11:37 - Durable chat live runtime recheck
+
+- Time: 2026-05-28 11:37 +08:00
+- Agent: Backend Agent
+- Issue: #3
+- Cause: The durable chat code was pushed, but the previous live runtime check stopped at the Postgres task-store dependency before queue execution could be verified.
+- Fix status: in-progress
+- Fix:
+  - Created the expected `rkb` role/database in the already-running local `anyfast-postgres` container because port `5432` was occupied by that container instead of the project compose Postgres.
+  - Ran `uv run alembic upgrade head` against the `rkb` database.
+  - Seeded the real `rag-agent` library metadata row into Postgres so the durable `tasks.library_id` foreign key can validate the existing filesystem library.
+  - Kept backend code, OpenAPI, and production behavior unchanged.
+- Verification:
+  - `uv run --group test pytest tests/integration/api/test_frontend_chat_routes.py tests/integration/worker/test_run_chat_job.py -q`: passed, 10 tests, 1 existing Starlette deprecation warning.
+  - `uv run python -c "import yaml; yaml.safe_load(open('..\\contracts\\openapi.yaml', encoding='utf-8')); print('openapi yaml parsed')"`: passed.
+  - Live runtime smoke on port `8011`: `GET /healthz` returned `200`; `GET /api/libraries/rag-agent/chat/session` returned `200`; `POST /api/libraries/rag-agent/chat/questions` returned `202` with task id `01KSPAJ2YVQ350ZNPRCT141D7H`; Arq worker started with `run_run_chat`; SSE streamed durable `status` then terminal `error`.
+  - Current blocker: worker failed before grounded answer output because the embedding upstream returned `403 Forbidden` for `https://api.siliconflow.cn/v1/embeddings`. Frontend handoff remains blocked until the embedding API key/account/model access is fixed.
+
 ## 2026-05-28 03:30 - Durable chat task correction
 
 - Time: 2026-05-28 03:30 +08:00
@@ -49,7 +67,7 @@ Use this log during local integration, E2E testing, and contract verification. E
   - `make typecheck`: passed, 0 errors with 20 existing warnings outside this change.
   - `uv run python -c "import yaml; yaml.safe_load(open('..\\contracts\\openapi.yaml', encoding='utf-8')); print('openapi yaml parsed')"`: passed.
   - `make lint`: failed on pre-existing unrelated Ruff issues in `apps/api/_activity_reader.py`, `apps/api/_notification_reader.py`, and `scripts/generate_ui_images.py`.
-  - Runtime check: local Redis responds and Arq worker starts with `run_run_chat` registered for task type `run_chat`, but live `POST /api/libraries/rag-agent/chat/questions` returns `503 UPSTREAM_ERROR` because the configured Postgres role `rkb` does not exist. Frontend handoff remains blocked until the Postgres task store dependency is fixed.
+  - Runtime check: local Redis responds and Arq worker starts with `run_run_chat` registered for task type `run_chat`, but live `POST /api/libraries/rag-agent/chat/questions` returns `503 UPSTREAM_ERROR` because the configured Postgres role `rkb` does not exist. Superseded by the 2026-05-28 11:37 recheck above, which fixed the local Postgres setup and exposed the current embedding upstream `403 Forbidden` blocker.
 
 ## 2026-05-27 18:23 - Frontend chat session and stream API
 
