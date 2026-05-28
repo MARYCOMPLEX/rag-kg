@@ -213,7 +213,7 @@ OpenAPI remains the single source of truth. Entries here are requests only; once
   - Empty sessions return `200` with an empty `messages` array and an empty `evidence` array.
   - Question creation returns a pending assistant message immediately so the frontend can render loading/streaming state before the first token.
   - Frontend can replace `web/src/mocks/chat.ts` with repository/service-backed state.
-- Status: requested
+- Status: verified
 - Frontend clarification note:
   - Time: 2026-05-27 10:32 +08:00
   - Issue: #2
@@ -227,6 +227,23 @@ OpenAPI remains the single source of truth. Entries here are requests only; once
   - `ChatView.vue` now shows pending-contract empty states for the conversation and evidence panel while `/api/libraries/{libraryId}/chat/session`, `/api/libraries/{libraryId}/chat/questions`, and stream events remain uncontracted.
   - `useChatStore.sendQuestion()` is disabled in API mode and reports a traceable pending-contract toast instead of simulating a response.
   - Mock chat data remains available only when `VITE_DATA_SOURCE` is not `api`.
+- Frontend verification note:
+  - Time: 2026-05-28 06:00 +08:00
+  - Issue: #2
+  - Backend SHA tested: `c41979189e23bc0a0b33b848905fe73eefe31cd6`.
+  - Frontend SHA tested before log update: `7cc31260ae822cf4074e85604ff6e1d886455fa4`.
+  - `GET http://localhost:8000/healthz`: passed with `{"status":"ok","version":"0.1.0"}`.
+  - `GET /api/libraries/rag-agent/chat/session`: verified `200` session load.
+  - `POST /api/libraries/rag-agent/chat/questions`: verified `202` with `taskId`, `streamUrl`, `userMessage`, `assistantMessage`, and empty initial `evidence`.
+  - Browser raw stream fetch on `streamUrl`: verified token, evidence, citations, status, and done frames.
+  - Browser smoke at `http://127.0.0.1:5174/libraries/frontend-smoke-040442/chat`: verified empty session state with zero messages and zero evidence.
+  - Browser smoke at `http://127.0.0.1:5174/libraries/rag-agent/chat`: verified pending assistant state after submit, streamed answer text, inline citations, evidence cards, and terminal done state.
+  - Browser smoke at `http://127.0.0.1:5174/libraries/missing-library/chat`: verified traceable missing-library error state with retry action.
+  - Negative API checks: blank question returned `400 VALIDATION_ERROR`; missing library returned `404 LIBRARY_NOT_FOUND`; missing task returned `404 NOT_FOUND`.
+  - `VITE_DATA_SOURCE=api VITE_API_BASE_URL=http://localhost:8000 pnpm typecheck`: passed.
+  - `VITE_DATA_SOURCE=api VITE_API_BASE_URL=http://localhost:8000 pnpm build`: passed.
+- Backend follow-up:
+  - None for the chat slice; backend verification is complete for the contracted session/question/stream path.
 
 ## API Request: Review generation run lifecycle
 

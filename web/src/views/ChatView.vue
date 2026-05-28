@@ -1,18 +1,28 @@
 <script setup lang="ts">
-import { nextTick, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
+import { useRoute } from 'vue-router'
 import AppIcon from '../components/base/AppIcon.vue'
 import { useChatStore } from '../stores/chat'
 import { useUiStore } from '../stores/ui'
 
 const chat = useChatStore()
 const ui = useUiStore()
+const route = useRoute()
 const {
   activeCitation,
   autoScrollPaused,
   composerText,
   evidenceList,
   messages,
+  sessionCreatedAtLabel,
+  sessionError,
+  sessionState,
+  sessionTitle,
+  streamingCitationIds,
+  streamingMessageId,
+  streamingText,
+  streamError,
   streamState,
   usesApiData,
 } = storeToRefs(chat)
@@ -20,6 +30,29 @@ const { costExceeded } = storeToRefs(ui)
 const reasoningOpen = ref(false)
 const composerMinHeight = 62
 const composerMaxHeight = 220
+const libraryId = computed(() => String(route.params.libraryId ?? ''))
+const sessionReady = computed(() => !usesApiData.value || sessionState.value === 'success')
+const composerDisabled = computed(() => costExceeded.value || !sessionReady.value || streamState.value === 'streaming')
+const canSubmit = computed(() => {
+  if (streamState.value === 'streaming')
+    return true
+
+  return !composerDisabled.value && composerText.value.trim().length > 0
+})
+
+function messageText(message: { id: string; text: string }) {
+  if (message.id === streamingMessageId.value && streamingText.value)
+    return streamingText.value
+
+  return message.text
+}
+
+function messageCitations(message: { id: string; citations?: string[] }) {
+  if (message.id === streamingMessageId.value && streamingCitationIds.value.length)
+    return streamingCitationIds.value
+
+  return message.citations ?? []
+}
 
 function resizeComposer() {
   const element = chat.composerRef
@@ -41,8 +74,17 @@ watch(composerText, () => {
   void nextTick(resizeComposer)
 })
 
+watch(libraryId, (nextLibraryId) => {
+  if (nextLibraryId)
+    void chat.loadSession(nextLibraryId)
+}, { immediate: true })
+
 onMounted(() => {
   void nextTick(resizeComposer)
+})
+
+onBeforeUnmount(() => {
+  chat.disconnectStream()
 })
 </script>
 
@@ -50,26 +92,34 @@ onMounted(() => {
   <section class="screen chat-screen">
     <section class="conversation">
       <div class="chat-head">
-        <span>{{ usesApiData ? 'Session unavailable' : 'Session / 2026-05-05 / 14:32' }}</span>
-        <h1>{{ usesApiData ? 'Chat contract pending' : 'How does GraphRAG combine community summarization and vector retrieval?' }}</h1>
+        <span>{{ sessionCreatedAtLabel ? `Session / ${sessionCreatedAtLabel}` : 'Session' }}</span>
+        <h1>{{ sessionTitle || 'New chat' }}</h1>
       </div>
 
       <div class="messages" @scroll="autoScrollPaused = true">
-        <div v-if="usesApiData" class="chat-pending-state" role="status">
+        <div v-if="sessionState === 'loading'" class="chat-state" role="status">
           <AppIcon name="chat" :size="24" />
-          <h2>Chat is waiting for backend contract</h2>
-          <p>
-            API mode hides seeded messages, citation evidence, and simulated token streaming until
-            <code>/api/libraries/{libraryId}/chat/session</code>,
-            <code>/api/libraries/{libraryId}/chat/questions</code>, and the stream events are defined.
-          </p>
+          <h2>Loading chat session</h2>
+        </div>
+        <div v-else-if="sessionState === 'error'" class="chat-state error" role="alert">
+          <AppIcon name="warning" :size="24" />
+          <h2>Chat session unavailable</h2>
+          <p>{{ sessionError }}</p>
+          <button type="button" @click="chat.loadSession(libraryId, true)">
+            Retry
+          </button>
+        </div>
+        <div v-else-if="usesApiData && !messages.length" class="chat-state" role="status">
+          <AppIcon name="chat" :size="24" />
+          <h2>New chat</h2>
+          <p>Ask a question to start a grounded answer stream.</p>
         </div>
         <article v-for="message in messages" :key="message.id" class="message" :class="message.role">
           <div class="bubble-avatar">
             {{ message.role === 'user' ? 'YU' : 'AI' }}
           </div>
           <div class="bubble">
-            <button v-if="message.role === 'assistant'" class="reasoning-toggle" type="button" @click="reasoningOpen = !reasoningOpen">
+            <button v-if="message.role === 'assistant' && !usesApiData" class="reasoning-toggle" type="button" @click="reasoningOpen = !reasoningOpen">
               <AppIcon name="reason" :size="14" />
               {{ reasoningOpen ? 'Hide reasoning trace' : 'Show reasoning trace' }}
               <span>/</span>
@@ -81,10 +131,10 @@ onMounted(() => {
             <div v-if="message.role === 'assistant' && reasoningOpen" class="reasoning-trace">
               route query -> retrieve communities -> expand chunks -> rerank -> verify citations -> synthesize
             </div>
-            <p>{{ message.text }}<span v-if="message.status === 'streaming'" class="stream-caret" /></p>
+            <p>{{ messageText(message) }}<span v-if="message.status === 'streaming'" class="stream-caret" /></p>
             <div v-if="message.role === 'assistant'" class="citation-row">
               <button
-                v-for="citation in message.citations"
+                v-for="citation in messageCitations(message)"
                 :key="citation"
                 class="citation-chip"
                 :class="{ placeholder: citation === '?', active: activeCitation === citation }"
@@ -98,6 +148,7 @@ onMounted(() => {
               </button>
               <span v-if="message.status === 'streaming'" class="state-pill">event: token</span>
               <span v-if="message.status === 'done'" class="state-pill cyan">event: citations</span>
+              <span v-if="message.status === 'unsubstantiated'" class="state-pill">unsubstantiated</span>
             </div>
             <div v-if="message.status === 'interrupted'" class="inline-error">
               Stream interrupted
@@ -116,16 +167,19 @@ onMounted(() => {
       </div>
 
       <button v-if="autoScrollPaused" class="new-token-pill" type="button" @click="autoScrollPaused = false">
-        Down 8 new tokens
+        New tokens
       </button>
 
       <div class="composer">
+        <p v-if="streamError" class="composer-error" role="alert">
+          {{ streamError }}
+        </p>
         <textarea
           :ref="setComposerRef"
           v-model="composerText"
           aria-label="Ask anything"
-          :disabled="usesApiData"
-          :placeholder="usesApiData ? 'Chat API contract pending' : 'Ask anything in this Library... type / for commands'"
+          :disabled="composerDisabled"
+          :placeholder="sessionReady ? 'Ask anything in this Library... type / for commands' : 'Chat session unavailable'"
           @input="resizeComposer"
           @keydown="chat.handleComposerKey"
         />
@@ -143,10 +197,10 @@ onMounted(() => {
               Tools
             </button>
           </div>
-          <span class="composer-hint">{{ usesApiData ? 'Waiting for OpenAPI chat contract' : 'Cmd + Enter to send' }}</span>
+          <span class="composer-hint">{{ streamState === 'streaming' ? 'Streaming answer' : 'Cmd + Enter to send' }}</span>
           <button
             class="send-btn"
-            :disabled="usesApiData || costExceeded"
+            :disabled="!canSubmit"
             type="button"
             @click="streamState === 'streaming' ? chat.stopStream() : chat.sendQuestion()"
           >
@@ -160,15 +214,19 @@ onMounted(() => {
       <div class="panel-title">
         <div>
           <strong>Evidence</strong>
-          <small>{{ usesApiData ? 'No backend evidence loaded' : '3 sources cited / click [n] in answer to jump' }}</small>
+          <small>{{ evidenceList.length ? `${evidenceList.length} sources cited` : 'No evidence yet' }}</small>
         </div>
         <button type="button">Collapse</button>
       </div>
       <div class="evidence-list">
-        <div v-if="usesApiData" class="chat-pending-state compact" role="status">
+        <div v-if="sessionState === 'loading'" class="chat-state compact" role="status">
           <AppIcon name="info" :size="20" />
-          <h2>Evidence unavailable</h2>
-          <p>Grounded evidence remains hidden in API mode until the chat session endpoint returns real records.</p>
+          <h2>Loading evidence</h2>
+        </div>
+        <div v-else-if="usesApiData && !evidenceList.length" class="chat-state compact" role="status">
+          <AppIcon name="info" :size="20" />
+          <h2>No evidence yet</h2>
+          <p>Evidence appears here when the answer stream emits grounded records.</p>
         </div>
         <article
           v-for="item in evidenceList"
@@ -187,7 +245,7 @@ onMounted(() => {
           </div>
           <h3>{{ item.title }}</h3>
           <p>{{ item.snippet }}</p>
-          <small>{{ item.meta }} / cited 14 times / score {{ item.score }}</small>
+          <small>{{ item.meta }} / score {{ item.score }}</small>
         </article>
         <div v-if="!usesApiData" class="evidence-notes">
           <div>
@@ -205,7 +263,7 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.chat-pending-state {
+.chat-state {
   display: grid;
   gap: 12px;
   place-items: center;
@@ -219,25 +277,44 @@ onMounted(() => {
   background: var(--color-bg-muted);
 }
 
-.chat-pending-state h2 {
+.chat-state.error {
+  border-color: var(--color-danger);
+}
+
+.chat-state h2 {
   margin: 0;
   color: var(--color-text-primary);
   font-size: 1rem;
 }
 
-.chat-pending-state p {
+.chat-state p {
   max-width: 620px;
   margin: 0;
   line-height: 1.6;
 }
 
-.chat-pending-state code {
+.chat-state button {
+  min-height: 36px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  background: var(--color-bg-surface);
+  padding: 0 14px;
   color: var(--color-text-primary);
-  font-size: 0.86em;
+  font-weight: 700;
 }
 
-.chat-pending-state.compact {
+.chat-state.compact {
   min-height: 220px;
   padding: 22px;
+}
+
+.composer-error {
+  margin: 0 0 10px;
+  border: 1px solid var(--color-danger);
+  border-radius: var(--radius-control);
+  padding: 10px 12px;
+  color: var(--color-danger);
+  font-size: 13px;
+  line-height: 18px;
 }
 </style>

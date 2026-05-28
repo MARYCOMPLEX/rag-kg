@@ -517,3 +517,26 @@ Use this log during local integration, E2E testing, and contract verification. E
 - Verification:
   - `pnpm typecheck`: passed.
   - `pnpm build`: passed.
+
+## 2026-05-28 06:00 - Chat API-mode verified
+
+- Time: 2026-05-28 06:00 +08:00
+- Agent: Frontend Agent
+- Issue: #2
+- Cause: `ChatView.vue`, `useChatStore`, `CitationPopover.vue`, and `taskStreamClient.ts` still depended on seeded mock session data and timer-driven streaming in API mode.
+- Fix status: fixed
+- Frontend fix:
+  - Added a typed chat repository for `/api/libraries/{libraryId}/chat/session` and `/api/libraries/{libraryId}/chat/questions`.
+  - Replaced the chat stream client with durable SSE parsing for token, evidence, citations, status, and done events.
+  - Wired the Pinia chat store to load real sessions, submit questions, maintain pending/streaming/error states, and surface live evidence/citation updates.
+  - Updated `ChatView.vue` and `CitationPopover.vue` to render real API-mode loading, empty, pending, error, streaming, and terminal states.
+- Verification:
+  - `GET http://localhost:8000/healthz`: passed.
+  - `GET /api/libraries/rag-agent/chat/session`: passed.
+  - `POST /api/libraries/rag-agent/chat/questions`: passed with `202`, `taskId`, `streamUrl`, `userMessage`, `assistantMessage`, and empty initial `evidence`.
+  - Browser raw stream fetch on the returned `streamUrl`: passed and contained token, evidence, citations, status, and done frames.
+  - Browser smoke on `127.0.0.1:5174`: passed empty session load, pending assistant state, streamed answer rendering, citations/evidence rendering, terminal done state, and missing-library error state.
+  - `VITE_DATA_SOURCE=api VITE_API_BASE_URL=http://localhost:8000 pnpm typecheck`: passed.
+  - `VITE_DATA_SOURCE=api VITE_API_BASE_URL=http://localhost:8000 pnpm build`: passed.
+- Backend follow-up:
+  - None for the chat slice.
