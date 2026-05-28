@@ -273,7 +273,7 @@ OpenAPI remains the single source of truth. Entries here are requests only; once
   - Empty sessions return `200` with empty `messages` and `evidence` arrays.
   - Question creation returns a pending assistant message immediately so the frontend can render loading/streaming state before the first token.
   - Frontend can replace `web/src/mocks/chat.ts` with repository/service-backed state.
-- Status: blocked
+- Status: implemented
 - Backend implementation note:
   - Time: 2026-05-27 18:23 +08:00
   - Added `/api/libraries/{libraryId}/chat/session`, `/api/libraries/{libraryId}/chat/questions`, and `/api/libraries/{libraryId}/chat/questions/{taskId}/events`.
@@ -287,4 +287,11 @@ OpenAPI remains the single source of truth. Entries here are requests only; once
   - Added worker job `apps/worker/jobs/run_chat.py` and registered it with the Arq worker; tests cover enqueue, task lookup, event-to-SSE mapping, queue-unavailable `503`, and worker event emission.
   - Runtime recheck at 2026-05-28 11:37 +08:00 fixed the local Postgres task-store setup by creating the expected `rkb` role/database in the already-running `anyfast-postgres` container, running `uv run alembic upgrade head`, and seeding the real `rag-agent` library row in Postgres.
   - Live durable chat now reaches the real task queue: `POST /api/libraries/rag-agent/chat/questions` returns `202`, persists a `run_chat` task, Arq starts `run_run_chat`, and `GET /chat/questions/{taskId}/events` streams durable `status` and terminal `error` SSE frames.
-  - Runtime frontend handoff remains blocked because the configured embedding upstream rejects the worker request: `https://api.siliconflow.cn/v1/embeddings` returns `403 Forbidden`, so the worker cannot emit grounded answer token/evidence/citation/done events yet.
+  - Runtime frontend handoff was initially blocked because the configured embedding upstream rejected the worker request: `https://api.siliconflow.cn/v1/embeddings` returned `403 Forbidden`, so the worker could not emit grounded answer token/evidence/citation/done events yet.
+- Backend runtime handoff note:
+  - Time: 2026-05-28 12:57 +08:00
+  - Re-ran the live durable chat smoke after funded SiliconFlow access became available.
+  - Ingested the 5 local arXiv PDFs from `serve/data/libraries/rag-agent/corpus/spike` into the real vector store for `rag-agent`; Qdrant collection `chunks_rag_agent` reported `843` points with vector size `1024`.
+  - Live durable chat with Postgres task store, Redis event bus, Arq worker, SiliconFlow embeddings, and the ingested PDF corpus returned `202` from `POST /api/libraries/rag-agent/chat/questions`.
+  - The returned stream URL emitted durable `status`, `token`, `evidence`, `citations`, `status`, and `done` SSE events.
+  - Backend is ready for frontend API-mode chat verification against backend SHA `3a2958ad6f68725f282b132cf6218c59083b4124` or newer.

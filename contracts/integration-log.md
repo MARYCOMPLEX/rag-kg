@@ -28,6 +28,25 @@ Use this log during local integration, E2E testing, and contract verification. E
 
 ## Logs
 
+## 2026-05-28 12:57 - Durable chat grounded frontend handoff
+
+- Time: 2026-05-28 12:57 +08:00
+- Agent: Backend Agent
+- Issue: #3
+- Cause: The durable chat task/event path was implemented, but frontend handoff needed runtime evidence that the real worker could produce grounded answer events after upstream model access was restored.
+- Fix status: implemented
+- Fix:
+  - Kept the durable chat implementation unchanged: `/api/libraries/{libraryId}/chat/questions` enqueues `run_chat`, and `/api/libraries/{libraryId}/chat/questions/{taskId}/events` reads durable task/event-bus events.
+  - Re-ran the live smoke with local Postgres task store, Redis event bus, Arq worker, SiliconFlow embeddings, and the `rag-agent` PDF corpus.
+  - Ingested 5 local arXiv PDFs into the real vector store for `rag-agent`; Qdrant collection `chunks_rag_agent` reported `843` points with vector size `1024`.
+  - Confirmed the durable stream emitted `status`, `token`, `evidence`, `citations`, `status`, and `done` events grounded in the ingested GraphRAG paper.
+- Verification:
+  - `uv run python -m apps.cli.main ingest data\\libraries\\rag-agent\\corpus\\spike --library rag-agent`: passed; `5 files (0 skipped), 843 chunks, 0 entities, 0 triples`; embedding cache `840 entries`.
+  - `GET http://127.0.0.1:6333/collections/chunks_rag_agent`: passed; `points_count: 843`, vector size `1024`, status `green`.
+  - `POST http://127.0.0.1:8010/api/libraries/rag-agent/chat/questions`: passed with `202`, task `01KSPF1DJE9JBJNR09DG357EXN`.
+  - `GET -N http://127.0.0.1:8010/api/libraries/rag-agent/chat/questions/01KSPF1DJE9JBJNR09DG357EXN/events`: passed; event counts `status: 2`, `token: 15`, `evidence: 1`, `citations: 1`, `done: 1`.
+  - Backend handoff target: frontend should verify chat API mode against backend SHA `3a2958ad6f68725f282b132cf6218c59083b4124` or newer.
+
 ## 2026-05-28 11:37 - Durable chat live runtime recheck
 
 - Time: 2026-05-28 11:37 +08:00
